@@ -14,10 +14,14 @@ Postavit technický základ, na kterém poběží všechny další EPICy: monore
 - **CI/CD** – lint, typecheck, test, build (GitHub Actions skeleton)
 - **Kvalita** – ESLint, Prettier, husky pre-commit, commit convention
 - **`BaseTenantEntity`** základ (bez plné RLS – ta v EPIC-03)
+- **`StoragePort`** rozhraní pro média (implementace R2/S3 později, lokálně filesystem/MinIO) – ať Fabrication/Gallery nejsou zaseknuté na Cloudflare (ADR-0008)
+
+### Deployment target (ADR-0008)
+Nasazení = Cloudflare na edge (Pages pro `apps/web`, CDN/WAF, R2 pro média) + `apps/api` jako **kontejner** (Fly/Railway/VPS) + Postgres(RLS)/Redis. Skeleton to nemá řešit produkčně, ale strukturou tomu nesmí bránit: web buildovatelný pro Pages, API jako Docker image, média za `StoragePort`.
 
 ### Out of scope
-- Cloud infrastruktura / IaC (cloud zatím neřešíme – jen Docker Compose lokálně)
-- Produkční deployment
+- IaC / produkční nasazení na Cloudflare (řeší pozdější deploy EPIC) – teď jen Docker Compose lokálně
+- Extrakce resolveru do Cloudflare Workeru (pozdější optimalizace, ADR-0002/0008)
 
 ## Acceptance kritéria
 - [ ] `docker compose up` nastartuje API + web + Postgres + Redis

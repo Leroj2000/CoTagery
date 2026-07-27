@@ -80,9 +80,9 @@ Multi-tenant SaaS, 12 modulů nad společným jádrem: Product, Loyalty, Payment
 | WebNFC podpora v prohlížečích | Střední | Progressive enhancement, QR jako fallback |
 
 ## 9. Otevřené otázky (k rozhodnutí)
-1. Cloud provider (AWS vs GCP) – ovlivní IaC a managed služby.
-2. PSP pro CZ/SK trh: GoPay, Stripe, nebo Comgate?
-3. Úložiště médií (Gallery): S3-compatible + CDN – které?
+1. ~~Cloud provider~~ → **Rozhodnuto (ADR-0008):** Cloudflare na edge (Pages, CDN/WAF, R2) + kontejnerizovaný NestJS backend (Fly/Railway/VPS) + Postgres(RLS)/Redis. Zbývá vybrat konkrétní host.
+2. PSP → **Stripe** (ADR-0007).
+3. ~~Úložiště médií~~ → **Cloudflare R2** + CDN (ADR-0008).
 4. Rozsah v1 SSO: stačí OAuth2 (Google/MS), nebo hned SAML?
 5. Single doména s path/subdoménou vs. custom domény per tenant od v1?
 6. NFC provisioning na iOS – nativní appka / PWA-most, nebo v1 jen Android (Web NFC)?

@@ -10,6 +10,7 @@
 - [ADR-0005](decisions/0005-renter-reputation-scope.md) – Rozsah identity a reputace nájemce
 - [ADR-0006](decisions/0006-access-control-shared-capability.md) – Access Control jako průřezová sdílená schopnost
 - [ADR-0007](decisions/0007-billing-money-flow.md) – Billing: členské platby tenant-owns-PSP (Stripe); monetizace = fee za vydané karty
+- [ADR-0008](decisions/0008-deployment-topology-cloudflare-edge.md) – Deployment: Cloudflare na edge + kontejnerizovaný backend
 
 ## Multi-tenancy model
 Každý tenant (firma/organizace) má striktně izolovaná data. Izolace je zajištěna na třech úrovních:
