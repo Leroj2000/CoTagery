@@ -27,7 +27,7 @@
 - **Backend:** NestJS (modulární monolit), TypeScript, REST v1 (GraphQL později)
 - **DB:** PostgreSQL (relační + JSONB), Redis (cache/fronty)
 - **Auth:** JWT (access+refresh), OAuth2/SSO
-- **Provoz:** Docker; cloud (AWS/GCP) až před nasazením
+- **Provoz:** Docker (lokálně Compose); nasazení = **Cloudflare na edge** (Pages, CDN/WAF, R2) + **kontejnerizovaný NestJS backend** (Fly/Railway/VPS) + Postgres(RLS)/Redis — ADR-0008
 
 ## 4. Klíčová architektonická rozhodnutí (ADR)
 
@@ -40,6 +40,7 @@
 | **0005** | Reputace nájemce platformově sdílená (Uber/Bolt) – úzká výjimka z 0001 |
 | **0006** | Access Control jako průřezová sdílená schopnost (Ticketing + Membership) |
 | **0007** | Billing: členské platby přes tenant-owns-PSP (Stripe Connect); monetizace Tagery = fee za počet vydaných karet |
+| **0008** | Deployment: Cloudflare na edge (Pages/CDN/WAF/R2) + kontejnerizovaný NestJS backend + Postgres(RLS)/Redis |
 
 ## 5. Jádro (společné pro všechny moduly)
 
@@ -181,9 +182,9 @@ Core (Tenant/User/Location, DigitalObject, DataCarrier, ScanEvent, Resolver) + R
 
 ## 15. Otevřené otázky (k rozhodnutí)
 
-1. Cloud provider (AWS vs GCP) – zatím odloženo, dev přes Docker Compose
-2. PSP pro CZ/SK (GoPay / Stripe / Comgate)
-3. Úložiště médií pro Gallery (S3-compatible + CDN)
+1. ~~Cloud provider~~ → **Cloudflare edge + kontejnerový backend** (ADR-0008); zbývá vybrat host (Fly/Railway/VPS)
+2. PSP → **Stripe** (ADR-0007)
+3. ~~Úložiště médií~~ → **Cloudflare R2** + CDN (ADR-0008)
 4. Rozsah v1 SSO (OAuth2 vs. hned SAML)
 5. Doménová strategie (path/subdoména vs. custom domény per tenant)
 6. **Rental:** řešení sporů (damage vs. deposit) a moderace difamace u sdílené reputace

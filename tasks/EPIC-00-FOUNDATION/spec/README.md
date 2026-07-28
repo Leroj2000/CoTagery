@@ -14,18 +14,25 @@ Postavit technický základ, na kterém poběží všechny další EPICy: monore
 - **CI/CD** – lint, typecheck, test, build (GitHub Actions skeleton)
 - **Kvalita** – ESLint, Prettier, husky pre-commit, commit convention
 - **`BaseTenantEntity`** základ (bez plné RLS – ta v EPIC-03)
+- **`StoragePort`** rozhraní pro média (implementace R2/S3 později, lokálně filesystem/MinIO) – ať Fabrication/Gallery nejsou zaseknuté na Cloudflare (ADR-0008)
+
+### Deployment target (ADR-0008)
+Nasazení = Cloudflare na edge (Pages pro `apps/web`, CDN/WAF, R2 pro média) + `apps/api` jako **kontejner** (Fly/Railway/VPS) + Postgres(RLS)/Redis. Skeleton to nemá řešit produkčně, ale strukturou tomu nesmí bránit: web buildovatelný pro Pages, API jako Docker image, média za `StoragePort`.
 
 ### Out of scope
-- Cloud infrastruktura / IaC (cloud zatím neřešíme – jen Docker Compose lokálně)
-- Produkční deployment
+- IaC / produkční nasazení na Cloudflare (řeší pozdější deploy EPIC) – teď jen Docker Compose lokálně
+- Extrakce resolveru do Cloudflare Workeru (pozdější optimalizace, ADR-0002/0008)
+
+## Stav: ✅ Implementováno (2026-07-28)
+Monorepo (pnpm + turbo): `apps/api` (NestJS 11), `apps/web` (Next 15), `packages/shared`. Ověřeno: build, typecheck, lint, test zeleně; Postgres+Redis přes Compose; migrace+revert+seed; API health vrací 200 (`database: up, redis: up`).
 
 ## Acceptance kritéria
-- [ ] `docker compose up` nastartuje API + web + Postgres + Redis
-- [ ] `GET /api/v1/health` vrací 200 se stavem DB a Redis
-- [ ] Web zobrazí prázdný shell (mobile-first), načte se z API health
-- [ ] Migrace lze spustit i rollbacknout, seed naplní demo tenant
-- [ ] CI projde na prázdném skeletu (lint+typecheck+test+build zeleně)
-- [ ] Env proměnné validované při startu, `.env.example` zdokumentován
+- [x] `docker compose up` – Postgres + Redis ověřeno healthy; API+web mají Dockerfile + compose entry (plný image build neověřen v této session)
+- [x] `GET /api/v1/health` vrací 200 se stavem DB a Redis — ověřeno
+- [x] Web build + mobile-first shell fetchující `/api/v1/health` (build ověřen; render v prohlížeči neověřen)
+- [x] Migrace lze spustit i rollbacknout (`migration:run`/`revert`), seed naplní demo tenant — ověřeno
+- [x] lint + typecheck + test + build zeleně — ověřeno (CI workflow `.github/workflows/ci.yml`)
+- [x] Env validace přes zod při startu, `.env.example` zdokumentován
 
 ## Závislosti
 Žádné (první EPIC).

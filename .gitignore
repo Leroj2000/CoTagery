@@ -39,3 +39,8 @@ Thumbs.db
 # Dočasné / fabrication výstupy
 tmp/
 *.tmp
+
+# Monorepo / nástroje
+.turbo/
+.storage/
+*.tsbuildinfo
