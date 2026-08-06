@@ -1,0 +1,49 @@
+import { Body, Controller, Get, HttpCode, NotFoundException, Post, UseGuards } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { AuthService, type TokenPair } from './auth.service';
+import { LoginDto } from './dto/login.dto';
+import { RefreshDto } from './dto/refresh.dto';
+import { JwtAuthGuard, type RequestUser } from './jwt-auth.guard';
+import { CurrentUser } from './decorators';
+import { User } from './entities/user.entity';
+
+@Controller('auth')
+export class AuthController {
+  constructor(
+    private readonly auth: AuthService,
+    @InjectRepository(User) private readonly users: Repository<User>,
+  ) {}
+
+  @Post('login')
+  login(@Body() dto: LoginDto): Promise<TokenPair> {
+    return this.auth.login(dto.email, dto.password);
+  }
+
+  @Post('refresh')
+  refresh(@Body() dto: RefreshDto): Promise<TokenPair> {
+    return this.auth.refresh(dto.refreshToken);
+  }
+
+  @Post('logout')
+  @HttpCode(204)
+  async logout(@Body() dto: RefreshDto): Promise<void> {
+    await this.auth.logout(dto.refreshToken);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async me(@CurrentUser() current: RequestUser): Promise<{
+    user: { id: string; email: string; name: string };
+    tenantId: string;
+    tenantRole: string;
+  }> {
+    const user = await this.users.findOne({ where: { id: current.userId } });
+    if (!user) throw new NotFoundException('Uživatel neexistuje');
+    return {
+      user: { id: user.id, email: user.email, name: user.name },
+      tenantId: current.tenantId,
+      tenantRole: current.tenantRole,
+    };
+  }
+}
