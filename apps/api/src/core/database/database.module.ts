@@ -8,7 +8,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
-        url: config.get<string>('DATABASE_URL'),
+        // Runtime používá APP_DATABASE_URL (RLS role); fallback DATABASE_URL.
+        url: config.get<string>('APP_DATABASE_URL') ?? config.get<string>('DATABASE_URL'),
         autoLoadEntities: true,
         synchronize: false,
         migrationsRun: false,

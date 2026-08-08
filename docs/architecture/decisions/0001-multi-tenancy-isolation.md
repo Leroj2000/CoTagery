@@ -27,4 +27,10 @@ Izolace je vynucena na třech vrstvách (defense in depth):
 ## Vynucení
 - Lint/review pravidlo: žádný raw dotaz bez `tenant_id` (viz `_config/shared/tenancy_rules.md`).
 - CI test: pokus o cross-tenant čtení musí vrátit 0 řádků / 403.
-- Connection pool nastavuje `SET app.tenant_id` na začátku každé transakce.
+- Per-request transakce nastavuje `SET LOCAL app.tenant_id` z JWT (interceptor).
+
+## Implementace (EPIC-03)
+- **Runtime role `tagery_app` je NE-superuser** (`NOSUPERUSER NOBYPASSRLS`) → podléhá RLS. Migrace/seed běží pod vlastníkem (`tagery`); aplikace se za běhu připojuje přes `APP_DATABASE_URL`. **Superuser (výchozí `POSTGRES_USER`) RLS obchází i s FORCE** – proto oddělená role.
+- Tabulky mají `ENABLE` + `FORCE ROW LEVEL SECURITY` a politiku `tenant_isolation`: `tenant_id = current_setting('app.tenant_id', true)::uuid` (chybějící kontext → NULL → 0 řádků, bezpečné odepření).
+- `TenantTransactionInterceptor` + `TenantContextService` (AsyncLocalStorage) drží per-request transakci a scoped EntityManager.
+- Ověřeno izolačním e2e testem: tenant A nevidí data tenantu B (API 404 + DB-level 0/1 řádek).
