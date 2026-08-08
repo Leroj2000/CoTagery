@@ -1,0 +1,32 @@
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+
+/** Tenant = firma/organizace. Není tenant-scoped (je to sám tenant). */
+@Entity('tenants')
+export class Tenant {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
+
+  @Column({ type: 'text' })
+  name!: string;
+
+  @Column({ type: 'text', default: 'mixed' })
+  type!: 'retail' | 'event' | 'rental' | 'home' | 'mixed';
+
+  @Column({ type: 'text', name: 'branding_domain', nullable: true })
+  brandingDomain!: string | null;
+
+  @Column({ type: 'jsonb', name: 'settings_json', default: {} })
+  settings!: Record<string, unknown>;
+
+  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
+  createdAt!: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
+  updatedAt!: Date;
+}

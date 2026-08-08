@@ -5,6 +5,9 @@ export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   API_PORT: z.coerce.number().int().positive().default(3001),
   DATABASE_URL: z.string().url(),
+  // Runtime spojení aplikace (ne-superuser role podléhající RLS – ADR-0001).
+  // Když není nastaveno, použije se DATABASE_URL (pozor: superuser obchází RLS).
+  APP_DATABASE_URL: z.string().url().optional(),
   REDIS_URL: z.string().url(),
   STORAGE_DRIVER: z.enum(['local', 'r2', 's3']).default('local'),
   STORAGE_LOCAL_PATH: z.string().default('./.storage'),

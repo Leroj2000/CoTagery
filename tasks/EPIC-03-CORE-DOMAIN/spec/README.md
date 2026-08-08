@@ -17,19 +17,22 @@ Implementovat základní multi-tenant doménu a vynutit izolaci tenantů na vše
 - DigitalObject/DataCarrier (EPIC-04)
 - Billing tenantů
 
+## Stav: 🟡 RLS izolace hotová (2026-08-08); plné CRUD pro Tenant/User/Group zbývá
+
 ## Acceptance kritéria
-- [ ] `BaseTenantEntity` automaticky filtruje podle kontextu – nelze načíst cizí tenant data
-- [ ] RLS policy aktivní: i raw SQL bez filtru vrátí jen data aktuálního tenanta
-- [ ] **Izolační test**: uživatel tenantu A dostane 404/prázdno na zdroje tenantu B
-- [ ] Owner/Admin role fungují dle RBAC matice
-- [ ] Migrace + seed reprodukovatelné
+- [x] RLS policy aktivní: i přímý SQL (runtime role) vrátí jen data aktuálního tenanta
+- [x] **Izolační test**: tenant A dostane 404/prázdno na zdroje tenantu B (ověřeno API i DB-level)
+- [x] Per-request tenant kontext (`SET LOCAL app.tenant_id` z JWT) přes interceptor + ALS
+- [x] Migrace + seed reprodukovatelné; runtime NE-superuser role `tagery_app`
+- [ ] Owner/Admin RBAC enforcement dle matice – EPIC-06 (ACL)
+- [ ] Plné CRUD Tenant/User/Group endpointy (zatím jen Locations jako demonstrátor)
 
 ## Závislosti
 - EPIC-00-FOUNDATION (skeleton, migrace)
 - EPIC-01-AUTH (JWT → `tenant_id` v kontextu)
 
-## Podúkoly (návrh)
-- [ ] TASK-01-ENTITIES – Tenant/Location/User/Group + migrace
-- [ ] TASK-02-BASE-ENTITY – BaseTenantEntity + TypeORM scope
-- [ ] TASK-03-RLS – RLS policies + GUC per-request
-- [ ] TASK-04-TENANT-API – CRUD endpointy + izolační testy
+## Podúkoly
+- [x] TASK-01-ENTITIES – Tenant/Location/Group/GroupMember + migrace ✅
+- [x] TASK-03-RLS – RLS policies + `app.tenant_id` GUC per-request + runtime role ✅
+- [~] TASK-04-TENANT-API – Locations CRUD + izolační test hotové; Tenant/User/Group CRUD zbývá
+- [ ] TASK-02-BASE-ENTITY – volitelný ORM-level global scope (RLS už izoluje na DB)
