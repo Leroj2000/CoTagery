@@ -9,7 +9,9 @@ import { TenancyModule } from './core/tenancy/tenancy.module';
 import { DomainModule } from './core/domain/domain.module';
 import { ResolverModule } from './core/resolver/resolver.module';
 import { AnalyticsModule } from './core/analytics/analytics.module';
+import { AccessControlModule } from './core/access/access-control.module';
 import { ProductModule } from './modules/product/product.module';
+import { TicketingModule } from './modules/ticketing/ticketing.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
@@ -28,7 +30,9 @@ import { HealthModule } from './health/health.module';
     DomainModule,
     ResolverModule,
     AnalyticsModule,
+    AccessControlModule,
     ProductModule,
+    TicketingModule,
     HealthModule,
   ],
 })

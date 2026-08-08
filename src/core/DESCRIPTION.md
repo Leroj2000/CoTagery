@@ -14,7 +14,9 @@ Jádro Tagery platformy – společná funkcionalita sdílená napříč všemi 
 - `domain/` – **implementováno (EPIC-03+04)**: entity Tenant/Location/Group/GroupMember + DigitalObject/DataCarrier + ScanEvent; CRUD Locations/Objects/Carriers nad RLS; `public_code` generátor, QR (SVG/PNG), NFC párování, `ModuleRegistry` + `handleScan` kontrakt
 - `resolver/` – **implementováno (EPIC-05)**: veřejný `GET /r/{public_code}` (mimo /api/v1), Redis cache, validace platnosti, rate limit (anti-quishing), async ScanEvent, spouští modulový `handleScan` v tenant kontextu. Lookup/zápis mimo RLS přes `SECURITY DEFINER` funkce
 - `analytics/` – **implementováno (EPIC-07)**: `/analytics/overview` + `/scans` (tenant-scoped agregace ScanEvent)
-- (mimo core) `src/modules/product/` – **implementováno (EPIC-08)**: první modul, `ProductHandler` registruje se do `ModuleRegistry`, sken vrací produktovou kartu
+- `access/` – **implementováno (EPIC-15)**: sdílená Access-Control (`AccessPoint`/`AccessEvent`, `AccessRegistry`, `evaluate` + audit; ADR-0006)
+- (mimo core) `src/modules/product/` – **implementováno (EPIC-08)**: první modul, `ProductHandler` → `ModuleRegistry`, sken vrací produktovou kartu
+- (mimo core) `src/modules/ticketing/` – **implementováno (EPIC-09)**: Event/TicketType/Ticket, `TicketEntitlementProvider` → `AccessRegistry` (check-in + redemce)
 
 ## Exportované API
 - `AuthService`, `JwtAuthGuard` (globální AuthModule)

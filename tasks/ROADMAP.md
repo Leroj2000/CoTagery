@@ -19,13 +19,13 @@
 | EPIC-06 | RBAC-ACL | ObjectPermission, enforcement matice | ⬜ |
 | EPIC-07 | ANALYTICS | ScanEvent agregace, dashboard | 🟡 |
 | EPIC-08 | PRODUCT | Modul Product | 🟡 |
-| EPIC-09 | TICKETING | Modul Ticketing + check-in | ⬜ |
+| EPIC-09 | TICKETING | Modul Ticketing + check-in | 🟡 |
 | EPIC-10 | RENTAL | Modul Rental (+ ověření nájemce, oboustranné hodnocení) | ⬜ |
 | EPIC-11 | GALLERY | Modul Shared Gallery | ⬜ |
 | EPIC-12 | TIME-TRACKING | Modul Time & Event | ⬜ |
 | EPIC-13 | AUTOMATION | Modul Automation | ⬜ |
 | EPIC-14 | CONTACT | Modul Contact | ⬜ |
-| EPIC-15 | ACCESS-CONTROL | Sdílená schopnost řízení vstupu (ADR-0006) – používá Ticketing i Membership | ⬜ |
+| EPIC-15 | ACCESS-CONTROL | Sdílená schopnost řízení vstupu (ADR-0006) – používá Ticketing i Membership | 🟡 |
 | EPIC-16 | MEMBERSHIP | Klubové/nákupní členství: tiery, platnost, benefity, karty | ⬜ |
 | EPIC-17 | BILLING | Sdílené předplatné (recurring přes PSP) – řídí platnost členství (ADR-0007) | ⬜ |
 
