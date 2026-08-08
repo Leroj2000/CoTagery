@@ -23,6 +23,27 @@ export class TenantContextService {
     return this.als.run(store, fn);
   }
 
+  /**
+   * Spustí `fn` v transakci s nastaveným `app.tenant_id` (RLS kontext).
+   * Používá interceptor pro requesty i resolver pro modulové handlery.
+   */
+  async runInTenant<T>(tenantId: string, fn: () => Promise<T>): Promise<T> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    await queryRunner.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantId]);
+    try {
+      const result = await this.als.run({ tenantId, manager: queryRunner.manager }, fn);
+      await queryRunner.commitTransaction();
+      return result;
+    } catch (err) {
+      await queryRunner.rollbackTransaction().catch(() => undefined);
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
   get tenantId(): string | undefined {
     return this.als.getStore()?.tenantId;
   }

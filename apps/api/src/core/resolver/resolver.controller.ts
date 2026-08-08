@@ -3,6 +3,7 @@ import { ResolverService } from './resolver.service';
 import { RateLimitService } from './rate-limit.service';
 import { ScanLoggerService } from './scan-logger.service';
 import { ModuleRegistry } from '../domain/module-handler';
+import { TenantContextService } from '../tenancy/tenant-context.service';
 import { isActiveResolution } from './resolution';
 
 /** Minimální tvar Express Response (bez závislosti na typech express). */
@@ -20,6 +21,7 @@ export class ResolverController {
     private readonly rateLimit: RateLimitService,
     private readonly scanLogger: ScanLoggerService,
     private readonly registry: ModuleRegistry,
+    private readonly tenantContext: TenantContextService,
   ) {}
 
   @Get(':code')
@@ -64,12 +66,19 @@ export class ResolverController {
         id: resolution.carrierId,
         tenantId: resolution.tenantId,
       } as never;
-      const object = { id: resolution.objectId, moduleType: resolution.moduleType } as never;
-      const response = await handler.handleScan(object, carrier, {
-        carrierType: resolution.carrierType === 'nfc' ? 'nfc' : 'qr',
-        ip,
-        userAgent,
-      });
+      const object = {
+        id: resolution.objectId,
+        tenantId: resolution.tenantId,
+        moduleType: resolution.moduleType,
+      } as never;
+      // Handler běží v tenant kontextu (RLS) daném resolucí – může číst svá data.
+      const response = await this.tenantContext.runInTenant(resolution.tenantId, () =>
+        handler.handleScan(object, carrier, {
+          carrierType: resolution.carrierType === 'nfc' ? 'nfc' : 'qr',
+          ip,
+          userAgent,
+        }),
+      );
       if (response.kind === 'redirect' && response.url) {
         res.redirect(302, response.url);
         return;
