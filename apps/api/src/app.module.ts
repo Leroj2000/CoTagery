@@ -7,6 +7,7 @@ import { StorageModule } from './core/storage/storage.module';
 import { AuthModule } from './core/auth/auth.module';
 import { TenancyModule } from './core/tenancy/tenancy.module';
 import { DomainModule } from './core/domain/domain.module';
+import { ResolverModule } from './core/resolver/resolver.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
@@ -23,6 +24,7 @@ import { HealthModule } from './health/health.module';
     AuthModule,
     TenancyModule,
     DomainModule,
+    ResolverModule,
     HealthModule,
   ],
 })

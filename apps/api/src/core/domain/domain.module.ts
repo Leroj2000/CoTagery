@@ -6,6 +6,7 @@ import { Group } from './entities/group.entity';
 import { GroupMember } from './entities/group-member.entity';
 import { DigitalObject } from './entities/digital-object.entity';
 import { DataCarrier } from './entities/data-carrier.entity';
+import { ScanEvent } from './entities/scan-event.entity';
 import { LocationsController } from './locations/locations.controller';
 import { LocationsService } from './locations/locations.service';
 import { DigitalObjectsController } from './objects/digital-objects.controller';
@@ -18,7 +19,15 @@ import { ModuleRegistry } from './module-handler';
 /** Jádro doménového modelu (EPIC-03, EPIC-04). */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Tenant, Location, Group, GroupMember, DigitalObject, DataCarrier]),
+    TypeOrmModule.forFeature([
+      Tenant,
+      Location,
+      Group,
+      GroupMember,
+      DigitalObject,
+      DataCarrier,
+      ScanEvent,
+    ]),
   ],
   controllers: [LocationsController, DigitalObjectsController, DataCarriersController],
   providers: [

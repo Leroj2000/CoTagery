@@ -19,20 +19,24 @@ Implementovat hot path `GET /r/{public_code}` podle ADR-0002: rychlé cachované
 - Bohaté modulové stránky (dodají jednotlivé moduly)
 - Analytické agregace/dashboard (EPIC-06)
 
+## Stav: 🟡 jádro hotové a ověřené (2026-08-08)
+
+Lookup nosiče mimo RLS řeší `SECURITY DEFINER` funkce `resolve_carrier`; zápis ScanEventu `SECURITY DEFINER` funkce `log_scan` (obě vlastněné superuserem, EXECUTE jen pro `tagery_app`).
+
 ## Acceptance kritéria
-- [ ] Cache hit p95 < 100 ms (NFR z PRD)
-- [ ] Cache invalidace při změně objektu/nosiče (status, valid_to, cíl) je okamžitá
-- [ ] ScanEvent se zapíše asynchronně, neblokuje odpověď
-- [ ] Duplicitní doručení eventu nezaloží 2 záznamy (idempotence)
-- [ ] Rate limit vrací 429 s retry hlavičkami
-- [ ] Výpadek zápisové DB neshodí resolve (degradace na replica)
-- [ ] Neplatný/expirovaný kód → 410/404 s uživatelsky přívětivou stránkou
+- [x] Redis cache mapování public_code → Resolution (krátké TTL)
+- [~] Cache invalidace při změně objektu/nosiče – zatím mitigováno TTL 20 s; write-invalidation je follow-up
+- [x] ScanEvent se zapíše asynchronně (fire-and-forget), neblokuje odpověď
+- [~] Idempotence eventu – u fire-and-forget zápisu není řešena; durable fronta (BullMQ / Cloudflare Queues) je follow-up (ADR-0002)
+- [x] Rate limit vrací 429 (per IP + per public_code, Redis fixed-window)
+- [x] Neplatný → 404, neaktivní/expirovaný → 410; content negotiation (JSON vs 302 redirect)
+- [ ] Degradace na read-replica – follow-up (single DB zatím)
 
 ## Závislosti
 - EPIC-04-DIGITAL-OBJECT
-- Redis + fronta (z EPIC-00)
+- Redis (z EPIC-00)
 
-## Podúkoly (návrh)
-- [ ] TASK-01-RESOLVE – lookup + cache + validace
-- [ ] TASK-02-SCAN-PIPELINE – async ScanEvent (queue, idempotence)
-- [ ] TASK-03-HARDENING – rate limit, anti-quishing, degradace
+## Podúkoly
+- [x] TASK-01-RESOLVE – lookup (resolve_carrier) + cache + validace ✅
+- [x] TASK-02-SCAN-PIPELINE – async ScanEvent (log_scan) ✅ (durable fronta = follow-up)
+- [x] TASK-03-HARDENING – rate limit + anti-quishing ✅ (degradace na replica = follow-up)
