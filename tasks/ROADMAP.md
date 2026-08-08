@@ -15,7 +15,7 @@
 | EPIC-02 | FABRICATION | Export výrobních souborů (tisk/gravírka/3D) nad DataCarrier | ⬜ |
 | EPIC-03 | CORE-DOMAIN | Tenant, Location, User, Group, BaseTenantEntity, RLS | 🟡 |
 | EPIC-04 | DIGITAL-OBJECT | DigitalObject + DataCarrier, QR gen, NFC párování | 🟡 |
-| EPIC-05 | RESOLVER | `/r/{public_code}`, cache, async ScanEvent (ADR-0002) | ⬜ |
+| EPIC-05 | RESOLVER | `/r/{public_code}`, cache, async ScanEvent (ADR-0002) | 🟡 |
 | EPIC-06 | RBAC-ACL | ObjectPermission, enforcement matice | ⬜ |
 | EPIC-07 | ANALYTICS | ScanEvent agregace, dashboard | ⬜ |
 | EPIC-08 | PRODUCT | Modul Product | ⬜ |
