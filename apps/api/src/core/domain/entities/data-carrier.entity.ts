@@ -1,0 +1,35 @@
+import { Column, Entity, Index } from 'typeorm';
+import { BaseTenantEntity } from '../../database/base-tenant.entity';
+
+/** Fyzický nosič (QR / NFC / hybrid). Jeden DigitalObject může mít víc nosičů. */
+@Entity('data_carriers')
+export class DataCarrier extends BaseTenantEntity {
+  @Column({ type: 'uuid', name: 'digital_object_id' })
+  digitalObjectId!: string;
+
+  @Column({ type: 'text', name: 'carrier_type', default: 'qr' })
+  carrierType!: 'qr' | 'nfc' | 'hybrid';
+
+  /** Globálně unikátní veřejný kód v URL (resolver). */
+  @Index({ unique: true })
+  @Column({ type: 'text', name: 'public_code' })
+  publicCode!: string;
+
+  @Column({ type: 'text', name: 'resolver_url', nullable: true })
+  resolverUrl!: string | null;
+
+  @Column({ type: 'text', name: 'qr_payload', nullable: true })
+  qrPayload!: string | null;
+
+  @Column({ type: 'text', name: 'nfc_uid', nullable: true })
+  nfcUid!: string | null;
+
+  @Column({ type: 'text', name: 'nfc_payload', nullable: true })
+  nfcPayload!: string | null;
+
+  @Column({ type: 'int', default: 1 })
+  version!: number;
+
+  @Column({ type: 'text', default: 'active' })
+  status!: 'active' | 'replaced' | 'lost' | 'destroyed';
+}

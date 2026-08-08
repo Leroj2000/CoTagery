@@ -19,19 +19,21 @@ Centrální entity platformy: `DigitalObject` (co to je + jaký modul) a `DataCa
 - Konkrétní moduly (Fáze 2)
 - Výrobní export (EPIC-02-FABRICATION – navazuje nad DataCarrier)
 
+## Stav: 🟡 jádro hotové a ověřené (2026-08-08)
+
 ## Acceptance kritéria
-- [ ] Lze vytvořit objekt, přidat mu 1..N nosičů (QR/NFC/hybrid)
-- [ ] `public_code` je unikátní, nesekvenční, ≥10 znaků
-- [ ] QR export vrací validní skenovatelný kód (SVG i PNG)
-- [ ] Časová platnost (`valid_from`/`valid_to`) a `status` respektovány
-- [ ] Vše tenant-scoped (izolační test)
-- [ ] Definováno rozhraní `handleScan(object, carrier, ctx)` pro moduly
+- [x] Lze vytvořit objekt, přidat mu 1..N nosičů (QR/NFC/hybrid)
+- [x] `public_code` unikátní, nesekvenční, base62 délky 12 (retry na kolizi)
+- [x] QR export vrací validní kód (SVG `image/svg+xml` i PNG `image/png`)
+- [~] Pole `valid_from`/`valid_to`/`status` existují; jejich vynucení řeší resolver (EPIC-05)
+- [x] Vše tenant-scoped (izolační test: B nevidí objekty/nosiče A → 404)
+- [x] Definováno rozhraní `handleScan(object, carrier, ctx)` + `ModuleRegistry`
 
 ## Závislosti
 - EPIC-03-CORE-DOMAIN
 
-## Podúkoly (návrh)
-- [ ] TASK-01-DIGITAL-OBJECT – entita + CRUD
-- [ ] TASK-02-DATA-CARRIER – entita + public_code generátor
-- [ ] TASK-03-QR-GEN – generování QR (SVG/PNG)
-- [ ] TASK-04-NFC-PAIR – NFC párování + handleScan kontrakt
+## Podúkoly
+- [x] TASK-01-DIGITAL-OBJECT – entita + CRUD (list/create/get/patch/archive) ✅
+- [x] TASK-02-DATA-CARRIER – entita + public_code generátor (retry) ✅
+- [x] TASK-03-QR-GEN – generování QR (SVG/PNG přes `qrcode`) ✅
+- [x] TASK-04-NFC-PAIR – NFC párování + handleScan kontrakt ✅

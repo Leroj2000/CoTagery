@@ -4,13 +4,30 @@ import { Tenant } from './entities/tenant.entity';
 import { Location } from './entities/location.entity';
 import { Group } from './entities/group.entity';
 import { GroupMember } from './entities/group-member.entity';
+import { DigitalObject } from './entities/digital-object.entity';
+import { DataCarrier } from './entities/data-carrier.entity';
 import { LocationsController } from './locations/locations.controller';
 import { LocationsService } from './locations/locations.service';
+import { DigitalObjectsController } from './objects/digital-objects.controller';
+import { DigitalObjectsService } from './objects/digital-objects.service';
+import { DataCarriersController } from './carriers/data-carriers.controller';
+import { DataCarriersService } from './carriers/data-carriers.service';
+import { QrService } from './carriers/qr.service';
+import { ModuleRegistry } from './module-handler';
 
-/** Jádro doménového modelu (EPIC-03). Locations jako první CRUD nad RLS. */
+/** Jádro doménového modelu (EPIC-03, EPIC-04). */
 @Module({
-  imports: [TypeOrmModule.forFeature([Tenant, Location, Group, GroupMember])],
-  controllers: [LocationsController],
-  providers: [LocationsService],
+  imports: [
+    TypeOrmModule.forFeature([Tenant, Location, Group, GroupMember, DigitalObject, DataCarrier]),
+  ],
+  controllers: [LocationsController, DigitalObjectsController, DataCarriersController],
+  providers: [
+    LocationsService,
+    DigitalObjectsService,
+    DataCarriersService,
+    QrService,
+    ModuleRegistry,
+  ],
+  exports: [ModuleRegistry],
 })
 export class DomainModule {}

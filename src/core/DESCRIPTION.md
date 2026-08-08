@@ -11,8 +11,7 @@ Jádro Tagery platformy – společná funkcionalita sdílená napříč všemi 
 - `redis/` – sdílený Redis klient (EPIC-00)
 - `storage/` – `StoragePort` abstrakce (local; R2/S3 později – ADR-0008)
 - `tenancy/` – **implementováno (EPIC-03)**: `TenantContextService` (AsyncLocalStorage) + `TenantTransactionInterceptor` (`SET LOCAL app.tenant_id` z JWT). PostgreSQL RLS izolace, runtime role `tagery_app` (NE-superuser)
-- `domain/` – **implementováno (EPIC-03)**: entity Tenant/Location/Group/GroupMember, Locations CRUD nad RLS
-- `qr-nfc/` – generování a správa tagů (EPIC-04, zatím ne)
+- `domain/` – **implementováno (EPIC-03+04)**: entity Tenant/Location/Group/GroupMember + DigitalObject/DataCarrier; CRUD Locations/Objects/Carriers nad RLS; `public_code` generátor, QR (SVG/PNG), NFC párování, `ModuleRegistry` + `handleScan` kontrakt
 
 ## Exportované API
 - `AuthService`, `JwtAuthGuard` (globální AuthModule)
