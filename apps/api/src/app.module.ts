@@ -8,6 +8,7 @@ import { AuthModule } from './core/auth/auth.module';
 import { TenancyModule } from './core/tenancy/tenancy.module';
 import { DomainModule } from './core/domain/domain.module';
 import { ResolverModule } from './core/resolver/resolver.module';
+import { AnalyticsModule } from './core/analytics/analytics.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
@@ -25,6 +26,7 @@ import { HealthModule } from './health/health.module';
     TenancyModule,
     DomainModule,
     ResolverModule,
+    AnalyticsModule,
     HealthModule,
   ],
 })
