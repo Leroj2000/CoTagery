@@ -1,5 +1,8 @@
 # EPIC-15-ACCESS-CONTROL – Specifikace
 
+## Stav: 🟡 hotové a ověřené (2026-08-08)
+`AccessPoint` + `AccessEvent` (RLS), `AccessRegistry` (providers dle subjectType), `evaluateAccess` + audit, CRUD + `/access-points/:id/evaluate` + `/events`. Ověřeno s Ticketingem: allow → deny(already_redeemed) → deny(not_found) → deny(no_provider); izolace 404.
+
 ## Cíl
 Vyčlenit **sdílenou schopnost řízení vstupu** (ADR-0006), kterou využije Ticketing i Membership: *scan → ověř nárok → povol/odmítni → zaloguj*. Jednotný kontrakt místo duplicitního check-inu v každém modulu.
 
