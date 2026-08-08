@@ -13,6 +13,7 @@ import { AccessControlModule } from './core/access/access-control.module';
 import { ProductModule } from './modules/product/product.module';
 import { TicketingModule } from './modules/ticketing/ticketing.module';
 import { RentalModule } from './modules/rental/rental.module';
+import { GalleryModule } from './modules/gallery/gallery.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
@@ -35,6 +36,7 @@ import { HealthModule } from './health/health.module';
     ProductModule,
     TicketingModule,
     RentalModule,
+    GalleryModule,
     HealthModule,
   ],
 })
