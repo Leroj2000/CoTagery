@@ -21,7 +21,7 @@
 | EPIC-08 | PRODUCT | Modul Product | 🟡 |
 | EPIC-09 | TICKETING | Modul Ticketing + check-in | 🟡 |
 | EPIC-10 | RENTAL | Modul Rental (+ ověření nájemce, oboustranné hodnocení) | 🟡 |
-| EPIC-11 | GALLERY | Modul Shared Gallery | ⬜ |
+| EPIC-11 | GALLERY | Modul Shared Gallery | 🟡 |
 | EPIC-12 | TIME-TRACKING | Modul Time & Event | ⬜ |
 | EPIC-13 | AUTOMATION | Modul Automation | ⬜ |
 | EPIC-14 | CONTACT | Modul Contact | ⬜ |

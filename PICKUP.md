@@ -3,13 +3,13 @@
 ## Poslední session
 - **Datum:** 2026-08-08
 - **Agent:** Claude (Opus 4.8)
-- **Dokončeno:** **EPIC-10 Rental implementován a ověřen.** Půjčování + stupňovité ověření nájemce + oboustranné hodnocení s platformově sdílenou reputací (ADR-0005): `RenterProfile` mimo RLS (sdílený napříč tenanty), Item/Loan/RentalReview tenant-scoped. Předtím (vše na main): EPIC-15 Access-Control + EPIC-09 Ticketing, EPIC-08 Product, EPIC-07 Analytics, EPIC-05, 04, 03, 01, 00.
+- **Dokončeno:** **EPIC-11 Gallery implementován a ověřen.** GalleryEvent/UploadItem (RLS), upload souborů přes `StoragePort` (lokálně FS, prod R2), `GalleryHandler` pro sken. Předtím (vše na main): EPIC-10 Rental, EPIC-15+09 Access-Control/Ticketing, EPIC-08 Product, EPIC-07 Analytics, EPIC-05, 04, 03, 01, 00.
 
 ## Stav projektu
 - **Specifikace:** kompletní (PRD, 8 ADR, moduly, roadmapa 18 EPIKů).
-- **Kód na `main`:** EPIC-00, 01, 03, 04, 05, 07, 08, 09, 15. **EPIC-10** na větvi `epic-10-rental` (nezmergováno).
-- **Ověřeno (EPIC-10):** build/typecheck/lint/test zeleně (17 testů); migrace InitRental; e2e — verification gate (400), sdílená reputace (B vidí 5.00 od A), cross-tenant update (4.00/2), izolace půjček (404).
-- **Git:** větev `epic-10-rental` z `main`. 10 migrací.
+- **Kód na `main`:** EPIC-00, 01, 03, 04, 05, 07, 08, 09, 10, 15. **EPIC-11** na větvi `epic-11-gallery` (nezmergováno).
+- **Ověřeno (EPIC-11):** build/typecheck/lint/test zeleně (17 testů); migrace InitGallery; e2e — multipart upload → StoragePort zapsal soubor, list, sken handler (uploadCount), izolace (404).
+- **Git:** větev `epic-11-gallery` z `main`. 11 migrací.
 - **KRITICKÉ pozn. k RLS:** runtime přes `APP_DATABASE_URL` jako `tagery_app` (NE-superuser). `.env` musí mít `APP_DATABASE_URL` + `JWT_SECRET` (viz `.env.example`). **Migrace před startem appky.**
 
 ## Jak spustit (dev)
@@ -25,7 +25,7 @@ pnpm dev            # nebo: pnpm --filter @tagery/api dev
 pnpm se instaluje přes `npm i -g pnpm@9` (corepack v tomto prostředí nebyl).
 
 ## Další krok
-Mergnout `epic-10-rental` do `main`. Zbývající navržené moduly: **EPIC-11 Gallery** (StoragePort/R2 upload, retence), **EPIC-16 Membership + EPIC-17 Billing** (Billing potřebuje rozhodnutí PSP – Stripe, ADR-0007; MVP lze stubovat), **EPIC-06 RBAC-ACL** (per-objektová oprávnění), **EPIC-02 Fabrication**. Vzor modulu viz níže.
+Mergnout `epic-11-gallery` do `main`. Zbývající navržené: **EPIC-16 Membership + EPIC-17 Billing** (Billing potřebuje rozhodnutí PSP – Stripe, ADR-0007; MVP zestubovat metering/subscription), **EPIC-06 RBAC-ACL** (per-objektová oprávnění – ObjectPermission enforcement), **EPIC-02 Fabrication** (export QR souborů). Vzor modulu viz níže.
 
 ## Vzor pro nový modul (podle EPIC-08 Product)
 1. Entita extends `BaseTenantEntity` + migrace (ENABLE+FORCE RLS + policy + GRANT tagery_app)

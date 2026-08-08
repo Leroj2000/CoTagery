@@ -18,6 +18,7 @@ Jádro Tagery platformy – společná funkcionalita sdílená napříč všemi 
 - (mimo core) `src/modules/product/` – **implementováno (EPIC-08)**: první modul, `ProductHandler` → `ModuleRegistry`, sken vrací produktovou kartu
 - (mimo core) `src/modules/ticketing/` – **implementováno (EPIC-09)**: Event/TicketType/Ticket, `TicketEntitlementProvider` → `AccessRegistry` (check-in + redemce)
 - (mimo core) `src/modules/rental/` – **implementováno (EPIC-10)**: `RenterProfile` (platformový, bez RLS – ADR-0005), Item/Loan/RentalReview (RLS), ověření nájemce + sdílená Uber/Bolt reputace
+- (mimo core) `src/modules/gallery/` – **implementováno (EPIC-11)**: GalleryEvent/UploadItem (RLS), upload přes `StoragePort`, `GalleryHandler` (sken vrací info + počet uploadů)
 
 ## Exportované API
 - `AuthService`, `JwtAuthGuard` (globální AuthModule)
