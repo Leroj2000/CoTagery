@@ -14,6 +14,8 @@ export const envSchema = z.object({
   JWT_SECRET: z.string().min(16),
   JWT_ACCESS_TTL: z.string().default('15m'),
   JWT_REFRESH_TTL: z.string().default('30d'),
+  // Veřejná základní URL pro resolver (do QR/NFC nosičů) – ADR-0002.
+  PUBLIC_BASE_URL: z.string().url().default('http://localhost:3001'),
 });
 
 export type Env = z.infer<typeof envSchema>;

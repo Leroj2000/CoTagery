@@ -3,14 +3,14 @@
 ## Poslední session
 - **Datum:** 2026-08-08
 - **Agent:** Claude (Opus 4.8)
-- **Dokončeno:** **EPIC-03 Core-Domain – RLS izolace tenantů implementována a ověřena.** Entity Tenant/Location/Group/GroupMember, per-request tenant kontext (`SET LOCAL app.tenant_id` z JWT přes interceptor + AsyncLocalStorage), PostgreSQL RLS (enable+force+policy), runtime NE-superuser role `tagery_app`, Locations CRUD, izolační e2e test. Předtím: EPIC-01 Auth, EPIC-00, ADR-0008.
+- **Dokončeno:** **EPIC-04 Digital-Object implementován a ověřen.** DigitalObject + DataCarrier CRUD, `public_code` generátor (base62/12), QR generování (SVG/PNG přes `qrcode`), NFC párování, `ModuleRegistry` + `handleScan` kontrakt — vše tenant-scoped nad RLS. Předtím: EPIC-03 Core-Domain (RLS), EPIC-01 Auth, EPIC-00.
 
 ## Stav projektu
 - **Specifikace:** kompletní (PRD, 8 ADR, moduly, roadmapa 18 EPIKů).
-- **Kód:** EPIC-00 + EPIC-01 na `main`. **EPIC-03 RLS** na větvi `epic-03-core-domain` (nezmergováno). EPIC-03 zbývá: plné CRUD Tenant/User/Group.
-- **Ověřeno (EPIC-03):** build/typecheck/lint/test zeleně (7 testů); migrace InitCoreDomain (locations/groups/group_members + RLS + role); **izolace: tenant A nevidí data B** (API 404 + DB-level 1/0 řádků).
-- **Git:** větev `epic-03-core-domain` z `main`.
-- **KRITICKÉ pozn. k RLS:** runtime aplikace se připojuje přes `APP_DATABASE_URL` jako `tagery_app` (NE-superuser, jinak superuser RLS obchází). Do `.env` nutno přidat `APP_DATABASE_URL` (je v `.env.example`). Migrace vytváří roli `tagery_app` → **migrace musí proběhnout před startem appky** (jinak se `tagery_app` nemá kam připojit).
+- **Kód na `main`:** EPIC-00, EPIC-01, EPIC-03 (RLS). **EPIC-04** na větvi `epic-04-digital-object` (nezmergováno).
+- **Ověřeno (EPIC-04):** build/typecheck/lint/test zeleně (10 testů); migrace InitDigitalObject; e2e — create object→carrier(public_code)→QR SVG/PNG→NFC pair; izolace: tenant B nevidí objekty/nosiče A (0 / 404).
+- **Git:** větev `epic-04-digital-object` z `main`.
+- **KRITICKÉ pozn. k RLS:** runtime se připojuje přes `APP_DATABASE_URL` jako `tagery_app` (NE-superuser). `.env` musí mít `APP_DATABASE_URL` + `JWT_SECRET` (viz `.env.example`). **Migrace musí proběhnout před startem appky** (vytváří roli `tagery_app`).
 
 ## Jak spustit (dev)
 ```
@@ -25,7 +25,7 @@ pnpm dev            # nebo: pnpm --filter @tagery/api dev
 pnpm se instaluje přes `npm i -g pnpm@9` (corepack v tomto prostředí nebyl).
 
 ## Další krok
-Mergnout `epic-03-core-domain` do `main`, pak **EPIC-04 Digital-Object** (DigitalObject + DataCarrier + QR/NFC) → **EPIC-05 Resolver**. Volitelně doplnit zbytek EPIC-03 (Tenant/User/Group CRUD) a EPIC-01 (OAuth2, invite) později.
+Mergnout `epic-04-digital-object` do `main`, pak **EPIC-05 Resolver** (`GET /r/{public_code}` – veřejný hot path, cache, async ScanEvent; použije `ModuleRegistry.handleScan`). Pozn. resolver hledá nosič podle public_code BEZ tenant kontextu → potřebuje cestu mimo RLS (service role / SECURITY DEFINER) – vyřešit v EPIC-05. Volitelně doplnit zbytek EPIC-03/EPIC-01 později.
 
 ## Otevřené otázky (neblokují; PRD §9 / ZADANI §15)
 Kontejnerový host (Fly/Railway/Hetzner) · managed Postgres/Redis (Neon+Upstash) · SSO rozsah · doménová strategie · NFC iOS · Billing pricing pásma · Rental spory.
