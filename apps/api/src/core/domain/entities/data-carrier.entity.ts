@@ -4,8 +4,9 @@ import { BaseTenantEntity } from '../../database/base-tenant.entity';
 /** Fyzický nosič (QR / NFC / hybrid). Jeden DigitalObject může mít víc nosičů. */
 @Entity('data_carriers')
 export class DataCarrier extends BaseTenantEntity {
-  @Column({ type: 'uuid', name: 'digital_object_id' })
-  digitalObjectId!: string;
+  /** Null = předgenerovaný nepřiřazený nosič (pool k pozdějšímu claim). */
+  @Column({ type: 'uuid', name: 'digital_object_id', nullable: true })
+  digitalObjectId!: string | null;
 
   @Column({ type: 'text', name: 'carrier_type', default: 'qr' })
   carrierType!: 'qr' | 'nfc' | 'hybrid';
@@ -31,5 +32,5 @@ export class DataCarrier extends BaseTenantEntity {
   version!: number;
 
   @Column({ type: 'text', default: 'active' })
-  status!: 'active' | 'replaced' | 'lost' | 'destroyed';
+  status!: 'unassigned' | 'active' | 'replaced' | 'lost' | 'destroyed';
 }

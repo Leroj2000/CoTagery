@@ -19,7 +19,16 @@ Centrální entity platformy: `DigitalObject` (co to je + jaký modul) a `DataCa
 - Konkrétní moduly (Fáze 2)
 - Výrobní export (EPIC-02-FABRICATION – navazuje nad DataCarrier)
 
-## Stav: 🟡 jádro hotové a ověřené (2026-08-08)
+## Stav: 🟡 jádro hotové a ověřené (2026-08-08) + předgenerovaný pool (2026-08-09)
+
+## Rozšíření: nepřiřazené nosiče (pre-printed pool + claim)
+- `POST /carriers/batch { count, carrierType? }` – admin předgeneruje N nepřiřazených kódů (k tisku)
+- `GET /carriers/unassigned` – pool nepřiřazených
+- `POST /carriers/claim { publicCode, objectId }` – přiřazení kódu k objektu (jen v rámci tenanta, RLS)
+- Resolver: sken nepřiřazeného kódu → `{status:'unassigned'}` (výzva k aktivaci); po claim se resolve na objekt
+- `data_carriers.digital_object_id` je nullable; `resolve_carrier` → LEFT JOIN (migrace UnassignedCarriers)
+- Ověřeno e2e: generate → sken unassigned → claim → resolve; izolace (B claim kódu A → 404); dvojitý claim → 400
+- Follow-up: veřejná self-aktivace koncovým příjemcem (mimo tenant kontext)
 
 ## Acceptance kritéria
 - [x] Lze vytvořit objekt, přidat mu 1..N nosičů (QR/NFC/hybrid)

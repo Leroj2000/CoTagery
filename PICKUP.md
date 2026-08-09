@@ -3,13 +3,13 @@
 ## Poslední session
 - **Datum:** 2026-08-09
 - **Agent:** Claude (Opus 4.8)
-- **Dokončeno:** **EPIC-06 RBAC-ACL + EPIC-02 Fabrication (MVP) implementovány a ověřeny.** RBAC: `ObjectPermission` (RLS) + `AclService.check` (OWNER/ADMIN implicitně, jinak ACL hierarchie), grant/revoke/access-check. Fabrication: export štítku `/carriers/:id/fabrication` SVG/PNG/PDF (QR + public_code). Předtím (vše na main): EPIC-11 Gallery, EPIC-10 Rental, EPIC-15+09, EPIC-08, 07, 05, 04, 03, 01, 00.
+- **Dokončeno:** **Feature: předgenerované nepřiřazené nosiče (pre-printed pool + claim).** `POST /carriers/batch`, `GET /carriers/unassigned`, `POST /carriers/claim`; `digital_object_id` nullable, `resolve_carrier` → LEFT JOIN, resolver vrací `{status:'unassigned'}` pro nepřiřazený kód. Předtím: EPIC-06 RBAC + EPIC-02 Fabrication, a vše ostatní na main.
 
 ## Stav projektu
 - **Specifikace:** kompletní (PRD, 8 ADR, moduly, roadmapa 18 EPIKů).
-- **Kód na `main`:** EPIC-00, 01, 03, 04, 05, 06, 07, 08, 09, 10, 11, 15. **EPIC-02** na větvi `epic-02-fabrication` (nezmergováno).
-- **Ověřeno (EPIC-06/02):** build/typecheck/lint/test zeleně (20 testů); migrace InitRbac; e2e — RBAC grant/check/revoke; Fabrication SVG/PNG/PDF export.
-- **Git:** větev `epic-02-fabrication` z `main`. 12 migrací.
+- **Kód na `main`:** EPIC-00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 15 (13 EPIKů). **Feature unassigned-carriers** na větvi `feat-unassigned-carriers` (nezmergováno).
+- **Ověřeno (pool/claim):** build/typecheck/lint/test zeleně (20 testů); migrace UnassignedCarriers; e2e — batch generate → sken unassigned → claim → resolve; izolace (B claim kódu A → 404); dvojitý claim → 400.
+- **Git:** větev `feat-unassigned-carriers` z `main`. 12 migrací (13. = UnassignedCarriers na větvi).
 - **KRITICKÉ pozn. k RLS:** runtime přes `APP_DATABASE_URL` jako `tagery_app` (NE-superuser). `.env` musí mít `APP_DATABASE_URL` + `JWT_SECRET` (viz `.env.example`). **Migrace před startem appky.**
 
 ## Jak spustit (dev)

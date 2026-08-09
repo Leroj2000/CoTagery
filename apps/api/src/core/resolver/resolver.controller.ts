@@ -4,7 +4,7 @@ import { RateLimitService } from './rate-limit.service';
 import { ScanLoggerService } from './scan-logger.service';
 import { ModuleRegistry } from '../domain/module-handler';
 import { TenantContextService } from '../tenancy/tenant-context.service';
-import { isActiveResolution } from './resolution';
+import { isActiveResolution, isUnassigned } from './resolution';
 
 /** Minimální tvar Express Response (bez závislosti na typech express). */
 interface HttpResponse {
@@ -47,20 +47,29 @@ export class ResolverController {
       return;
     }
 
-    if (!isActiveResolution(resolution)) {
-      res.status(410).json({ error: { code: 'INACTIVE', message: 'Kód není aktivní nebo vypršel' } });
-      return;
-    }
-
-    // Async ScanEvent (fire-and-forget – neblokuje odpověď).
+    // Async ScanEvent pro každý nalezený kód (fire-and-forget – neblokuje odpověď).
     this.scanLogger.record(resolution, {
       carrierType: resolution.carrierType,
       ip,
       userAgent: userAgent ?? null,
     });
 
+    // Nepřiřazený předgenerovaný kód (pool) → výzva k aktivaci.
+    if (isUnassigned(resolution)) {
+      res.status(200).json({
+        status: 'unassigned',
+        message: 'Tento kód zatím není přiřazený.',
+      });
+      return;
+    }
+
+    if (!isActiveResolution(resolution)) {
+      res.status(410).json({ error: { code: 'INACTIVE', message: 'Kód není aktivní nebo vypršel' } });
+      return;
+    }
+
     // Modulový handler (pokud zaregistrován); jinak default níže.
-    const handler = this.registry.get(resolution.moduleType);
+    const handler = resolution.moduleType ? this.registry.get(resolution.moduleType) : undefined;
     if (handler) {
       const carrier = {
         id: resolution.carrierId,
