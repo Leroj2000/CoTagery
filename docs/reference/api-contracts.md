@@ -93,10 +93,15 @@ Vyžaduje ACL `edit`+ na create/update, `view` na čtení (viz `docs/modules/mar
 ```
 GET    /api/v1/objects/{id}/carriers        → nosiče objektu
 POST   /api/v1/objects/{id}/carriers        → přidat nosič (qr | nfc | hybrid)
-PATCH  /api/v1/carriers/{id}                → update (status, payload)
 GET    /api/v1/carriers/{id}/qr?format=svg  → vygenerovaný QR (svg|png), pro tisk
 POST   /api/v1/carriers/{id}/nfc/pair       → spárovat NFC ({ nfcUid, nfcPayload })
+
+# Předgenerovaný pool (pre-printed) + claim:
+POST   /api/v1/carriers/batch               → { count, carrierType? } → N nepřiřazených kódů
+GET    /api/v1/carriers/unassigned          → nepřiřazené nosiče v poolu
+POST   /api/v1/carriers/claim               → { publicCode, objectId } → přiřadit kód k objektu
 ```
+> Sken nepřiřazeného kódu přes resolver vrací `{status:'unassigned'}` (výzva k aktivaci); po claim se resolve na objekt.
 `public_code` generuje server (ADR-0003), klient ho neposílá. Export do výrobních souborů → `docs/reference/fabrication.md`.
 
 ---

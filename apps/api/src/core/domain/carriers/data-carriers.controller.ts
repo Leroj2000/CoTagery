@@ -12,7 +12,7 @@ import {
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { DataCarriersService } from './data-carriers.service';
 import { QrService } from './qr.service';
-import { NfcPairDto } from './dto/carrier.dto';
+import { ClaimCarrierDto, GenerateBatchDto, NfcPairDto } from './dto/carrier.dto';
 import type { DataCarrier } from '../entities/data-carrier.entity';
 
 @Controller('carriers')
@@ -22,6 +22,22 @@ export class DataCarriersController {
     private readonly carriers: DataCarriersService,
     private readonly qr: QrService,
   ) {}
+
+  // Předgenerovaný pool – statické routy PŘED ":id".
+  @Post('batch')
+  generateBatch(@Body() dto: GenerateBatchDto): Promise<DataCarrier[]> {
+    return this.carriers.generateBatch(dto.count, dto.carrierType ?? 'qr');
+  }
+
+  @Get('unassigned')
+  listUnassigned(): Promise<DataCarrier[]> {
+    return this.carriers.listUnassigned();
+  }
+
+  @Post('claim')
+  claim(@Body() dto: ClaimCarrierDto): Promise<DataCarrier> {
+    return this.carriers.claim(dto.publicCode, dto.objectId);
+  }
 
   @Get(':id')
   get(@Param('id', ParseUUIDPipe) id: string): Promise<DataCarrier> {
@@ -43,10 +59,7 @@ export class DataCarriersController {
   }
 
   @Post(':id/nfc/pair')
-  pairNfc(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: NfcPairDto,
-  ): Promise<DataCarrier> {
+  pairNfc(@Param('id', ParseUUIDPipe) id: string, @Body() dto: NfcPairDto): Promise<DataCarrier> {
     return this.carriers.pairNfc(id, dto);
   }
 }

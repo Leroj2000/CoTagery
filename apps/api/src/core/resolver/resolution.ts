@@ -3,15 +3,20 @@ import type { ModuleType } from '@tagery/shared';
 export interface Resolution {
   carrierId: string;
   tenantId: string;
-  objectId: string;
+  objectId: string | null;
   carrierType: string;
   carrierStatus: string;
-  moduleType: ModuleType;
-  objectStatus: string;
+  moduleType: ModuleType | null;
+  objectStatus: string | null;
   validFrom: string | null;
   validTo: string | null;
   primaryUrl: string | null;
-  slug: string;
+  slug: string | null;
+}
+
+/** Nepřiřazený předgenerovaný nosič (pool) – ještě nemá objekt. */
+export function isUnassigned(r: Resolution): boolean {
+  return r.objectId === null;
 }
 
 /** Je nosič + objekt aktivní a v platnosti? (ADR-0002 validace na hot path) */

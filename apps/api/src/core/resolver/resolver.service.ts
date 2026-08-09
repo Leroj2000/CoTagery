@@ -7,15 +7,15 @@ import type { Resolution } from './resolution';
 interface ResolveRow {
   carrier_id: string;
   tenant_id: string;
-  digital_object_id: string;
+  digital_object_id: string | null;
   carrier_type: string;
   carrier_status: string;
   module_type: Resolution['moduleType'];
-  object_status: string;
+  object_status: string | null;
   valid_from: Date | null;
   valid_to: Date | null;
   primary_url: string | null;
-  slug: string;
+  slug: string | null;
 }
 
 @Injectable()
