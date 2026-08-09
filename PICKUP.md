@@ -27,6 +27,12 @@ pnpm se instaluje přes `npm i -g pnpm@9` (corepack v tomto prostředí nebyl).
 ## Další krok
 Mergnout `epic-02-fabrication` do `main`. Zbývá z navržených: **EPIC-16 Membership + EPIC-17 Billing** (Billing čeká na rozhodnutí PSP – Stripe/ADR-0007, nebo stub). Dále follow-upy: RBAC guard wiring do mutačních endpointů, resolver cache invalidace + durable ScanEvent fronta, Fabrication async/gravírka/3D/NFC provisioning, zbytek EPIC-03 (Tenant/User/Group CRUD) a EPIC-01 (OAuth2, invite). Frontend (apps/web) je zatím jen health shell.
 
+## Nevyřešené úkoly (backlog)
+- **Veřejná self-aktivace kódu koncovým příjemcem** – nádstavba nad pool/claim; odloženo, spec: `tasks/FEAT-public-self-activation/spec/README.md`. Otevřené rozhodnutí: PIN na nálepce vs. OTP účet příjemce.
+- EPIC-16 Membership + EPIC-17 Billing (Billing čeká na PSP rozhodnutí – Stripe/ADR-0007 vs stub).
+- Frontend (apps/web) je zatím jen health shell.
+- Drobné: RBAC guard wiring do mutačních endpointů; resolver cache-invalidace + durable ScanEvent fronta; Fabrication async/gravírka/3D/NFC provisioning; zbytek EPIC-03 (Tenant/User/Group CRUD) a EPIC-01 (OAuth2, invite).
+
 ## Vzor pro nový modul (podle EPIC-08 Product)
 1. Entita extends `BaseTenantEntity` + migrace (ENABLE+FORCE RLS + policy + GRANT tagery_app)
 2. Service přes `TenantContextService.manager`
