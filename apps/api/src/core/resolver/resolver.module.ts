@@ -5,12 +5,20 @@ import { ResolverService } from './resolver.service';
 import { ResolverCacheService } from './resolver-cache.service';
 import { RateLimitService } from './rate-limit.service';
 import { ScanLoggerService } from './scan-logger.service';
+import { ActivationController } from './activation.controller';
+import { ActivationService } from './activation.service';
 
 @Global()
 @Module({
   imports: [DomainModule],
-  controllers: [ResolverController],
-  providers: [ResolverService, ResolverCacheService, RateLimitService, ScanLoggerService],
+  controllers: [ResolverController, ActivationController],
+  providers: [
+    ResolverService,
+    ResolverCacheService,
+    RateLimitService,
+    ScanLoggerService,
+    ActivationService,
+  ],
   exports: [ResolverCacheService],
 })
 export class ResolverModule {}

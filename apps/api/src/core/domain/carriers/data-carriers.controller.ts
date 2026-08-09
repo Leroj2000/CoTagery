@@ -25,8 +25,17 @@ export class DataCarriersController {
 
   // Předgenerovaný pool – statické routy PŘED ":id".
   @Post('batch')
-  generateBatch(@Body() dto: GenerateBatchDto): Promise<DataCarrier[]> {
-    return this.carriers.generateBatch(dto.count, dto.carrierType ?? 'qr');
+  async generateBatch(@Body() dto: GenerateBatchDto): Promise<
+    Array<{ id: string; publicCode: string; resolverUrl: string | null; status: string; pin: string | null }>
+  > {
+    const generated = await this.carriers.generateBatch(dto);
+    return generated.map((g) => ({
+      id: g.carrier.id,
+      publicCode: g.carrier.publicCode,
+      resolverUrl: g.carrier.resolverUrl,
+      status: g.carrier.status,
+      pin: g.pin, // jen teď – k tisku
+    }));
   }
 
   @Get('unassigned')

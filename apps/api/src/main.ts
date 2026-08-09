@@ -8,7 +8,10 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   // Resolver hot path běží na /r/{code} mimo /api/v1 (krátká veřejná URL – ADR-0002).
   app.setGlobalPrefix('api/v1', {
-    exclude: [{ path: 'r/:code', method: RequestMethod.GET }],
+    exclude: [
+      { path: 'r/:code', method: RequestMethod.GET },
+      { path: 'r/:code/activate', method: RequestMethod.POST },
+    ],
   });
   app.enableCors();
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));

@@ -1,6 +1,17 @@
 # FEAT – Veřejná self-aktivace kódu koncovým příjemcem
 
-## Stav: ⬜ Backlog (odloženo, 2026-08-09) – čeká na rozhodnutí a naplánování
+## Stav: 🟡 PIN varianta implementována a ověřena (2026-08-09)
+Rozhodnutí: **PIN** (SMS doručení PINu = pozdější nádstavba). Implementováno:
+- `POST /carriers/batch { selfActivatable, moduleTemplate }` → nosiče + 6místné PINy (v DB jen argon2 hash; plaintext PIN se vrací jen teď, k tisku)
+- Veřejný `POST /r/{public_code}/activate { pin, payload }` (bez JWT, rate-limited): ověří PIN → vytvoří DigitalObject u vlastnícího tenanta (`runInTenant`) → naváže nosič → vrátí **edit-token** (bearer scope `object-edit` na daný objekt)
+- SECURITY DEFINER `activation_lookup` (migrace SelfActivation); nosič nese `self_activatable` + `activation_pin_hash` + `module_template`
+- Ověřeno e2e: batch+PIN → špatný PIN 401 → správný PIN → objekt+token → sken redirect → dvojitá aktivace 400; objekt vzniká u tenanta
+
+## Follow-up
+- Doručení PINu přes SMS (poskytovatel), edit-token authed edit endpointy, veřejná aktivační HTML stránka, per-modul obsahové šablony
+- Zvážit OTP účet jako alternativu/doplněk PINu
+
+## Původní návrh (pro kontext)
 
 Rozšíření feature „předgenerované nepřiřazené nosiče" (pool + claim). Zatímco
 implementovaný claim dělá **přihlášený uživatel tenanta**, tato nádstavba umožní,
