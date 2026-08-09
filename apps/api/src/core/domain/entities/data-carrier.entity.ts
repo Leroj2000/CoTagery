@@ -33,4 +33,14 @@ export class DataCarrier extends BaseTenantEntity {
 
   @Column({ type: 'text', default: 'active' })
   status!: 'unassigned' | 'active' | 'replaced' | 'lost' | 'destroyed';
+
+  // --- Veřejná self-aktivace (PIN varianta) ---
+  @Column({ type: 'boolean', name: 'self_activatable', default: false })
+  selfActivatable!: boolean;
+
+  @Column({ type: 'text', name: 'activation_pin_hash', nullable: true })
+  activationPinHash!: string | null;
+
+  @Column({ type: 'text', name: 'module_template', nullable: true })
+  moduleTemplate!: string | null;
 }

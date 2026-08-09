@@ -1,14 +1,22 @@
+import { randomInt } from 'node:crypto';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { QueryFailedError, Repository } from 'typeorm';
+import { hash as argonHash } from '@node-rs/argon2';
 import { TenantContextService } from '../../tenancy/tenant-context.service';
 import { DataCarrier } from '../entities/data-carrier.entity';
 import { DigitalObject } from '../entities/digital-object.entity';
 import { generatePublicCode } from '../public-code';
-import type { CreateDataCarrierDto, NfcPairDto } from './dto/carrier.dto';
+import type { CreateDataCarrierDto, GenerateBatchDto, NfcPairDto } from './dto/carrier.dto';
 
 const UNIQUE_VIOLATION = '23505';
 const MAX_BATCH = 500;
+
+export interface GeneratedCarrier {
+  carrier: DataCarrier;
+  /** Plaintext PIN pro tisk – vrací se JEN teď (v DB je jen hash). */
+  pin: string | null;
+}
 
 @Injectable()
 export class DataCarriersService {
@@ -36,6 +44,7 @@ export class DataCarriersService {
     digitalObjectId: string | null,
     carrierType: 'qr' | 'nfc' | 'hybrid',
     status: 'unassigned' | 'active',
+    extra?: Partial<DataCarrier>,
   ): Promise<DataCarrier> {
     const base = this.config.get<string>('PUBLIC_BASE_URL') ?? 'http://localhost:3001';
     for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -49,6 +58,7 @@ export class DataCarriersService {
         resolverUrl,
         qrPayload: resolverUrl,
         status,
+        ...extra,
       });
       try {
         return await this.carriers().save(carrier);
@@ -77,16 +87,32 @@ export class DataCarriersService {
     return this.createCarrier(objectId, dto.carrierType ?? 'qr', 'active');
   }
 
-  /** Předgeneruje N nepřiřazených nosičů (pool k tisku a pozdějšímu claim). */
-  async generateBatch(count: number, carrierType: 'qr' | 'nfc' | 'hybrid'): Promise<DataCarrier[]> {
-    if (count < 1 || count > MAX_BATCH) {
+  /**
+   * Předgeneruje N nepřiřazených nosičů (pool k tisku). Při `selfActivatable`
+   * ke každému vygeneruje 6místný PIN (v DB jen hash) – vrací se plaintext k tisku.
+   */
+  async generateBatch(dto: GenerateBatchDto): Promise<GeneratedCarrier[]> {
+    if (dto.count < 1 || dto.count > MAX_BATCH) {
       throw new BadRequestException(`count musí být 1..${MAX_BATCH}`);
     }
-    const created: DataCarrier[] = [];
-    for (let i = 0; i < count; i += 1) {
-      created.push(await this.createCarrier(null, carrierType, 'unassigned'));
+    if (dto.selfActivatable && !dto.moduleTemplate) {
+      throw new BadRequestException('selfActivatable vyžaduje moduleTemplate');
     }
-    return created;
+    const carrierType = dto.carrierType ?? 'qr';
+    const result: GeneratedCarrier[] = [];
+    for (let i = 0; i < dto.count; i += 1) {
+      let pin: string | null = null;
+      const extra: Partial<DataCarrier> = {};
+      if (dto.selfActivatable) {
+        pin = String(randomInt(0, 1_000_000)).padStart(6, '0');
+        extra.selfActivatable = true;
+        extra.moduleTemplate = dto.moduleTemplate ?? null;
+        extra.activationPinHash = await argonHash(pin);
+      }
+      const carrier = await this.createCarrier(null, carrierType, 'unassigned', extra);
+      result.push({ carrier, pin });
+    }
+    return result;
   }
 
   listUnassigned(): Promise<DataCarrier[]> {

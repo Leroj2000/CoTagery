@@ -3,7 +3,7 @@
 ## Poslední session
 - **Datum:** 2026-08-09
 - **Agent:** Claude (Opus 4.8)
-- **Dokončeno:** **Feature: předgenerované nepřiřazené nosiče (pre-printed pool + claim).** `POST /carriers/batch`, `GET /carriers/unassigned`, `POST /carriers/claim`; `digital_object_id` nullable, `resolve_carrier` → LEFT JOIN, resolver vrací `{status:'unassigned'}` pro nepřiřazený kód. Předtím: EPIC-06 RBAC + EPIC-02 Fabrication, a vše ostatní na main.
+- **Dokončeno:** **Feature: veřejná self-aktivace (PIN)** nad pool/claim — `POST /r/{code}/activate` (bez JWT, rate-limited), batch se `selfActivatable`+PIN (argon2 hash, plaintext k tisku), `activation_lookup` SECURITY DEFINER, edit-token. Předtím: pre-printed pool + claim; EPIC-06 RBAC + EPIC-02 Fabrication; vše ostatní na main.
 
 ## Stav projektu
 - **Specifikace:** kompletní (PRD, 8 ADR, moduly, roadmapa 18 EPIKů).
@@ -28,7 +28,7 @@ pnpm se instaluje přes `npm i -g pnpm@9` (corepack v tomto prostředí nebyl).
 Mergnout `epic-02-fabrication` do `main`. Zbývá z navržených: **EPIC-16 Membership + EPIC-17 Billing** (Billing čeká na rozhodnutí PSP – Stripe/ADR-0007, nebo stub). Dále follow-upy: RBAC guard wiring do mutačních endpointů, resolver cache invalidace + durable ScanEvent fronta, Fabrication async/gravírka/3D/NFC provisioning, zbytek EPIC-03 (Tenant/User/Group CRUD) a EPIC-01 (OAuth2, invite). Frontend (apps/web) je zatím jen health shell.
 
 ## Nevyřešené úkoly (backlog)
-- **Veřejná self-aktivace kódu koncovým příjemcem** – nádstavba nad pool/claim; odloženo, spec: `tasks/FEAT-public-self-activation/spec/README.md`. Otevřené rozhodnutí: PIN na nálepce vs. OTP účet příjemce.
+- ✅ **Veřejná self-aktivace (PIN)** – HOTOVO (`POST /r/{code}/activate`, batch se selfActivatable+PIN, edit-token). Follow-up: doručení PINu přes SMS, edit-token authed edit endpointy, aktivační HTML stránka. Spec: `tasks/FEAT-public-self-activation/`.
 - EPIC-16 Membership + EPIC-17 Billing (Billing čeká na PSP rozhodnutí – Stripe/ADR-0007 vs stub).
 - Frontend (apps/web) je zatím jen health shell.
 - Drobné: RBAC guard wiring do mutačních endpointů; resolver cache-invalidace + durable ScanEvent fronta; Fabrication async/gravírka/3D/NFC provisioning; zbytek EPIC-03 (Tenant/User/Group CRUD) a EPIC-01 (OAuth2, invite).

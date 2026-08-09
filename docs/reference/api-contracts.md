@@ -97,11 +97,16 @@ GET    /api/v1/carriers/{id}/qr?format=svg  → vygenerovaný QR (svg|png), pro 
 POST   /api/v1/carriers/{id}/nfc/pair       → spárovat NFC ({ nfcUid, nfcPayload })
 
 # Předgenerovaný pool (pre-printed) + claim:
-POST   /api/v1/carriers/batch               → { count, carrierType? } → N nepřiřazených kódů
+POST   /api/v1/carriers/batch               → { count, carrierType?, selfActivatable?, moduleTemplate? }
+                                              → N nepřiřazených kódů (+ PINy k tisku, je-li selfActivatable)
 GET    /api/v1/carriers/unassigned          → nepřiřazené nosiče v poolu
-POST   /api/v1/carriers/claim               → { publicCode, objectId } → přiřadit kód k objektu
+POST   /api/v1/carriers/claim               → { publicCode, objectId } → přiřadit kód (přihlášený uživatel)
+
+# Veřejná self-aktivace koncovým příjemcem (bez JWT, mimo /api/v1):
+POST   /r/{public_code}/activate            → { pin, payload? } → ověří PIN → vytvoří objekt
+                                              u vlastnícího tenanta + vrátí edit-token
 ```
-> Sken nepřiřazeného kódu přes resolver vrací `{status:'unassigned'}` (výzva k aktivaci); po claim se resolve na objekt.
+> Sken nepřiřazeného kódu přes resolver vrací `{status:'unassigned'}`. Claim (přihlášený uživatel) nebo veřejná self-aktivace (PIN) kód navážou na objekt.
 `public_code` generuje server (ADR-0003), klient ho neposílá. Export do výrobních souborů → `docs/reference/fabrication.md`.
 
 ---

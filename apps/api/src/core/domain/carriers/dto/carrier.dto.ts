@@ -1,4 +1,14 @@
-import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
+import { MODULE_TYPES } from '../../objects/dto/create-digital-object.dto';
 
 export class CreateDataCarrierDto {
   @IsOptional()
@@ -15,6 +25,16 @@ export class GenerateBatchDto {
   @IsOptional()
   @IsIn(['qr', 'nfc', 'hybrid'])
   carrierType?: 'qr' | 'nfc' | 'hybrid';
+
+  /** Povolit veřejnou self-aktivaci koncovým příjemcem (přes PIN). */
+  @IsOptional()
+  @IsBoolean()
+  selfActivatable?: boolean;
+
+  /** Modul, který dostane objekt při aktivaci (např. 'contact'). */
+  @IsOptional()
+  @IsIn(MODULE_TYPES)
+  moduleTemplate?: string;
 }
 
 export class ClaimCarrierDto {
