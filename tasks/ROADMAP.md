@@ -12,7 +12,7 @@
 |---|---|---|---|
 | EPIC-00 | FOUNDATION | Monorepo, NestJS+Next.js skeleton, Docker, CI/CD, migrace | ✅ |
 | EPIC-01 | AUTH | JWT access+refresh, RBAC guard, OAuth2, invite | 🟡 |
-| EPIC-02 | FABRICATION | Export výrobních souborů (tisk/gravírka/3D) nad DataCarrier | ⬜ |
+| EPIC-02 | FABRICATION | Export výrobních souborů (tisk/gravírka/3D) nad DataCarrier | 🟡 |
 | EPIC-03 | CORE-DOMAIN | Tenant, Location, User, Group, BaseTenantEntity, RLS | 🟡 |
 | EPIC-04 | DIGITAL-OBJECT | DigitalObject + DataCarrier, QR gen, NFC párování | 🟡 |
 | EPIC-05 | RESOLVER | `/r/{public_code}`, cache, async ScanEvent (ADR-0002) | 🟡 |

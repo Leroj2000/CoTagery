@@ -1,15 +1,15 @@
 # Tagery – Kontinuita sessions
 
 ## Poslední session
-- **Datum:** 2026-08-08
+- **Datum:** 2026-08-09
 - **Agent:** Claude (Opus 4.8)
-- **Dokončeno:** **EPIC-11 Gallery implementován a ověřen.** GalleryEvent/UploadItem (RLS), upload souborů přes `StoragePort` (lokálně FS, prod R2), `GalleryHandler` pro sken. Předtím (vše na main): EPIC-10 Rental, EPIC-15+09 Access-Control/Ticketing, EPIC-08 Product, EPIC-07 Analytics, EPIC-05, 04, 03, 01, 00.
+- **Dokončeno:** **EPIC-06 RBAC-ACL + EPIC-02 Fabrication (MVP) implementovány a ověřeny.** RBAC: `ObjectPermission` (RLS) + `AclService.check` (OWNER/ADMIN implicitně, jinak ACL hierarchie), grant/revoke/access-check. Fabrication: export štítku `/carriers/:id/fabrication` SVG/PNG/PDF (QR + public_code). Předtím (vše na main): EPIC-11 Gallery, EPIC-10 Rental, EPIC-15+09, EPIC-08, 07, 05, 04, 03, 01, 00.
 
 ## Stav projektu
 - **Specifikace:** kompletní (PRD, 8 ADR, moduly, roadmapa 18 EPIKů).
-- **Kód na `main`:** EPIC-00, 01, 03, 04, 05, 07, 08, 09, 10, 15. **EPIC-11** na větvi `epic-11-gallery` (nezmergováno).
-- **Ověřeno (EPIC-11):** build/typecheck/lint/test zeleně (17 testů); migrace InitGallery; e2e — multipart upload → StoragePort zapsal soubor, list, sken handler (uploadCount), izolace (404).
-- **Git:** větev `epic-11-gallery` z `main`. 11 migrací.
+- **Kód na `main`:** EPIC-00, 01, 03, 04, 05, 06, 07, 08, 09, 10, 11, 15. **EPIC-02** na větvi `epic-02-fabrication` (nezmergováno).
+- **Ověřeno (EPIC-06/02):** build/typecheck/lint/test zeleně (20 testů); migrace InitRbac; e2e — RBAC grant/check/revoke; Fabrication SVG/PNG/PDF export.
+- **Git:** větev `epic-02-fabrication` z `main`. 12 migrací.
 - **KRITICKÉ pozn. k RLS:** runtime přes `APP_DATABASE_URL` jako `tagery_app` (NE-superuser). `.env` musí mít `APP_DATABASE_URL` + `JWT_SECRET` (viz `.env.example`). **Migrace před startem appky.**
 
 ## Jak spustit (dev)
@@ -25,7 +25,7 @@ pnpm dev            # nebo: pnpm --filter @tagery/api dev
 pnpm se instaluje přes `npm i -g pnpm@9` (corepack v tomto prostředí nebyl).
 
 ## Další krok
-Mergnout `epic-11-gallery` do `main`. Zbývající navržené: **EPIC-16 Membership + EPIC-17 Billing** (Billing potřebuje rozhodnutí PSP – Stripe, ADR-0007; MVP zestubovat metering/subscription), **EPIC-06 RBAC-ACL** (per-objektová oprávnění – ObjectPermission enforcement), **EPIC-02 Fabrication** (export QR souborů). Vzor modulu viz níže.
+Mergnout `epic-02-fabrication` do `main`. Zbývá z navržených: **EPIC-16 Membership + EPIC-17 Billing** (Billing čeká na rozhodnutí PSP – Stripe/ADR-0007, nebo stub). Dále follow-upy: RBAC guard wiring do mutačních endpointů, resolver cache invalidace + durable ScanEvent fronta, Fabrication async/gravírka/3D/NFC provisioning, zbytek EPIC-03 (Tenant/User/Group CRUD) a EPIC-01 (OAuth2, invite). Frontend (apps/web) je zatím jen health shell.
 
 ## Vzor pro nový modul (podle EPIC-08 Product)
 1. Entita extends `BaseTenantEntity` + migrace (ENABLE+FORCE RLS + policy + GRANT tagery_app)

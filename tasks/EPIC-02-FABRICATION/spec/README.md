@@ -1,5 +1,8 @@
 # EPIC-02-FABRICATION – Specifikace
 
+## Stav: 🟡 MVP label export hotové a ověřené (2026-08-09)
+Implementováno: `GET /carriers/:id/fabrication?format=svg|png|pdf` – tiskový štítek (QR + public_code). SVG = vektor (zdroj pravdy), PDF přes pdfkit. Ověřeno e2e (SVG s kódem, PNG, PDF `%PDF-`). Follow-up: FabricationTemplate/FabricationJob + async fronta, batch N-up, gravírka (DXF/G-code), 3D (STL/3MF), NFC provisioning (větev B).
+
 ## Cíl
 Umožnit tenantům proměnit `DataCarrier` (QR/NFC/hybrid) ve fyzicky použitelný nosič – dvě větve:
 - **A) Export výrobních souborů** pro tisk štítků, gravírování (laser/CNC) a 3D tisk, včetně batch N-up archů.

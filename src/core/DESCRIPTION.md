@@ -16,6 +16,7 @@ Jádro Tagery platformy – společná funkcionalita sdílená napříč všemi 
 - `analytics/` – **implementováno (EPIC-07)**: `/analytics/overview` + `/scans` (tenant-scoped agregace ScanEvent)
 - `access/` – **implementováno (EPIC-15)**: sdílená Access-Control (`AccessPoint`/`AccessEvent`, `AccessRegistry`, `evaluate` + audit; ADR-0006)
 - `rbac/` – **implementováno (EPIC-06)**: `ObjectPermission` (RLS) + `AclService.check` (OWNER/ADMIN implicitně, jinak ACL hierarchie); PRD §7
+- `fabrication/` – **implementováno (EPIC-02, MVP)**: `GET /carriers/:id/fabrication` export štítku SVG/PNG/PDF (QR + public_code); async templates/jobs + gravírka/3D/NFC provisioning = follow-up
 - (mimo core) `src/modules/product/` – **implementováno (EPIC-08)**: první modul, `ProductHandler` → `ModuleRegistry`, sken vrací produktovou kartu
 - (mimo core) `src/modules/ticketing/` – **implementováno (EPIC-09)**: Event/TicketType/Ticket, `TicketEntitlementProvider` → `AccessRegistry` (check-in + redemce)
 - (mimo core) `src/modules/rental/` – **implementováno (EPIC-10)**: `RenterProfile` (platformový, bez RLS – ADR-0005), Item/Loan/RentalReview (RLS), ověření nájemce + sdílená Uber/Bolt reputace
