@@ -44,3 +44,4 @@ tmp/
 .turbo/
 .storage/
 *.tsbuildinfo
+.claude/scheduled_tasks.lock
