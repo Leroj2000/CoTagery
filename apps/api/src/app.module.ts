@@ -10,6 +10,7 @@ import { DomainModule } from './core/domain/domain.module';
 import { ResolverModule } from './core/resolver/resolver.module';
 import { AnalyticsModule } from './core/analytics/analytics.module';
 import { AccessControlModule } from './core/access/access-control.module';
+import { RbacModule } from './core/rbac/rbac.module';
 import { ProductModule } from './modules/product/product.module';
 import { TicketingModule } from './modules/ticketing/ticketing.module';
 import { RentalModule } from './modules/rental/rental.module';
@@ -33,6 +34,7 @@ import { HealthModule } from './health/health.module';
     ResolverModule,
     AnalyticsModule,
     AccessControlModule,
+    RbacModule,
     ProductModule,
     TicketingModule,
     RentalModule,

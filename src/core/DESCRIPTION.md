@@ -15,6 +15,7 @@ Jádro Tagery platformy – společná funkcionalita sdílená napříč všemi 
 - `resolver/` – **implementováno (EPIC-05)**: veřejný `GET /r/{public_code}` (mimo /api/v1), Redis cache, validace platnosti, rate limit (anti-quishing), async ScanEvent, spouští modulový `handleScan` v tenant kontextu. Lookup/zápis mimo RLS přes `SECURITY DEFINER` funkce
 - `analytics/` – **implementováno (EPIC-07)**: `/analytics/overview` + `/scans` (tenant-scoped agregace ScanEvent)
 - `access/` – **implementováno (EPIC-15)**: sdílená Access-Control (`AccessPoint`/`AccessEvent`, `AccessRegistry`, `evaluate` + audit; ADR-0006)
+- `rbac/` – **implementováno (EPIC-06)**: `ObjectPermission` (RLS) + `AclService.check` (OWNER/ADMIN implicitně, jinak ACL hierarchie); PRD §7
 - (mimo core) `src/modules/product/` – **implementováno (EPIC-08)**: první modul, `ProductHandler` → `ModuleRegistry`, sken vrací produktovou kartu
 - (mimo core) `src/modules/ticketing/` – **implementováno (EPIC-09)**: Event/TicketType/Ticket, `TicketEntitlementProvider` → `AccessRegistry` (check-in + redemce)
 - (mimo core) `src/modules/rental/` – **implementováno (EPIC-10)**: `RenterProfile` (platformový, bez RLS – ADR-0005), Item/Loan/RentalReview (RLS), ověření nájemce + sdílená Uber/Bolt reputace
