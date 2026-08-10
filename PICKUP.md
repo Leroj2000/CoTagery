@@ -35,8 +35,10 @@ Reálná **Stripe integrace** místo `StubPspService` (ADR-0007) – adaptér s 
 - ✅ **Veřejná self-aktivace (PIN)** – HOTOVO. Aktivační HTML stránka i HOTOVO (`apps/web/app/activate/[code]`). Follow-up: doručení PINu přes SMS, edit-token authed edit endpointy. Spec: `tasks/FEAT-public-self-activation/`.
 - ✅ **EPIC-16 Membership + EPIC-17 Billing (stub)** – HOTOVO na `main`. Zbývá: reálné Stripe (viz Další krok).
 - ✅ **RBAC guard wiring do mutačních endpointů** – HOTOVO (`RolesGuard` + `@RequireRole`).
-- ✅ **Frontend scan/aktivace** – HOTOVO (`/s/[code]`, `/activate/[code]`). Zbytek apps/web (admin UI, auth, CRUD obrazovky) je stále TODO.
-- Drobné/otevřené: doručení PINu přes SMS; edit-token authed edit endpointy; resolver cache-invalidace + durable ScanEvent fronta; Fabrication async/gravírka/3D/NFC provisioning; zbytek EPIC-03 (Tenant/User/Group CRUD) a EPIC-01 (OAuth2, invite); admin frontend.
+- ✅ **Frontend scan/aktivace** – HOTOVO (`/s/[code]`, `/activate/[code]`).
+- ✅ **Admin frontend – fáze 1 (auth + shell)** – HOTOVO. httpOnly JWT přes **BFF** (Next route handlery + middleware, token nikdy v JS, API beze změn). `/login`, `/admin` shell (layout s /me topbarem + logout, sidebar nav), dashboard rozcestník; placeholdery modulů (fáze 2). Klíčové soubory: `apps/web/app/lib/{session,server-api,jwt}.ts`, `apps/web/app/api/auth/*`, `apps/web/middleware.ts`, `apps/web/app/admin/*`.
+  - **Fáze 2+ (TODO):** obsah obrazovek — objekty & nosiče (list/detail, batch generování, QR náhled, claim), membership (tiery/členové/karty), billing (subscriptions/faktury/usage), access points + audit, dashboard analytics. Chybí backend pro User/Group/Tenant CRUD + invite/OAuth2 (EPIC-03/01) → dodělat souběžně.
+- Drobné/otevřené: doručení PINu přes SMS; edit-token authed edit endpointy; resolver cache-invalidace + durable ScanEvent fronta; Fabrication async/gravírka/3D/NFC provisioning; zbytek EPIC-03/01.
 
 ## Vzor pro nový modul (podle EPIC-08 Product)
 1. Entita extends `BaseTenantEntity` + migrace (ENABLE+FORCE RLS + policy + GRANT tagery_app)
