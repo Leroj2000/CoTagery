@@ -16,6 +16,8 @@ export const envSchema = z.object({
   JWT_REFRESH_TTL: z.string().default('30d'),
   // Veřejná základní URL pro resolver (do QR/NFC nosičů) – ADR-0002.
   PUBLIC_BASE_URL: z.string().url().default('http://localhost:3001'),
+  // Sdílené tajemství pro ověření podpisu PSP webhooků (EPIC-17, stub PSP).
+  BILLING_WEBHOOK_SECRET: z.string().min(8).default('whsec_stub'),
 });
 
 export type Env = z.infer<typeof envSchema>;

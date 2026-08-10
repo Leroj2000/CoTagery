@@ -16,6 +16,8 @@ import { ProductModule } from './modules/product/product.module';
 import { TicketingModule } from './modules/ticketing/ticketing.module';
 import { RentalModule } from './modules/rental/rental.module';
 import { GalleryModule } from './modules/gallery/gallery.module';
+import { MembershipModule } from './modules/membership/membership.module';
+import { BillingModule } from './modules/billing/billing.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
@@ -41,6 +43,8 @@ import { HealthModule } from './health/health.module';
     TicketingModule,
     RentalModule,
     GalleryModule,
+    MembershipModule,
+    BillingModule,
     HealthModule,
   ],
 })
