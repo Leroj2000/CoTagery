@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard, RequireRole } from '../rbac/roles.guard';
 import { AccessControlService } from './access-control.service';
 import { CreateAccessPointDto, EvaluateAccessDto } from './dto/access.dto';
 import type { AccessPoint } from './entities/access-point.entity';
@@ -7,7 +8,7 @@ import type { AccessEvent } from './entities/access-event.entity';
 import type { AccessDecision } from './entitlement';
 
 @Controller('access-points')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class AccessPointsController {
   constructor(private readonly access: AccessControlService) {}
 
@@ -17,6 +18,7 @@ export class AccessPointsController {
   }
 
   @Post()
+  @RequireRole('EDITOR')
   create(@Body() dto: CreateAccessPointDto): Promise<AccessPoint> {
     return this.access.create(dto);
   }

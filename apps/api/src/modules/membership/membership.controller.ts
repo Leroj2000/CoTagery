@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
+import { RolesGuard, RequireRole } from '../../core/rbac/roles.guard';
 import { MembershipService, type CardView } from './membership.service';
 import {
   CreateBenefitDto,
@@ -15,16 +16,18 @@ import type { MembershipCard } from './entities/membership-card.entity';
 import type { MembershipBenefit } from './entities/membership-benefit.entity';
 
 @Controller('memberships')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class MembershipController {
   constructor(private readonly memberships: MembershipService) {}
 
   @Post('members')
+  @RequireRole('EDITOR')
   createMember(@Body() dto: CreateMemberDto): Promise<Member> {
     return this.memberships.createMember(dto);
   }
 
   @Post('tiers')
+  @RequireRole('EDITOR')
   createTier(@Body() dto: CreateTierDto): Promise<MembershipTier> {
     return this.memberships.createTier(dto);
   }
@@ -35,6 +38,7 @@ export class MembershipController {
   }
 
   @Post('tiers/:tierId/benefits')
+  @RequireRole('EDITOR')
   addBenefit(
     @Param('tierId', ParseUUIDPipe) tierId: string,
     @Body() dto: CreateBenefitDto,
@@ -48,6 +52,7 @@ export class MembershipController {
   }
 
   @Post()
+  @RequireRole('EDITOR')
   issue(@Body() dto: IssueMembershipDto): Promise<Membership> {
     return this.memberships.issueMembership(dto);
   }
@@ -58,16 +63,19 @@ export class MembershipController {
   }
 
   @Post(':membershipId/suspend')
+  @RequireRole('EDITOR')
   suspend(@Param('membershipId', ParseUUIDPipe) membershipId: string): Promise<Membership> {
     return this.memberships.setStatus(membershipId, 'suspended');
   }
 
   @Post(':membershipId/resume')
+  @RequireRole('EDITOR')
   resume(@Param('membershipId', ParseUUIDPipe) membershipId: string): Promise<Membership> {
     return this.memberships.setStatus(membershipId, 'active');
   }
 
   @Post(':membershipId/cards')
+  @RequireRole('EDITOR')
   issueCard(
     @Param('membershipId', ParseUUIDPipe) membershipId: string,
     @Body() dto: IssueCardDto,

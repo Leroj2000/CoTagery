@@ -10,13 +10,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { RolesGuard, RequireRole } from '../../rbac/roles.guard';
 import { DataCarriersService } from './data-carriers.service';
 import { QrService } from './qr.service';
 import { ClaimCarrierDto, GenerateBatchDto, NfcPairDto } from './dto/carrier.dto';
 import type { DataCarrier } from '../entities/data-carrier.entity';
 
 @Controller('carriers')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class DataCarriersController {
   constructor(
     private readonly carriers: DataCarriersService,
@@ -25,6 +26,7 @@ export class DataCarriersController {
 
   // Předgenerovaný pool – statické routy PŘED ":id".
   @Post('batch')
+  @RequireRole('EDITOR')
   async generateBatch(@Body() dto: GenerateBatchDto): Promise<
     Array<{ id: string; publicCode: string; resolverUrl: string | null; status: string; pin: string | null }>
   > {
@@ -44,6 +46,7 @@ export class DataCarriersController {
   }
 
   @Post('claim')
+  @RequireRole('EDITOR')
   claim(@Body() dto: ClaimCarrierDto): Promise<DataCarrier> {
     return this.carriers.claim(dto.publicCode, dto.objectId);
   }
@@ -68,6 +71,7 @@ export class DataCarriersController {
   }
 
   @Post(':id/nfc/pair')
+  @RequireRole('EDITOR')
   pairNfc(@Param('id', ParseUUIDPipe) id: string, @Body() dto: NfcPairDto): Promise<DataCarrier> {
     return this.carriers.pairNfc(id, dto);
   }

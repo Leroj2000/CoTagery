@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { RolesGuard, RequireRole } from '../../rbac/roles.guard';
 import { DigitalObjectsService } from './digital-objects.service';
 import { DataCarriersService } from '../carriers/data-carriers.service';
 import { CreateDigitalObjectDto } from './dto/create-digital-object.dto';
@@ -20,7 +21,7 @@ import type { DigitalObject } from '../entities/digital-object.entity';
 import type { DataCarrier } from '../entities/data-carrier.entity';
 
 @Controller('objects')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class DigitalObjectsController {
   constructor(
     private readonly objects: DigitalObjectsService,
@@ -33,6 +34,7 @@ export class DigitalObjectsController {
   }
 
   @Post()
+  @RequireRole('EDITOR')
   create(@Body() dto: CreateDigitalObjectDto): Promise<DigitalObject> {
     return this.objects.create(dto);
   }
@@ -43,6 +45,7 @@ export class DigitalObjectsController {
   }
 
   @Patch(':id')
+  @RequireRole('EDITOR')
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateDigitalObjectDto,
@@ -51,6 +54,7 @@ export class DigitalObjectsController {
   }
 
   @Delete(':id')
+  @RequireRole('EDITOR')
   @HttpCode(204)
   archive(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.objects.archive(id);
@@ -62,6 +66,7 @@ export class DigitalObjectsController {
   }
 
   @Post(':id/carriers')
+  @RequireRole('EDITOR')
   addCarrier(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateDataCarrierDto,
