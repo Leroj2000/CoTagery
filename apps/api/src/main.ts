@@ -5,7 +5,8 @@ import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  // rawBody: potřebné pro ověření podpisu PSP webhooků (EPIC-17).
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   // Resolver hot path běží na /r/{code} mimo /api/v1 (krátká veřejná URL – ADR-0002).
   app.setGlobalPrefix('api/v1', {
     exclude: [
