@@ -56,6 +56,11 @@ export class MembershipController {
     return this.memberships.listBenefits(tierId);
   }
 
+  @Get()
+  listMemberships(): Promise<Membership[]> {
+    return this.memberships.listMemberships();
+  }
+
   @Post()
   @RequireRole('EDITOR')
   issue(@Body() dto: IssueMembershipDto): Promise<Membership> {

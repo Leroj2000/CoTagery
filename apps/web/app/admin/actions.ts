@@ -116,6 +116,79 @@ export async function createAccessPoint(_p: ActionState, fd: FormData): Promise<
   );
 }
 
+// --- Membership karty ---
+export async function issueCard(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(
+    `/memberships/${str(fd, 'membershipId')}/cards`,
+    { dataCarrierId: str(fd, 'dataCarrierId') },
+    '/admin/membership',
+    'Karta vydána.',
+  );
+}
+
+// --- Nosiče: pool + claim ---
+export async function generatePool(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const selfAct = str(fd, 'selfActivatable') === 'on' || str(fd, 'selfActivatable') === 'true';
+  const body: Record<string, unknown> = {
+    count: num(fd, 'count') ?? 1,
+    carrierType: str(fd, 'carrierType') || 'qr',
+  };
+  if (selfAct) {
+    body.selfActivatable = true;
+    body.moduleTemplate = str(fd, 'moduleTemplate') || 'contact';
+  }
+  try {
+    const rows = await apiFetch<{ publicCode: string; pin: string | null }[]>('/carriers/batch', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    revalidatePath('/admin/carriers');
+    const summary = rows
+      .map((r) => (r.pin ? `${r.publicCode} (PIN ${r.pin})` : r.publicCode))
+      .join(', ');
+    return { ok: true, message: `Vygenerováno ${rows.length}: ${summary}` };
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Neočekávaná chyba' };
+  }
+}
+
+export async function claimCarrier(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(
+    '/carriers/claim',
+    { publicCode: str(fd, 'publicCode'), objectId: str(fd, 'objectId') },
+    '/admin/carriers',
+    'Nosič přiřazen.',
+  );
+}
+
+// --- Skupiny ---
+export async function createGroup(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run('/groups', { name: str(fd, 'name') }, '/admin/groups', 'Skupina vytvořena.');
+}
+
+export async function deleteGroup(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(`/groups/${str(fd, 'groupId')}`, null, '/admin/groups', 'Skupina smazána.', 'DELETE');
+}
+
+export async function addGroupMember(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(
+    `/groups/${str(fd, 'groupId')}/members`,
+    { userId: str(fd, 'userId') },
+    '/admin/groups',
+    'Člen přidán.',
+  );
+}
+
+export async function removeGroupMember(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(
+    `/groups/${str(fd, 'groupId')}/members/${str(fd, 'userId')}`,
+    null,
+    '/admin/groups',
+    'Člen odebrán.',
+    'DELETE',
+  );
+}
+
 // --- Object detail ---
 export async function addCarrierToObject(_p: ActionState, fd: FormData): Promise<ActionState> {
   const objectId = str(fd, 'objectId');

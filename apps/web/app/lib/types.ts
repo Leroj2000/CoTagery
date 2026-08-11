@@ -15,6 +15,17 @@ export interface DataCarrier {
   carrierType: string;
   status: string;
   resolverUrl: string | null;
+  selfActivatable?: boolean;
+  moduleTemplate?: string | null;
+}
+
+/** Výsledek generování batche nosičů (pin je jen jednou, k tisku). */
+export interface GeneratedCarrier {
+  id: string;
+  publicCode: string;
+  resolverUrl: string | null;
+  status: string;
+  pin: string | null;
 }
 
 export interface MembershipTier {
@@ -33,6 +44,26 @@ export interface Member {
   name: string;
   email: string | null;
   phone: string | null;
+}
+
+export interface Membership {
+  id: string;
+  memberId: string;
+  tierId: string;
+  status: string;
+  validTo: string;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+export interface GroupMember {
+  id: string;
+  groupId: string;
+  userId: string;
 }
 
 export interface Subscription {

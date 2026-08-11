@@ -126,6 +126,10 @@ export class MembershipService {
     );
   }
 
+  listMemberships(): Promise<Membership[]> {
+    return this.repo(Membership).find({ order: { createdAt: 'DESC' }, take: 500 });
+  }
+
   async getMembership(membershipId: string): Promise<Membership> {
     const m = await this.repo(Membership).findOne({ where: { id: membershipId } });
     if (!m) throw new NotFoundException('Členství neexistuje');
