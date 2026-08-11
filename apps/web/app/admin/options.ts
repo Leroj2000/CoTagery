@@ -1,0 +1,22 @@
+/** Volby do selectů (sdíleno mezi admin formuláři). */
+
+export const MODULE_OPTIONS = [
+  'product',
+  'membership',
+  'ticket',
+  'rental',
+  'gallery',
+  'contact',
+  'loyalty',
+  'pay',
+  'inventory',
+  'trace',
+  'time_tracker',
+  'automation',
+  'access_point',
+].map((v) => ({ value: v, label: v }));
+
+export const ROLE_OPTIONS = ['ADMIN', 'MANAGER', 'EDITOR', 'VIEWER', 'SCAN_ONLY'].map((v) => ({
+  value: v,
+  label: v,
+}));

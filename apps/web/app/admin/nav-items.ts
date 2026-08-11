@@ -5,4 +5,5 @@ export const NAV_ITEMS = [
   { href: '/admin/membership', label: 'Členství' },
   { href: '/admin/billing', label: 'Předplatné' },
   { href: '/admin/access', label: 'Přístup' },
+  { href: '/admin/users', label: 'Uživatelé' },
 ] as const;
