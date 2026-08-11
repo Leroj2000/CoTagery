@@ -111,6 +111,23 @@ export interface AccessEvent {
   createdAt: string;
 }
 
+export interface Tenant {
+  id: string;
+  name: string;
+  type: string;
+  brandingDomain: string | null;
+  settings: Record<string, unknown>;
+}
+
+export interface MembershipBenefit {
+  id: string;
+  tierId: string;
+  kind: string;
+  targetKey: string | null;
+  value: string | null;
+  description: string | null;
+}
+
 export interface AdminUser {
   id: string;
   email: string;

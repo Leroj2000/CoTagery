@@ -11,6 +11,7 @@ export interface Field {
   type?: 'text' | 'number' | 'email' | 'url';
   required?: boolean;
   placeholder?: string;
+  defaultValue?: string;
   options?: { value: string; label: string }[];
 }
 
@@ -47,6 +48,7 @@ export function ActionForm({
                 id={f.name}
                 name={f.name}
                 required={f.required}
+                defaultValue={f.defaultValue}
                 className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-900 focus:outline-none"
               >
                 {f.options.map((o) => (
@@ -62,6 +64,7 @@ export function ActionForm({
                 type={f.type ?? 'text'}
                 required={f.required}
                 placeholder={f.placeholder}
+                defaultValue={f.defaultValue}
                 className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-900 focus:outline-none"
               />
             )}

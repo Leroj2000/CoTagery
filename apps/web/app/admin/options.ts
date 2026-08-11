@@ -20,3 +20,10 @@ export const ROLE_OPTIONS = ['ADMIN', 'MANAGER', 'EDITOR', 'VIEWER', 'SCAN_ONLY'
   value: v,
   label: v,
 }));
+
+export const BENEFIT_KIND_OPTIONS = [
+  { value: 'discount_percent', label: 'Sleva (%)' },
+  { value: 'special_price', label: 'Speciální cena' },
+  { value: 'free', label: 'Zdarma' },
+  { value: 'zone_access', label: 'Vstup do zóny' },
+];

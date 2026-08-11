@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { getMe, apiFetch } from '../lib/server-api';
 import { NAV_ITEMS } from './nav-items';
-import { Section, Table, Badge } from './ui';
+import { Section } from './ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,10 +41,27 @@ export default async function AdminDashboard() {
       </div>
 
       <Section title="Skeny podle modulu">
-        <Table
-          head={['Modul', 'Počet skenů']}
-          rows={overview.scansByModule.map((s) => [<Badge key="m">{s.moduleType}</Badge>, s.count])}
-        />
+        {overview.scansByModule.length === 0 ? (
+          <p className="text-sm text-neutral-400">Zatím žádné skeny.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {overview.scansByModule.map((s) => {
+              const max = Math.max(...overview.scansByModule.map((x) => x.count), 1);
+              return (
+                <li key={s.moduleType} className="flex items-center gap-3 text-sm">
+                  <span className="w-28 shrink-0 text-neutral-600">{s.moduleType}</span>
+                  <span className="h-4 flex-1 overflow-hidden rounded bg-neutral-100">
+                    <span
+                      className="block h-full rounded bg-neutral-800"
+                      style={{ width: `${(s.count / max) * 100}%` }}
+                    />
+                  </span>
+                  <span className="w-10 shrink-0 text-right font-medium">{s.count}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </Section>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

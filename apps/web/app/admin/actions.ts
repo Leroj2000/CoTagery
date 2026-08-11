@@ -189,6 +189,43 @@ export async function removeGroupMember(_p: ActionState, fd: FormData): Promise<
   );
 }
 
+// --- Tenant nastavení ---
+export async function updateTenant(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(
+    '/tenant',
+    { name: str(fd, 'name'), brandingDomain: str(fd, 'brandingDomain') },
+    '/admin/settings',
+    'Nastavení uloženo.',
+    'PATCH',
+  );
+}
+
+// --- NFC pairing ---
+export async function pairNfc(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const objectId = str(fd, 'objectId');
+  return run(
+    `/carriers/${str(fd, 'carrierId')}/nfc/pair`,
+    { nfcUid: str(fd, 'nfcUid') },
+    `/admin/objects/${objectId}`,
+    'NFC spárováno.',
+  );
+}
+
+// --- Membership benefity ---
+export async function addBenefit(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(
+    `/memberships/tiers/${str(fd, 'tierId')}/benefits`,
+    {
+      kind: str(fd, 'kind'),
+      value: str(fd, 'value') || undefined,
+      targetKey: str(fd, 'targetKey') || undefined,
+      description: str(fd, 'description') || undefined,
+    },
+    '/admin/membership',
+    'Benefit přidán.',
+  );
+}
+
 // --- Object detail ---
 export async function addCarrierToObject(_p: ActionState, fd: FormData): Promise<ActionState> {
   const objectId = str(fd, 'objectId');

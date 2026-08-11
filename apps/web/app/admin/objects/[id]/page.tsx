@@ -6,6 +6,7 @@ import type { DigitalObject, DataCarrier } from '../../../lib/types';
 import { Section, Table, Badge, Mono } from '../../ui';
 import { ActionForm } from '../../action-form';
 import { ActionButton } from '../../action-button';
+import { NfcPairForm } from '../nfc-pair-form';
 import { addCarrierToObject, archiveObject } from '../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -66,7 +67,7 @@ export default async function ObjectDetail({ params }: { params: Promise<{ id: s
 
       <Section title={`Nosiče (${carriers.length})`}>
         <Table
-          head={['QR', 'Kód', 'Typ', 'Stav', 'Resolver URL']}
+          head={['QR', 'Kód', 'Typ', 'Stav', 'NFC']}
           rows={carriers.map((c) => [
             <Image
               key="qr"
@@ -80,7 +81,7 @@ export default async function ObjectDetail({ params }: { params: Promise<{ id: s
             <Mono key="code">{c.publicCode}</Mono>,
             c.carrierType,
             <Badge key="st">{c.status}</Badge>,
-            c.resolverUrl ? <Mono key="u">{c.resolverUrl}</Mono> : '—',
+            <NfcPairForm key="nfc" carrierId={c.id} objectId={object.id} />,
           ])}
         />
       </Section>

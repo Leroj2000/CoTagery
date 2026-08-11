@@ -8,4 +8,5 @@ export const NAV_ITEMS = [
   { href: '/admin/access', label: 'Přístup' },
   { href: '/admin/users', label: 'Uživatelé' },
   { href: '/admin/groups', label: 'Skupiny' },
+  { href: '/admin/settings', label: 'Nastavení' },
 ] as const;

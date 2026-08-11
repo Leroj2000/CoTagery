@@ -1,8 +1,15 @@
 import { apiFetch } from '../../lib/server-api';
-import type { MembershipTier, Member, Membership, DataCarrier } from '../../lib/types';
+import type {
+  MembershipTier,
+  Member,
+  Membership,
+  DataCarrier,
+  MembershipBenefit,
+} from '../../lib/types';
+import { BENEFIT_KIND_OPTIONS } from '../options';
 import { Section, Table, Badge } from '../ui';
 import { ActionForm } from '../action-form';
-import { createTier, createMember, issueMembership, issueCard } from '../actions';
+import { createTier, createMember, issueMembership, issueCard, addBenefit } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +24,13 @@ export default async function MembershipPage() {
     apiFetch<Membership[]>('/memberships'),
     apiFetch<DataCarrier[]>('/carriers/unassigned'),
   ]);
+
+  const benefitsByTier = await Promise.all(
+    tiers.map((t) => apiFetch<MembershipBenefit[]>(`/memberships/tiers/${t.id}/benefits`)),
+  );
+  const allBenefits = tiers.flatMap((t, i) =>
+    benefitsByTier[i].map((b) => ({ tierName: t.name, ...b })),
+  );
 
   const tierById = new Map(tiers.map((t) => [t.id, t]));
   const memberById = new Map(members.map((m) => [m.id, m]));
@@ -125,6 +139,38 @@ export default async function MembershipPage() {
 
         <Section title={`Členové (${members.length})`}>
           <Table head={['Jméno', 'E-mail']} rows={members.map((m) => [m.name, m.email ?? '—'])} />
+        </Section>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Section title="Přidat benefit tieru">
+          {tiers.length === 0 ? (
+            <p className="text-sm text-neutral-400">Nejdřív vytvoř tier.</p>
+          ) : (
+            <ActionForm
+              action={addBenefit}
+              submitLabel="Přidat benefit"
+              fields={[
+                { name: 'tierId', label: 'Tier', required: true, options: tierOptions },
+                { name: 'kind', label: 'Typ', required: true, options: BENEFIT_KIND_OPTIONS },
+                { name: 'value', label: 'Hodnota (%/cena)', placeholder: '20' },
+                { name: 'targetKey', label: 'Cíl (SKU/zóna)', placeholder: 'volitelně' },
+                { name: 'description', label: 'Popis', placeholder: 'volitelně' },
+              ]}
+            />
+          )}
+        </Section>
+
+        <Section title={`Benefity (${allBenefits.length})`}>
+          <Table
+            head={['Tier', 'Typ', 'Hodnota', 'Cíl']}
+            rows={allBenefits.map((b) => [
+              b.tierName,
+              <Badge key="k">{b.kind}</Badge>,
+              b.value ?? '—',
+              b.targetKey ?? '—',
+            ])}
+          />
         </Section>
       </div>
     </div>

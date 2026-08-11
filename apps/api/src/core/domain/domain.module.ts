@@ -18,6 +18,8 @@ import { UsersController } from './users/users.controller';
 import { UsersService } from './users/users.service';
 import { GroupsController } from './groups/groups.controller';
 import { GroupsService } from './groups/groups.service';
+import { TenantController } from './tenant/tenant.controller';
+import { TenantService } from './tenant/tenant.service';
 import { ModuleRegistry } from './module-handler';
 
 /** Jádro doménového modelu (EPIC-03, EPIC-04). */
@@ -39,6 +41,7 @@ import { ModuleRegistry } from './module-handler';
     DataCarriersController,
     UsersController,
     GroupsController,
+    TenantController,
   ],
   providers: [
     LocationsService,
@@ -47,6 +50,7 @@ import { ModuleRegistry } from './module-handler';
     QrService,
     UsersService,
     GroupsService,
+    TenantService,
     ModuleRegistry,
   ],
   exports: [ModuleRegistry],
