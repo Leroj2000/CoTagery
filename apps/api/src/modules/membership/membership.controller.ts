@@ -20,6 +20,11 @@ import type { MembershipBenefit } from './entities/membership-benefit.entity';
 export class MembershipController {
   constructor(private readonly memberships: MembershipService) {}
 
+  @Get('members')
+  listMembers(): Promise<Member[]> {
+    return this.memberships.listMembers();
+  }
+
   @Post('members')
   @RequireRole('EDITOR')
   createMember(@Body() dto: CreateMemberDto): Promise<Member> {

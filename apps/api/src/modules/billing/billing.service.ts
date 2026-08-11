@@ -88,6 +88,10 @@ export class BillingService {
     };
   }
 
+  listSubscriptions(): Promise<Subscription[]> {
+    return this.repo(Subscription).find({ order: { createdAt: 'DESC' }, take: 500 });
+  }
+
   async getSubscription(subscriptionId: string): Promise<Subscription> {
     const sub = await this.repo(Subscription).findOne({ where: { id: subscriptionId } });
     if (!sub) throw new NotFoundException('Předplatné neexistuje');

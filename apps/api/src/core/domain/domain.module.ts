@@ -14,6 +14,10 @@ import { DigitalObjectsService } from './objects/digital-objects.service';
 import { DataCarriersController } from './carriers/data-carriers.controller';
 import { DataCarriersService } from './carriers/data-carriers.service';
 import { QrService } from './carriers/qr.service';
+import { UsersController } from './users/users.controller';
+import { UsersService } from './users/users.service';
+import { GroupsController } from './groups/groups.controller';
+import { GroupsService } from './groups/groups.service';
 import { ModuleRegistry } from './module-handler';
 
 /** Jádro doménového modelu (EPIC-03, EPIC-04). */
@@ -29,12 +33,20 @@ import { ModuleRegistry } from './module-handler';
       ScanEvent,
     ]),
   ],
-  controllers: [LocationsController, DigitalObjectsController, DataCarriersController],
+  controllers: [
+    LocationsController,
+    DigitalObjectsController,
+    DataCarriersController,
+    UsersController,
+    GroupsController,
+  ],
   providers: [
     LocationsService,
     DigitalObjectsService,
     DataCarriersService,
     QrService,
+    UsersService,
+    GroupsService,
     ModuleRegistry,
   ],
   exports: [ModuleRegistry],

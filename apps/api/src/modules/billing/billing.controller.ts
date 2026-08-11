@@ -19,6 +19,11 @@ export class BillingController {
     return this.billing.checkout(dto);
   }
 
+  @Get('subscriptions')
+  listSubscriptions(): Promise<Subscription[]> {
+    return this.billing.listSubscriptions();
+  }
+
   @Get('subscriptions/:id')
   getSubscription(@Param('id', ParseUUIDPipe) id: string): Promise<Subscription> {
     return this.billing.getSubscription(id);

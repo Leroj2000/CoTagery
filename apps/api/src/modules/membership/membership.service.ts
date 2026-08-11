@@ -51,6 +51,10 @@ export class MembershipService {
     );
   }
 
+  listMembers(): Promise<Member[]> {
+    return this.repo(Member).find({ order: { createdAt: 'DESC' }, take: 500 });
+  }
+
   // --- Tiers ---
   createTier(dto: CreateTierDto): Promise<MembershipTier> {
     const repo = this.repo(MembershipTier);
