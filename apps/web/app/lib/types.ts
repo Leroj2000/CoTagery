@@ -52,11 +52,32 @@ export interface UsageMeter {
   reportedAt: string | null;
 }
 
+export interface Invoice {
+  id: string;
+  pspInvoiceRef: string;
+  amountNet: string;
+  vatAmount: string;
+  vatRate: string;
+  reverseCharge: boolean;
+  currency: string;
+  status: string;
+  periodEnd: string | null;
+}
+
 export interface AccessPoint {
   id: string;
   name: string;
   zoneKey: string;
   direction: string;
+}
+
+export interface AccessEvent {
+  id: string;
+  subjectType: string;
+  subjectRef: string;
+  decision: string;
+  reason: string | null;
+  createdAt: string;
 }
 
 export interface AdminUser {

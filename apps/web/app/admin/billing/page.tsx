@@ -1,6 +1,7 @@
+import Link from 'next/link';
 import { apiFetch } from '../../lib/server-api';
 import type { Subscription, UsageMeter, MembershipTier, Member } from '../../lib/types';
-import { Section, Table, Badge, Mono } from '../ui';
+import { Section, Table, Mono } from '../ui';
 import { ActionForm } from '../action-form';
 import { checkout } from '../actions';
 
@@ -48,7 +49,9 @@ export default async function BillingPage() {
         <Table
           head={['Stav', 'Konec období', 'PSP ref']}
           rows={subs.map((s) => [
-            <Badge key="st">{s.status}</Badge>,
+            <Link key="st" href={`/admin/billing/${s.id}`} className="text-blue-600 hover:underline">
+              {s.status}
+            </Link>,
             fmtDate(s.currentPeriodEnd),
             <Mono key="r">{s.pspSubscriptionRef}</Mono>,
           ])}

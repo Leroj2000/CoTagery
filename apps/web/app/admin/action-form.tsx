@@ -22,15 +22,19 @@ export function ActionForm({
   action,
   fields,
   submitLabel = 'Uložit',
+  hidden,
 }: {
   action: ServerAction;
   fields: Field[];
   submitLabel?: string;
+  hidden?: Record<string, string>;
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(action, null);
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
+      {hidden &&
+        Object.entries(hidden).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
       <div className="grid gap-3 sm:grid-cols-2">
         {fields.map((f) => (
           <div key={f.name} className="flex flex-col gap-1">

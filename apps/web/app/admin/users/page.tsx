@@ -4,6 +4,7 @@ import { ROLE_OPTIONS } from '../options';
 import { Section, Table, Badge } from '../ui';
 import { ActionForm } from '../action-form';
 import { inviteUser } from '../actions';
+import { UserRowActions } from './user-row-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,12 +50,13 @@ export default async function UsersPage() {
 
       <Section title={`Uživatelé (${users.length})`}>
         <Table
-          head={['Jméno', 'E-mail', 'Role', 'Stav']}
+          head={['Jméno', 'E-mail', 'Role', 'Stav', 'Akce']}
           rows={users.map((u) => [
             u.name,
             u.email,
             <Badge key="r">{u.tenantRole}</Badge>,
             u.status,
+            <UserRowActions key="a" userId={u.id} role={u.tenantRole} status={u.status} />,
           ])}
         />
       </Section>

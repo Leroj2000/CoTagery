@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiFetch } from '../../lib/server-api';
 import type { DigitalObject } from '../../lib/types';
 import { MODULE_OPTIONS } from '../options';
@@ -55,7 +56,9 @@ export default async function ObjectsPage() {
           head={['Modul', 'Slug', 'Stav', 'URL']}
           rows={objects.map((o) => [
             <Badge key="m">{o.moduleType}</Badge>,
-            <Mono key="s">{o.slug}</Mono>,
+            <Link key="s" href={`/admin/objects/${o.id}`} className="font-mono text-xs text-blue-600 hover:underline">
+              {o.slug}
+            </Link>,
             o.status,
             o.primaryUrl ? <Mono key="u">{o.primaryUrl}</Mono> : '—',
           ])}

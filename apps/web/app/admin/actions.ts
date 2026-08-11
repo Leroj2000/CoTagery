@@ -7,12 +7,16 @@ import type { ActionState } from './action-form';
 /** Obalí volání API do ActionState (chyba/úspěch) + revaliduje cestu. */
 async function run(
   path: string,
-  body: Record<string, unknown>,
+  body: Record<string, unknown> | null,
   revalidate: string,
   message?: string,
+  method: 'POST' | 'PATCH' | 'DELETE' = 'POST',
 ): Promise<ActionState> {
   try {
-    await apiFetch(path, { method: 'POST', body: JSON.stringify(body) });
+    await apiFetch(path, {
+      method,
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
     revalidatePath(revalidate);
     return { ok: true, message };
   } catch (e) {
@@ -112,7 +116,48 @@ export async function createAccessPoint(_p: ActionState, fd: FormData): Promise<
   );
 }
 
+// --- Object detail ---
+export async function addCarrierToObject(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const objectId = str(fd, 'objectId');
+  return run(
+    `/objects/${objectId}/carriers`,
+    { carrierType: str(fd, 'carrierType') || 'qr' },
+    `/admin/objects/${objectId}`,
+    'Nosič přidán.',
+  );
+}
+
+export async function archiveObject(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(`/objects/${str(fd, 'objectId')}`, null, '/admin/objects', 'Objekt archivován.', 'DELETE');
+}
+
+// --- Billing detail ---
+export async function cancelSubscription(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const id = str(fd, 'subscriptionId');
+  return run(
+    `/billing/subscriptions/${id}/cancel`,
+    { immediately: str(fd, 'immediately') === 'true' },
+    `/admin/billing/${id}`,
+    'Předplatné zrušeno.',
+  );
+}
+
 // --- Users ---
+export async function updateUserRole(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(
+    `/users/${str(fd, 'userId')}/role`,
+    { tenantRole: str(fd, 'tenantRole') },
+    '/admin/users',
+    'Role změněna.',
+    'PATCH',
+  );
+}
+
+export async function setUserStatus(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const action = str(fd, 'status') === 'suspended' ? 'suspend' : 'activate';
+  return run(`/users/${str(fd, 'userId')}/${action}`, null, '/admin/users', 'Stav změněn.');
+}
+
 export async function inviteUser(_p: ActionState, fd: FormData): Promise<ActionState> {
   try {
     const res = await apiFetch<{ tempPassword: string }>('/users', {

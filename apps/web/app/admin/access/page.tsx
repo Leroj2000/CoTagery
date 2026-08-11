@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiFetch } from '../../lib/server-api';
 import type { AccessPoint } from '../../lib/types';
 import { Section, Table, Badge, Mono } from '../ui';
@@ -40,7 +41,9 @@ export default async function AccessPage() {
         <Table
           head={['Název', 'Zóna', 'Směr', 'ID']}
           rows={points.map((p) => [
-            p.name,
+            <Link key="n" href={`/admin/access/${p.id}`} className="text-blue-600 hover:underline">
+              {p.name}
+            </Link>,
             <Badge key="z">{p.zoneKey}</Badge>,
             p.direction,
             <Mono key="id">{p.id.slice(0, 8)}…</Mono>,
