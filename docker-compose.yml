@@ -20,6 +20,7 @@ x-api-env: &api-env
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: tagery
       POSTGRES_PASSWORD: tagery
@@ -34,6 +35,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -59,6 +61,7 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
       target: runtime
+    restart: unless-stopped
     environment: *api-env
     ports:
       - "3001:3001"
@@ -73,6 +76,7 @@ services:
       args:
         # Bakuje se do buildu → veřejná URL API (prohlížeč volá /s, /activate).
         NEXT_PUBLIC_API_URL: http://${PUBLIC_HOST:-localhost}:3001
+    restart: unless-stopped
     environment:
       NODE_ENV: production
       # Server-side volání web → API uvnitř docker sítě.
