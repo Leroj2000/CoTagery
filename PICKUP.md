@@ -31,6 +31,10 @@ pnpm se instaluje přes `npm i -g pnpm@9` (corepack v tomto prostředí nebyl).
 ## Další krok
 Reálná **Stripe integrace** místo `StubPspService` (ADR-0007) – adaptér s Connect onboardingem (Tok 1) + usage report do Stripe (Tok 2, tabulka `platform_usage_meters` připravená). Pak zbývající follow-upy níže.
 
+## Demo (varianta A – HOTOVO)
+- `pnpm --filter @tagery/api seed:demo` naplní demo tenant přes reálné služby (idempotentní, čisté ukončení). Runbook: **`DEMO.md`**. Ověřeno na čisté DB (objects=3, tiers=2, members=3, memberships=3, unassigned=7, subs=1, users=3, groups=1, access=1, 16 skenů). Login `owner@demo.tagery`/`demo1234`. Pozn.: `seed:demo` bootstrapuje AppModule (Redis+DB musí běžet); vypíše PINy self-aktivačních nosičů + temp heslo editora.
+- **Další (varianta B – MVP-hardening):** reálné Stripe místo StubPsp, e-mailová invite (SMTP), deployment na hosting (HTTPS/secrets), OAuth2/SSO.
+
 ## Nevyřešené úkoly (backlog)
 - ✅ **Veřejná self-aktivace (PIN)** – HOTOVO. Aktivační HTML stránka i HOTOVO (`apps/web/app/activate/[code]`). Follow-up: doručení PINu přes SMS, edit-token authed edit endpointy. Spec: `tasks/FEAT-public-self-activation/`.
 - ✅ **EPIC-16 Membership + EPIC-17 Billing (stub)** – HOTOVO na `main`. Zbývá: reálné Stripe (viz Další krok).
