@@ -10,9 +10,15 @@ function apiBase(): string {
   return process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 }
 
+// COOKIE_SECURE override (viz session.ts) – vypnutelné pro demo přes plain http.
+const COOKIE_SECURE =
+  process.env.COOKIE_SECURE !== undefined
+    ? process.env.COOKIE_SECURE === 'true'
+    : process.env.NODE_ENV === 'production';
+
 const COOKIE_COMMON = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
+  secure: COOKIE_SECURE,
   sameSite: 'lax' as const,
   path: '/',
 };

@@ -55,7 +55,71 @@ pnpm --filter @tagery/api migration:run && pnpm --filter @tagery/api seed && pnp
 8. **Předplatné** (`/admin/billing`) → detail → **faktura** s rozpadem DPH; nový **checkout**.
 9. **Uživatelé / Skupiny / Nastavení** – správa rolí, skupin, branding tenanta.
 
-## Spuštění na VPS (veřejné demo)
+## 🚀 Plně dockerizované demo – jedním příkazem
+
+Na čistém serveru s Dockerem stačí:
+```bash
+# lokálně:
+docker compose up --build
+
+# na VPS (nahraď svou veřejnou IP nebo doménou):
+PUBLIC_HOST=1.2.3.4 docker compose up --build -d
+```
+Docker sám postaví API i web, spustí PostgreSQL + Redis, provede migrace a nahraje
+demo data. Za pár minut běží:
+- Admin: `http://<PUBLIC_HOST>:3000/admin` (`owner@demo.tagery` / `demo1234`)
+- API: `http://<PUBLIC_HOST>:3001`
+
+PINy self-aktivačních nosičů a heslo editora najdeš v logu migrace:
+`docker compose logs migrate`.
+
+> **Firewall na VPS:** otevři porty 3000 a 3001 (`sudo ufw allow 3000 && sudo ufw allow 3001`).
+> **HTTPS:** přes plain http nech `COOKIE_SECURE=false` (default). S doménou a HTTPS
+> (viz Caddy níže) nastav `COOKIE_SECURE=true`.
+
+### Jak to funguje (polopatě)
+Docker = způsob, jak zabalit aplikaci i s prostředím do **„krabice" (kontejneru)**,
+která běží všude stejně. `docker-compose.yml` je **seznam krabic** a jak je spolu
+propojit. Máme pět:
+
+| Krabice | Co dělá |
+|---|---|
+| `postgres` | databáze (trvalá data ve „volume" `pgdata`) |
+| `redis` | rychlá cache / fronty |
+| `migrate` | **jednorázový** pomocník: připraví databázi (migrace) a nahraje demo data, pak skončí |
+| `api` | backend (NestJS) – nastartuje až `migrate` úspěšně doběhne |
+| `web` | frontend (Next.js) – co vidíš v prohlížeči |
+
+Pořadí hlídá `depends_on` + healthchecky: nejdřív naběhne DB a cache, pak proběhne
+`migrate`, teprve potom `api` a `web`. Proměnná `PUBLIC_HOST` řekne webu a QR kódům,
+na jaké veřejné adrese demo poběží.
+
+### Jak Docker z tohohle „vytvoří" běžící aplikaci
+Jsou dva kroky – **image** (šablona) a **container** (běžící instance z šablony):
+
+1. **Build (šablona):** `docker compose build` vezme *Dockerfile* (recept) každé
+   appky a upeče z něj **image** – neměnný balíček s kódem a závislostmi.
+   `apps/api/Dockerfile` má víc „vrstev" (targetů): `base` (build), `migrate`
+   (pomocník s migracemi), `runtime` (štíhlý běhový API). `apps/web/Dockerfile`
+   při buildu zapeče veřejnou URL API (`NEXT_PUBLIC_API_URL`).
+2. **Up (běh):** `docker compose up` z každého image spustí **container** (běžící
+   proces) a propojí je do jedné sítě. `--build` znamená „nejdřív přestav image,
+   pak spusť".
+
+Užitečné příkazy:
+```bash
+docker compose build              # jen postavit image (bez spuštění)
+docker compose up --build -d      # postavit + spustit na pozadí
+docker compose ps                 # co běží
+docker compose logs -f api        # živé logy API (nebo web/migrate)
+docker compose down               # zastavit a smazat containery (data zůstanou)
+docker compose down -v            # + smazat i data (volume) → čistý reset
+docker compose up --build -d web  # přestavět a restartovat jen web
+```
+Změníš-li kód, `docker compose up --build` přestaví jen to, co je potřeba (zbytek
+se vezme z cache).
+
+## Spuštění na VPS (dev mód – alternativa bez Dockeru pro appky)
 
 Nejspolehlivější cesta: **PostgreSQL + Redis v Dockeru, API a web v dev módu z hostu**
 (prod Docker image API nemá `ts-node`, takže migrace/seed z něj neproběhnou; a

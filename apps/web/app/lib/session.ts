@@ -13,7 +13,15 @@ export interface TokenPair {
   refreshToken: string;
 }
 
-const isProd = process.env.NODE_ENV === 'production';
+/**
+ * Mají být session cookies `secure` (jen přes HTTPS)? Default dle NODE_ENV;
+ * `COOKIE_SECURE=false` to vypne pro demo přes plain http (jinak by se cookie
+ * přes http neposlala a login by nefungoval).
+ */
+const cookieSecure =
+  process.env.COOKIE_SECURE !== undefined
+    ? process.env.COOKIE_SECURE === 'true'
+    : process.env.NODE_ENV === 'production';
 
 /** Interní base URL API pro server-to-server volání (BFF). */
 export function apiBase(): string {
@@ -23,7 +31,7 @@ export function apiBase(): string {
 /** Uloží access/refresh do httpOnly cookies s životností dle exp tokenů. */
 export async function setSessionCookies(tokens: TokenPair): Promise<void> {
   const store = await cookies();
-  const common = { httpOnly: true, secure: isProd, sameSite: 'lax' as const, path: '/' };
+  const common = { httpOnly: true, secure: cookieSecure, sameSite: 'lax' as const, path: '/' };
   store.set(ACCESS_COOKIE, tokens.accessToken, {
     ...common,
     maxAge: jwtMaxAge(tokens.accessToken, ACCESS_FALLBACK),

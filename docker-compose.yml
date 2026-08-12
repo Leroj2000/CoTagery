@@ -1,3 +1,22 @@
+# Plně dockerizované demo. Spuštění jedním příkazem:
+#   PUBLIC_HOST=<ip-nebo-domena> docker compose up --build -d
+# Lokálně stačí:  docker compose up --build
+#
+# PUBLIC_HOST  = adresa, na které bude demo veřejně dostupné (default localhost).
+# COOKIE_SECURE= 'true' jen když jedeš přes HTTPS (jinak login přes http nefunguje).
+
+x-api-env: &api-env
+  NODE_ENV: production
+  API_PORT: 3001
+  DATABASE_URL: postgres://tagery:tagery@postgres:5432/tagery
+  APP_DATABASE_URL: postgres://tagery_app:tagery_app@postgres:5432/tagery
+  REDIS_URL: redis://redis:6379
+  STORAGE_DRIVER: local
+  STORAGE_LOCAL_PATH: /app/.storage
+  JWT_SECRET: ${JWT_SECRET:-demo-secret-change-me-min-16-chars}
+  BILLING_WEBHOOK_SECRET: ${BILLING_WEBHOOK_SECRET:-whsec_demo}
+  PUBLIC_BASE_URL: http://${PUBLIC_HOST:-localhost}:3001
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -5,8 +24,6 @@ services:
       POSTGRES_USER: tagery
       POSTGRES_PASSWORD: tagery
       POSTGRES_DB: tagery
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -17,40 +34,51 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  api:
+  # Jednorázová služba: migrace schématu + demo data, pak skončí (exit 0).
+  migrate:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    environment:
-      NODE_ENV: production
-      API_PORT: 3001
-      DATABASE_URL: postgres://tagery:tagery@postgres:5432/tagery
-      APP_DATABASE_URL: postgres://tagery_app:tagery_app@postgres:5432/tagery
-      REDIS_URL: redis://redis:6379
-      STORAGE_DRIVER: local
-      STORAGE_LOCAL_PATH: /app/.storage
-    ports:
-      - "3001:3001"
+      target: migrate
+    environment: *api-env
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runtime
+    environment: *api-env
+    ports:
+      - "3001:3001"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        # Bakuje se do buildu → veřejná URL API (prohlížeč volá /s, /activate).
+        NEXT_PUBLIC_API_URL: http://${PUBLIC_HOST:-localhost}:3001
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NODE_ENV: production
+      # Server-side volání web → API uvnitř docker sítě.
+      API_URL: http://api:3001
+      # Přes plain http musí být false, jinak se httpOnly cookie nepošle.
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     ports:
       - "3000:3000"
     depends_on:
