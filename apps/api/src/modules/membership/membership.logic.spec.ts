@@ -50,5 +50,19 @@ describe('membership.logic', () => {
     it('prodlouží od teď, když už členství expirovalo', () => {
       expect(extendValidTo(past, 30, now)).toEqual(new Date('2026-07-01T12:00:00Z'));
     });
+
+    it('regrese: předplatné bez trialu → initial teď, po první platbě přesně 1 období', () => {
+      // createSubscriptionMembership(non-trial): validTo = teď (0 dní)
+      const initial = extendValidTo(now, 0, now);
+      expect(initial).toEqual(now);
+      // invoice.paid → renew() přidá jedno období (ne dvě)
+      const afterPay = extendValidTo(initial, 30, now);
+      expect(afterPay).toEqual(new Date('2026-07-01T12:00:00Z'));
+    });
+
+    it('regrese: trial dostane jen délku trialu, ne celé období', () => {
+      const trialTo = extendValidTo(now, 14, now);
+      expect(trialTo).toEqual(new Date('2026-06-15T12:00:00Z'));
+    });
   });
 });

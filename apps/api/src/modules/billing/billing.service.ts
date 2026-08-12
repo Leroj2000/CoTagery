@@ -3,7 +3,6 @@ import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { TenantContextService } from '../../core/tenancy/tenant-context.service';
 import { MembershipService } from '../membership/membership.service';
-import { extendValidTo } from '../membership/membership.logic';
 import { BillingCustomer } from './entities/billing-customer.entity';
 import { Subscription } from './entities/subscription.entity';
 import { Invoice } from './entities/invoice.entity';
@@ -52,19 +51,14 @@ export class BillingService {
     );
 
     const trialDays = dto.trialDays ?? 0;
-    const now = new Date();
-    const periodEnd = extendValidTo(now, trialDays > 0 ? trialDays : tier.validityDays, now);
 
-    // Členství – dokud není zaplaceno, drží se přes trial nebo čeká na invoice.paid.
-    const membership = await this.memberships.issueMembership({
-      memberId: dto.memberId,
-      tierId: dto.tierId,
-      autoRenew: true,
-    });
-    // Trialing → aktivní hned; jinak čeká na platbu (suspended do invoice.paid).
-    await this.memberships.setMembershipStatus(
-      membership.id,
-      trialDays > 0 ? 'active' : 'suspended',
+    // Členství bez předběžného udělení celého období: platí jen trial (0 = zatím
+    // neplatné), plné období přidá až první invoice.paid (renew). Zabraňuje
+    // zdvojení platnosti a udělení celého období trialovému členovi.
+    const membership = await this.memberships.createSubscriptionMembership(
+      dto.memberId,
+      dto.tierId,
+      trialDays,
     );
 
     const subRepo = this.repo(Subscription);
@@ -76,7 +70,7 @@ export class BillingService {
         tierId: tier.id,
         status: trialDays > 0 ? 'trialing' : 'incomplete',
         pspSubscriptionRef: session.pspSubscriptionRef,
-        currentPeriodEnd: periodEnd,
+        currentPeriodEnd: membership.validTo,
       }),
     );
     await this.memberships.linkSubscription(membership.id, subscription.id);

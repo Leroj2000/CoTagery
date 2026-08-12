@@ -130,6 +130,38 @@ export class MembershipService {
     return this.repo(Membership).find({ order: { createdAt: 'DESC' }, take: 500 });
   }
 
+  /**
+   * Členství řízené předplatným (EPIC-17). Na rozdíl od ručního `issueMembership`
+   * NEuděluje předem celé období – počáteční platnost je jen trial (0 = žádná).
+   * Plné období přidá až první `invoice.paid` přes `renew()`, takže se platnost
+   * nezdvojí a trial nedostane celé období navíc.
+   */
+  async createSubscriptionMembership(
+    memberId: string,
+    tierId: string,
+    trialDays: number,
+  ): Promise<Membership> {
+    await this.getTier(tierId);
+    const member = await this.repo(Member).findOne({ where: { id: memberId } });
+    if (!member) throw new NotFoundException('Člen neexistuje');
+
+    const now = new Date();
+    const validTo = extendValidTo(now, Math.max(0, trialDays), now);
+    const repo = this.repo(Membership);
+    return repo.save(
+      repo.create({
+        tenantId: this.context.tenantId,
+        memberId,
+        tierId,
+        status: trialDays > 0 ? 'active' : 'suspended',
+        validFrom: now,
+        validTo,
+        autoRenew: true,
+        subscriptionId: null,
+      }),
+    );
+  }
+
   async getMembership(membershipId: string): Promise<Membership> {
     const m = await this.repo(Membership).findOne({ where: { id: membershipId } });
     if (!m) throw new NotFoundException('Členství neexistuje');

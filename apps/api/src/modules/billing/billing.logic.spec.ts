@@ -1,9 +1,4 @@
-import {
-  computeVat,
-  subscriptionStatusToMembership,
-  signWebhook,
-  verifyWebhookSignature,
-} from './billing.logic';
+import { computeVat, signWebhook, verifyWebhookSignature } from './billing.logic';
 
 describe('billing.logic', () => {
   describe('computeVat', () => {
@@ -21,19 +16,6 @@ describe('billing.logic', () => {
         vatRate: '0',
         gross: '100.00',
       });
-    });
-  });
-
-  describe('subscriptionStatusToMembership', () => {
-    it('active/trialing/past_due → active (grace drží členství)', () => {
-      expect(subscriptionStatusToMembership('active')).toBe('active');
-      expect(subscriptionStatusToMembership('trialing')).toBe('active');
-      expect(subscriptionStatusToMembership('past_due')).toBe('active');
-    });
-
-    it('canceled → cancelled, incomplete → suspended', () => {
-      expect(subscriptionStatusToMembership('canceled')).toBe('cancelled');
-      expect(subscriptionStatusToMembership('incomplete')).toBe('suspended');
     });
   });
 

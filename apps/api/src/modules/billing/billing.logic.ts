@@ -1,6 +1,4 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import type { MembershipStatus } from '../membership/entities/membership.entity';
-import type { SubscriptionStatus } from './entities/subscription.entity';
 
 /**
  * DPH rozpad faktury. Reverse charge (EU B2B mimo CZ) → 0 % a příznak;
@@ -17,24 +15,6 @@ export function computeVat(
   const vat = Math.round(net * rate) / 100;
   const gross = Math.round((net + vat) * 100) / 100;
   return { vatAmount: vat.toFixed(2), vatRate: rate.toFixed(0), gross: gross.toFixed(2) };
-}
-
-/**
- * Mapování stavu předplatného na stav členství (EPIC-16/17). `past_due` drží
- * členství aktivní po dobu grace (dunning); expirace se řeší až časovým během.
- */
-export function subscriptionStatusToMembership(status: SubscriptionStatus): MembershipStatus {
-  switch (status) {
-    case 'active':
-    case 'trialing':
-    case 'past_due':
-      return 'active';
-    case 'canceled':
-      return 'cancelled';
-    case 'incomplete':
-    default:
-      return 'suspended';
-  }
 }
 
 /** Podpis webhook payloadu (stub PSP) – HMAC-SHA256 hex. */
