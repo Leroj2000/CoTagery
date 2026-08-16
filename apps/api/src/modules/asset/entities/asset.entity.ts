@@ -52,4 +52,13 @@ export class Asset extends BaseTenantEntity {
   /** Předpokládané vrácení (u půjček). */
   @Column({ type: 'timestamptz', name: 'due_at', nullable: true })
   dueAt!: Date | null;
+
+  // --- Asset nesting (§14): věc může obsahovat další věci ---
+  /** Je to kontejner (dodávka, kufr, skříň), který může obsahovat jiné věci? */
+  @Column({ type: 'boolean', name: 'can_contain_assets', default: false })
+  canContainAssets!: boolean;
+
+  /** Nadřazená věc (v čem je tato věc uložena). Null = není v ničem. */
+  @Column({ type: 'uuid', name: 'parent_asset_id', nullable: true })
+  parentAssetId!: string | null;
 }

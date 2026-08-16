@@ -236,9 +236,32 @@ export async function createAsset(_p: ActionState, fd: FormData): Promise<Action
       manufacturer: str(fd, 'manufacturer') || undefined,
       serialNumber: str(fd, 'serialNumber') || undefined,
       homeLocationId: str(fd, 'homeLocationId') || undefined,
+      canContainAssets: str(fd, 'canContainAssets') === 'true',
     },
     '/admin/assets',
     'Věc vytvořena.',
+  );
+}
+
+// --- Asset nesting (§14) ---
+export async function putIntoContainer(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const containerId = str(fd, 'containerId');
+  return run(
+    `/assets/${containerId}/contents`,
+    { childAssetId: str(fd, 'childAssetId') },
+    `/admin/assets/${containerId}`,
+    'Vloženo do kontejneru.',
+  );
+}
+
+export async function removeFromContainer(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const containerId = str(fd, 'containerId');
+  return run(
+    `/assets/contents/${str(fd, 'childId')}`,
+    null,
+    `/admin/assets/${containerId}`,
+    'Vyjmuto z kontejneru.',
+    'DELETE',
   );
 }
 

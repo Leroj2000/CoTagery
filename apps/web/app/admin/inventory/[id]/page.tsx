@@ -49,7 +49,7 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
             title={`Inventura — ${locName.get(check.locationId) ?? 'místo'}`}
             description={`Očekáváno: ${expected} · naskenováno: ${detail.scannedCount}`}
             icon={<ClipboardCheck size={18} />}
-            action={open ? <Badge tone="amber">probíhá</Badge> : <StatusBadge status="paid" />}
+            action={open ? <Badge tone="amber">probíhá</Badge> : <Badge tone="green">uzavřeno</Badge>}
           />
         </div>
       </div>

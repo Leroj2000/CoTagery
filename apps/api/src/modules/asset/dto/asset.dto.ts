@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import type { HolderType, MovementType } from '../movement.logic';
 
 const MOVEMENT_TYPES: MovementType[] = [
@@ -47,6 +47,16 @@ export class CreateAssetDto {
   @IsOptional()
   @IsUUID()
   homeLocationId?: string;
+
+  /** Označit jako kontejner (dodávka, kufr) – může obsahovat další věci. */
+  @IsOptional()
+  @IsBoolean()
+  canContainAssets?: boolean;
+}
+
+export class PutIntoContainerDto {
+  @IsUUID()
+  childAssetId!: string;
 }
 
 export class PerformMovementDto {

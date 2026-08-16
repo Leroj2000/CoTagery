@@ -12,6 +12,7 @@ import {
   type AssetState,
   type MovementType,
 } from './movement.logic';
+import { wouldCreateCycle } from './nesting.logic';
 import { generatePublicCode } from '../../core/domain/public-code';
 import type { CreateAssetDto, PerformMovementDto } from './dto/asset.dto';
 
@@ -62,6 +63,8 @@ export class AssetService {
         serialNumber: dto.serialNumber ?? null,
         inventoryNumber: dto.inventoryNumber ?? null,
         homeLocationId: dto.homeLocationId ?? null,
+        canContainAssets: dto.canContainAssets ?? false,
+        parentAssetId: null,
         status: init.status,
         currentHolderType: init.holderType,
         currentHolderId: init.holderId,
@@ -69,6 +72,39 @@ export class AssetService {
         dueAt: init.dueAt,
       }),
     );
+  }
+
+  // --- Asset nesting (§14): věc ve věci ---
+
+  /** Obsah kontejneru (věci uložené přímo v něm). */
+  listContents(containerId: string): Promise<Asset[]> {
+    return this.repo(Asset).find({ where: { parentAssetId: containerId }, order: { name: 'ASC' } });
+  }
+
+  /** Vloží věc do kontejneru. Kontejner musí být `canContainAssets`; ochrana proti cyklům. */
+  async putInto(containerId: string, childId: string): Promise<Asset> {
+    const container = await this.get(containerId);
+    if (!container.canContainAssets) {
+      throw new BadRequestException('Cílová věc není kontejner');
+    }
+    const child = await this.get(childId);
+
+    // Ochrana proti cyklu: postav mapu rodičů a ověř.
+    const all = await this.repo(Asset).find();
+    const parentOf = new Map(all.map((a) => [a.id, a.parentAssetId]));
+    if (wouldCreateCycle(childId, containerId, parentOf)) {
+      throw new BadRequestException('Nelze vložit věc do sebe ani do svého potomka');
+    }
+
+    child.parentAssetId = containerId;
+    return this.repo(Asset).save(child);
+  }
+
+  /** Vyjme věc z kontejneru. */
+  async removeFromContainer(childId: string): Promise<Asset> {
+    const child = await this.get(childId);
+    child.parentAssetId = null;
+    return this.repo(Asset).save(child);
   }
 
   listMovements(assetId: string): Promise<Movement[]> {

@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { Package, Home, MapPin, User, CalendarClock } from 'lucide-react';
+import { Package, Home, MapPin, User, CalendarClock, Box } from 'lucide-react';
 import { apiFetch, ApiError } from '../../../lib/server-api';
 import type { Asset, Movement, Person, Location, DataCarrier } from '../../../lib/types';
 import { Section, StatusBadge, Badge, Mono, PageHeader, Table, EmptyState } from '../../ui';
 import { ActionForm } from '../../action-form';
+import { ActionButton } from '../../action-button';
 import { MovementForm } from '../movement-form';
-import { addCarrierToObject } from '../../actions';
+import { addCarrierToObject, putIntoContainer, removeFromContainer } from '../../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,15 +40,23 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
     if (e instanceof ApiError && e.status === 404) notFound();
     throw e;
   }
-  const [movements, people, locations, carriers] = await Promise.all([
+  const [movements, people, locations, carriers, allAssets, contents] = await Promise.all([
     apiFetch<Movement[]>(`/assets/${id}/movements`),
     apiFetch<Person[]>('/people'),
     apiFetch<Location[]>('/locations'),
     apiFetch<DataCarrier[]>(`/objects/${asset.digitalObjectId}/carriers`).catch(() => []),
+    apiFetch<Asset[]>('/assets'),
+    asset.canContainAssets ? apiFetch<Asset[]>(`/assets/${id}/contents`) : Promise.resolve([]),
   ]);
 
   const personName = new Map(people.map((p) => [p.id, p.name]));
   const locName = new Map(locations.map((l) => [l.id, l.name]));
+  const assetName = new Map(allAssets.map((a) => [a.id, a.name]));
+  // Kandidáti na vložení: nekontejnerové/volné věci mimo tuto věc a její obsah.
+  const contentIds = new Set(contents.map((c) => c.id));
+  const nestableOptions = allAssets
+    .filter((a) => a.id !== asset.id && !a.parentAssetId && !contentIds.has(a.id))
+    .map((a) => ({ value: a.id, label: a.name }));
   const label = (type: string | null, id: string | null): string => {
     if (!id) return '—';
     if (type === 'person') return personName.get(id) ?? '👤';
@@ -132,6 +141,54 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
           </div>
         )}
       </Section>
+
+      {asset.parentAssetId && (
+        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          <Box size={15} className="text-slate-400" />
+          Uloženo v: <span className="font-medium text-slate-800">{assetName.get(asset.parentAssetId) ?? '—'}</span>
+          <span className="ml-auto">
+            <ActionButton
+              action={removeFromContainer}
+              hidden={{ containerId: asset.parentAssetId, childId: asset.id }}
+              label="Vyjmout"
+            />
+          </span>
+        </div>
+      )}
+
+      {asset.canContainAssets && (
+        <Section title="Obsah kontejneru" description="Věci uložené v této věci (dodávka, kufr…)">
+          <div className="flex flex-col gap-4">
+            {contents.length === 0 ? (
+              <EmptyState>Kontejner je prázdný.</EmptyState>
+            ) : (
+              <Table
+                head={['Věc', 'Stav', 'Akce']}
+                rows={contents.map((c) => [
+                  <Link key="n" href={`/admin/assets/${c.id}`} className="font-medium text-brand-700 hover:underline">
+                    {c.name}
+                  </Link>,
+                  <StatusBadge key="s" status={c.status} />,
+                  <ActionButton
+                    key="r"
+                    action={removeFromContainer}
+                    hidden={{ containerId: asset.id, childId: c.id }}
+                    label="Vyjmout"
+                  />,
+                ])}
+              />
+            )}
+            {nestableOptions.length > 0 && (
+              <ActionForm
+                action={putIntoContainer}
+                hidden={{ containerId: asset.id }}
+                submitLabel="Vložit věc"
+                fields={[{ name: 'childAssetId', label: 'Přidat věc do kontejneru', required: true, options: nestableOptions }]}
+              />
+            )}
+          </div>
+        </Section>
+      )}
 
       <Section title={`Historie pohybů (${movements.length})`} description="Nedotknutelný ledger – oprava = nový pohyb">
         <Table

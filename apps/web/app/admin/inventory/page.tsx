@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { ClipboardCheck } from 'lucide-react';
 import { apiFetch } from '../../lib/server-api';
 import type { InventoryCheck, Location } from '../../lib/types';
-import { PageHeader, Section, Table, Badge, StatusBadge, EmptyState } from '../ui';
+import { PageHeader, Section, Table, Badge, EmptyState } from '../ui';
 import { ActionForm } from '../action-form';
 import { startInventory } from '../actions';
 
@@ -51,7 +51,7 @@ export default async function InventoryPage() {
                 {fmtDateTime(c.createdAt)}
               </Link>,
               locName.get(c.locationId) ?? '—',
-              c.status === 'open' ? <Badge tone="amber">probíhá</Badge> : <StatusBadge status="paid" />,
+              c.status === 'open' ? <Badge tone="amber">probíhá</Badge> : <Badge tone="green">uzavřeno</Badge>,
               c.status === 'closed' ? c.foundCount : '—',
               c.status === 'closed' ? (c.missingCount > 0 ? <Badge tone="red">{c.missingCount}</Badge> : 0) : '—',
               c.status === 'closed' ? (c.unexpectedCount > 0 ? <Badge tone="amber">{c.unexpectedCount}</Badge> : 0) : '—',

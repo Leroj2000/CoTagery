@@ -15,6 +15,8 @@ export interface Asset {
   currentHolderId: string | null;
   responsiblePersonId: string | null;
   dueAt: string | null;
+  canContainAssets: boolean;
+  parentAssetId: string | null;
   actions?: string[];
 }
 

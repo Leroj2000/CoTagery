@@ -74,6 +74,14 @@ export default async function AssetsPage() {
             { name: 'manufacturer', label: 'Výrobce', placeholder: 'Makita' },
             { name: 'serialNumber', label: 'Sériové číslo' },
             { name: 'homeLocationId', label: 'Patří do (home)', options: locationOptions },
+            {
+              name: 'canContainAssets',
+              label: 'Kontejner (může obsahovat věci)',
+              options: [
+                { value: 'false', label: 'Ne' },
+                { value: 'true', label: 'Ano (dodávka, kufr…)' },
+              ],
+            },
           ]}
         />
       </Section>
