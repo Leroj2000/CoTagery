@@ -45,6 +45,11 @@ export class RentalController {
   }
 
   // --- Rental (tenant-scoped) ---
+  @Get('rental/items')
+  listItems(): Promise<Item[]> {
+    return this.rental.listItems();
+  }
+
   @Post('rental/items')
   @RequireRole('EDITOR')
   createItem(@Body() dto: CreateItemDto): Promise<Item> {
@@ -58,6 +63,18 @@ export class RentalController {
     @Body() dto: CreateLoanDto,
   ): Promise<Loan> {
     return this.rental.createLoan(itemId, dto);
+  }
+
+  @Post('rental/loans/:loanId/return')
+  @RequireRole('EDITOR')
+  returnLoan(@Param('loanId', ParseUUIDPipe) loanId: string): Promise<Loan> {
+    return this.rental.returnLoan(loanId);
+  }
+
+  @Post('rental/loans/:loanId/cancel')
+  @RequireRole('EDITOR')
+  cancelLoan(@Param('loanId', ParseUUIDPipe) loanId: string): Promise<Loan> {
+    return this.rental.cancelLoan(loanId);
   }
 
   @Post('rental/loans/:loanId/reviews')

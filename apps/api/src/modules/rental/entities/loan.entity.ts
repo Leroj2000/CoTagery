@@ -18,4 +18,8 @@ export class Loan extends BaseTenantEntity {
 
   @Column({ type: 'text', default: 'active' })
   status!: 'pending_verification' | 'active' | 'returned' | 'cancelled';
+
+  /** Kdy byla věc vrácena (audit). Null = dosud nevrácena. */
+  @Column({ type: 'timestamptz', name: 'returned_at', nullable: true })
+  returnedAt!: Date | null;
 }

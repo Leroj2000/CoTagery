@@ -19,4 +19,11 @@ export class Item extends BaseTenantEntity {
   /** Minimální úroveň ověření nájemce nutná k půjčení (ADR-0005). */
   @Column({ type: 'text', name: 'required_verification_level', default: 'contact' })
   requiredVerificationLevel!: 'none' | 'contact' | 'document' | 'full_kyc';
+
+  /**
+   * Dostupnost věci – odvozuje se z workflow, ne ručně (LOAN → loaned,
+   * RETURN/CANCEL → available). `available` = zpět v assetu/skladu.
+   */
+  @Column({ type: 'text', default: 'available' })
+  status!: 'available' | 'loaned';
 }

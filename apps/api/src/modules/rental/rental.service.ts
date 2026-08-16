@@ -25,9 +25,19 @@ export class RentalService {
     );
   }
 
+  listItems(): Promise<Item[]> {
+    return this.context.manager.getRepository(Item).find({ order: { createdAt: 'DESC' } });
+  }
+
   async createLoan(itemId: string, dto: CreateLoanDto): Promise<Loan> {
-    const item = await this.context.manager.getRepository(Item).findOne({ where: { id: itemId } });
+    const items = this.context.manager.getRepository(Item);
+    const item = await items.findOne({ where: { id: itemId } });
     if (!item) throw new NotFoundException('Věc neexistuje');
+
+    // Věc nelze půjčit, pokud je už vypůjčená (stav se odvozuje z workflow).
+    if (item.status === 'loaned') {
+      throw new BadRequestException('Věc je již vypůjčená');
+    }
 
     const renter = await this.context.manager
       .getRepository(RenterProfile)
@@ -42,7 +52,7 @@ export class RentalService {
     }
 
     const repo = this.context.manager.getRepository(Loan);
-    return repo.save(
+    const loan = await repo.save(
       repo.create({
         tenantId: this.context.tenantId,
         itemId,
@@ -52,6 +62,43 @@ export class RentalService {
         status: 'active',
       }),
     );
+
+    // Odvozený stav věci: půjčením přechází na 'loaned'.
+    item.status = 'loaned';
+    await items.save(item);
+    return loan;
+  }
+
+  /** Vrácení věci: uzavře půjčku a vrátí věc zpět do assetu (available). */
+  async returnLoan(loanId: string): Promise<Loan> {
+    return this.closeLoan(loanId, 'returned');
+  }
+
+  /** Zrušení půjčky: uzavře půjčku a uvolní věc (available). */
+  async cancelLoan(loanId: string): Promise<Loan> {
+    return this.closeLoan(loanId, 'cancelled');
+  }
+
+  private async closeLoan(loanId: string, status: 'returned' | 'cancelled'): Promise<Loan> {
+    const loans = this.context.manager.getRepository(Loan);
+    const loan = await loans.findOne({ where: { id: loanId } });
+    if (!loan) throw new NotFoundException('Půjčka neexistuje');
+    if (loan.status === 'returned' || loan.status === 'cancelled') {
+      throw new BadRequestException('Půjčka je již uzavřená');
+    }
+
+    loan.status = status;
+    if (status === 'returned') loan.returnedAt = new Date();
+    await loans.save(loan);
+
+    // Odvozený stav věci: vrácením/zrušením se uvolní zpět do assetu.
+    const items = this.context.manager.getRepository(Item);
+    const item = await items.findOne({ where: { id: loan.itemId } });
+    if (item) {
+      item.status = 'available';
+      await items.save(item);
+    }
+    return loan;
   }
 
   async submitReview(loanId: string, dto: CreateReviewDto): Promise<RentalReview> {
