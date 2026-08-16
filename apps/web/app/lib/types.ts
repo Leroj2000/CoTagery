@@ -1,5 +1,52 @@
 /** Sdílené tvary entit vrácených API (jen pole, která admin renderuje). */
 
+export interface Asset {
+  id: string;
+  digitalObjectId: string;
+  name: string;
+  category: string | null;
+  manufacturer: string | null;
+  model: string | null;
+  serialNumber: string | null;
+  inventoryNumber: string | null;
+  homeLocationId: string | null;
+  status: string;
+  currentHolderType: 'location' | 'person' | 'asset' | null;
+  currentHolderId: string | null;
+  responsiblePersonId: string | null;
+  dueAt: string | null;
+  actions?: string[];
+}
+
+export interface Movement {
+  id: string;
+  type: string;
+  fromType: string | null;
+  fromId: string | null;
+  toType: string | null;
+  toId: string | null;
+  actorPersonId: string | null;
+  dueAt: string | null;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface Person {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+}
+
+export interface Location {
+  id: string;
+  name: string;
+  type: string;
+  address: string | null;
+  parentId: string | null;
+}
+
 export interface DigitalObject {
   id: string;
   moduleType: string;

@@ -1,5 +1,8 @@
 import {
   LayoutDashboard,
+  Package,
+  MapPin,
+  Contact,
   Boxes,
   QrCode,
   CreditCard,
@@ -20,6 +23,9 @@ export interface NavItem {
 /** Položky admin navigace (sdíleno server dashboardem i client nav). */
 export const NAV_ITEMS: NavItem[] = [
   { href: '/admin', label: 'Přehled', icon: LayoutDashboard },
+  { href: '/admin/assets', label: 'Věci', icon: Package },
+  { href: '/admin/locations', label: 'Místa', icon: MapPin },
+  { href: '/admin/people', label: 'Lidé', icon: Contact },
   { href: '/admin/objects', label: 'Objekty', icon: Boxes },
   { href: '/admin/carriers', label: 'Nosiče', icon: QrCode },
   { href: '/admin/membership', label: 'Členství', icon: CreditCard },

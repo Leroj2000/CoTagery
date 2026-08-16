@@ -226,6 +226,71 @@ export async function addBenefit(_p: ActionState, fd: FormData): Promise<ActionS
   );
 }
 
+// --- Asset custody (Fáze A/B) ---
+export async function createAsset(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(
+    '/assets',
+    {
+      name: str(fd, 'name'),
+      category: str(fd, 'category') || undefined,
+      manufacturer: str(fd, 'manufacturer') || undefined,
+      serialNumber: str(fd, 'serialNumber') || undefined,
+      homeLocationId: str(fd, 'homeLocationId') || undefined,
+    },
+    '/admin/assets',
+    'Věc vytvořena.',
+  );
+}
+
+/**
+ * Provede pohyb assetu. `target` je zakódované "person:ID" / "location:ID"
+ * (nebo prázdné pro dispose). Rozloží se na toType/toId pro API.
+ */
+export async function performAssetMovement(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const assetId = str(fd, 'assetId');
+  const target = str(fd, 'target');
+  const [toType, toId] = target.includes(':') ? target.split(':') : [undefined, undefined];
+  return run(
+    `/assets/${assetId}/movements`,
+    {
+      type: str(fd, 'type'),
+      toType,
+      toId,
+      dueAt: str(fd, 'dueAt') || undefined,
+      note: str(fd, 'note') || undefined,
+    },
+    `/admin/assets/${assetId}`,
+    'Pohyb zaznamenán.',
+  );
+}
+
+export async function createPerson(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(
+    '/people',
+    {
+      name: str(fd, 'name'),
+      email: str(fd, 'email') || undefined,
+      phone: str(fd, 'phone') || undefined,
+      company: str(fd, 'company') || undefined,
+    },
+    '/admin/people',
+    'Osoba vytvořena.',
+  );
+}
+
+export async function createLocation(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(
+    '/locations',
+    {
+      name: str(fd, 'name'),
+      type: str(fd, 'type') || undefined,
+      parentId: str(fd, 'parentId') || undefined,
+    },
+    '/admin/locations',
+    'Místo vytvořeno.',
+  );
+}
+
 // --- Object detail ---
 export async function addCarrierToObject(_p: ActionState, fd: FormData): Promise<ActionState> {
   const objectId = str(fd, 'objectId');
