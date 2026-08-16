@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 const LOCATION_TYPES = ['store', 'venue', 'warehouse', 'office', 'home'] as const;
 
@@ -19,4 +19,9 @@ export class CreateLocationDto {
   @IsOptional()
   @IsString()
   timezone?: string;
+
+  /** Nadřazená lokace (stromová hierarchie). */
+  @IsOptional()
+  @IsUUID()
+  parentId?: string;
 }

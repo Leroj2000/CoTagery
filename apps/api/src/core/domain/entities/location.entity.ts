@@ -15,4 +15,8 @@ export class Location extends BaseTenantEntity {
 
   @Column({ type: 'text', default: 'Europe/Prague' })
   timezone!: string;
+
+  /** Nadřazená lokace – stromová hierarchie (Firma → Sklad → Regál → Police). */
+  @Column({ type: 'uuid', name: 'parent_id', nullable: true })
+  parentId!: string | null;
 }

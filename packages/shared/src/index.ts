@@ -13,6 +13,7 @@ export type ModuleType =
   | 'membership'
   | 'ticket'
   | 'rental'
+  | 'asset'
   | 'gallery'
   | 'time_tracker'
   | 'automation'

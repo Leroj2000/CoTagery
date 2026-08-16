@@ -18,6 +18,7 @@ import { RentalModule } from './modules/rental/rental.module';
 import { GalleryModule } from './modules/gallery/gallery.module';
 import { MembershipModule } from './modules/membership/membership.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { AssetModule } from './modules/asset/asset.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
@@ -45,6 +46,7 @@ import { HealthModule } from './health/health.module';
     GalleryModule,
     MembershipModule,
     BillingModule,
+    AssetModule,
     HealthModule,
   ],
 })
