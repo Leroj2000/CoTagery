@@ -291,6 +291,27 @@ export async function createLocation(_p: ActionState, fd: FormData): Promise<Act
   );
 }
 
+// --- Inventura (Fáze C) ---
+export async function startInventory(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run('/inventory', { locationId: str(fd, 'locationId') }, '/admin/inventory', 'Inventura spuštěna.');
+}
+
+export async function scanInventory(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const checkId = str(fd, 'checkId');
+  const assetId = str(fd, 'assetId');
+  return run(
+    `/inventory/${checkId}/scan`,
+    { assetId: assetId || undefined, publicCode: str(fd, 'publicCode') || undefined },
+    `/admin/inventory/${checkId}`,
+    'Naskenováno.',
+  );
+}
+
+export async function closeInventory(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const checkId = str(fd, 'checkId');
+  return run(`/inventory/${checkId}/close`, null, `/admin/inventory/${checkId}`, 'Inventura uzavřena.');
+}
+
 // --- Object detail ---
 export async function addCarrierToObject(_p: ActionState, fd: FormData): Promise<ActionState> {
   const objectId = str(fd, 'objectId');

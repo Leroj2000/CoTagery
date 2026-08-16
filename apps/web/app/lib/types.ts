@@ -47,6 +47,26 @@ export interface Location {
   parentId: string | null;
 }
 
+export interface InventoryCheck {
+  id: string;
+  locationId: string;
+  status: 'open' | 'closed';
+  expectedAssetIds: string[];
+  foundCount: number;
+  missingCount: number;
+  unexpectedCount: number;
+  closedAt: string | null;
+  createdAt: string;
+}
+
+export interface InventoryDetail {
+  check: InventoryCheck;
+  found: Asset[];
+  missing: Asset[];
+  unexpected: Asset[];
+  scannedCount: number;
+}
+
 export interface DigitalObject {
   id: string;
   moduleType: string;
