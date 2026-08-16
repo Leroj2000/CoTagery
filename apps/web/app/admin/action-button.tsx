@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { Loader2 } from 'lucide-react';
 import type { ActionState, ServerAction } from './action-form';
 
 /** Tlačítko spouštějící Server Action s hidden parametry (archive, suspend…). */
@@ -20,8 +21,8 @@ export function ActionButton({
   const [state, formAction, pending] = useActionState<ActionState, FormData>(action, null);
   const cls =
     variant === 'danger'
-      ? 'border-red-300 text-red-600 hover:bg-red-50'
-      : 'border-neutral-300 text-neutral-600 hover:bg-neutral-100';
+      ? 'border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300'
+      : 'border-slate-300 text-slate-600 hover:bg-slate-50 hover:border-slate-400';
 
   return (
     <form
@@ -37,9 +38,10 @@ export function ActionButton({
       <button
         type="submit"
         disabled={pending}
-        className={`rounded-lg border px-2.5 py-1 text-xs disabled:opacity-40 ${cls}`}
+        className={`inline-flex items-center gap-1 rounded-lg border bg-white px-2.5 py-1 text-xs font-medium shadow-sm transition disabled:opacity-40 ${cls}`}
         title={state?.error ?? undefined}
       >
+        {pending && <Loader2 size={12} className="animate-spin" />}
         {pending ? '…' : label}
       </button>
     </form>

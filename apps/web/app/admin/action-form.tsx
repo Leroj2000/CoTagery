@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 export type ActionState = { ok?: boolean; error?: string; message?: string } | null;
 export type ServerAction = (prev: ActionState, formData: FormData) => Promise<ActionState>;
@@ -14,6 +15,9 @@ export interface Field {
   defaultValue?: string;
   options?: { value: string; label: string }[];
 }
+
+const inputCls =
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
 
 /**
  * Generický formulář nad Server Action (běží server-side, čte httpOnly cookie).
@@ -33,15 +37,15 @@ export function ActionForm({
   const [state, formAction, pending] = useActionState<ActionState, FormData>(action, null);
 
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <form action={formAction} className="flex flex-col gap-4">
       {hidden &&
         Object.entries(hidden).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         {fields.map((f) => (
-          <div key={f.name} className="flex flex-col gap-1">
-            <label htmlFor={f.name} className="text-xs font-medium text-neutral-500">
+          <div key={f.name} className="flex flex-col gap-1.5">
+            <label htmlFor={f.name} className="text-xs font-medium text-slate-600">
               {f.label}
-              {f.required && <span className="text-red-500"> *</span>}
+              {f.required && <span className="text-brand-600"> *</span>}
             </label>
             {f.options ? (
               <select
@@ -49,7 +53,7 @@ export function ActionForm({
                 name={f.name}
                 required={f.required}
                 defaultValue={f.defaultValue}
-                className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-900 focus:outline-none"
+                className={inputCls}
               >
                 {f.options.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -65,24 +69,31 @@ export function ActionForm({
                 required={f.required}
                 placeholder={f.placeholder}
                 defaultValue={f.defaultValue}
-                className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-900 focus:outline-none"
+                className={inputCls}
               />
             )}
           </div>
         ))}
       </div>
 
-      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state?.error && (
+        <p className="flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-inset ring-red-100">
+          <AlertCircle size={15} /> {state.error}
+        </p>
+      )}
       {state?.ok && (
-        <p className="text-sm text-green-600">{state.message ?? 'Uloženo.'}</p>
+        <p className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-100">
+          <CheckCircle2 size={15} /> {state.message ?? 'Uloženo.'}
+        </p>
       )}
 
       <div>
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+          className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-500/20 disabled:opacity-50"
         >
+          {pending && <Loader2 size={15} className="animate-spin" />}
           {pending ? 'Ukládám…' : submitLabel}
         </button>
       </div>
