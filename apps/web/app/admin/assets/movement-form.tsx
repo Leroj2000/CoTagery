@@ -105,6 +105,16 @@ export function MovementForm({
           </div>
         )}
 
+        {(type === 'loan' || type === 'assign' || type === 'handover') && (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-slate-600">Potvrzení převzetí</label>
+            <select name="requireConfirmation" className={inputCls} defaultValue="false">
+              <option value="false">Nevyžadovat</option>
+              <option value="true">Vyžádat potvrzení příjemcem</option>
+            </select>
+          </div>
+        )}
+
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-slate-600">Poznámka</label>
           <input name="note" placeholder="volitelně" className={inputCls} />

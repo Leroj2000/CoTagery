@@ -22,6 +22,7 @@ export interface Asset {
 
 export interface Movement {
   id: string;
+  assetId?: string;
   type: string;
   fromType: string | null;
   fromId: string | null;
@@ -30,6 +31,30 @@ export interface Movement {
   actorPersonId: string | null;
   dueAt: string | null;
   note: string | null;
+  confirmation: 'none' | 'pending' | 'confirmed';
+  confirmedAt: string | null;
+  createdAt: string;
+}
+
+export interface ServiceRecord {
+  id: string;
+  assetId: string;
+  kind: string;
+  performedAt: string | null;
+  nextDueAt: string | null;
+  provider: string | null;
+  cost: string | null;
+  note: string | null;
+}
+
+export interface Reservation {
+  id: string;
+  assetId: string;
+  requestedById: string | null;
+  fromAt: string | null;
+  toAt: string | null;
+  purpose: string | null;
+  status: string;
   createdAt: string;
 }
 

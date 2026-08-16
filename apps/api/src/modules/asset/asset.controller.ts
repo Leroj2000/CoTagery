@@ -12,9 +12,17 @@ import {
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { RolesGuard, RequireRole } from '../../core/rbac/roles.guard';
 import { AssetService } from './asset.service';
-import { CreateAssetDto, PerformMovementDto, PutIntoContainerDto } from './dto/asset.dto';
+import {
+  AddServiceDto,
+  CreateAssetDto,
+  CreateReservationDto,
+  PerformMovementDto,
+  PutIntoContainerDto,
+} from './dto/asset.dto';
 import type { Asset } from './entities/asset.entity';
 import type { Movement } from './entities/movement.entity';
+import type { ServiceRecord } from './entities/service-record.entity';
+import type { Reservation } from './entities/reservation.entity';
 import type { MovementType } from './movement.logic';
 
 @Controller('assets')
@@ -73,5 +81,37 @@ export class AssetController {
   @HttpCode(200)
   removeFromContainer(@Param('childId', ParseUUIDPipe) childId: string): Promise<Asset> {
     return this.assets.removeFromContainer(childId);
+  }
+
+  // --- Potvrzení převzetí (§8) ---
+  @Get('movements/pending')
+  pendingConfirmations(): Promise<Movement[]> {
+    return this.assets.pendingConfirmations();
+  }
+
+  @Post('movements/:movementId/confirm')
+  @RequireRole('EDITOR')
+  confirmMovement(@Param('movementId', ParseUUIDPipe) movementId: string): Promise<Movement> {
+    return this.assets.confirmMovement(movementId);
+  }
+
+  // --- Servis / revize (§17) ---
+  @Get('services/due')
+  dueServices(): Promise<ServiceRecord[]> {
+    return this.assets.dueServices(30);
+  }
+
+  @Get(':id/services')
+  services(@Param('id', ParseUUIDPipe) id: string): Promise<ServiceRecord[]> {
+    return this.assets.listServices(id);
+  }
+
+  @Post(':id/services')
+  @RequireRole('EDITOR')
+  addService(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AddServiceDto,
+  ): Promise<ServiceRecord> {
+    return this.assets.addService(id, dto);
   }
 }

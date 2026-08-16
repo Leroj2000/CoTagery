@@ -1,9 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { LessThanOrEqual, Repository } from 'typeorm';
 import { TenantContextService } from '../../core/tenancy/tenant-context.service';
 import { DigitalObject } from '../../core/domain/entities/digital-object.entity';
 import { Asset } from './entities/asset.entity';
 import { Movement } from './entities/movement.entity';
+import { ServiceRecord } from './entities/service-record.entity';
+import { Reservation } from './entities/reservation.entity';
 import {
   applyMovement,
   availableActions,
@@ -14,7 +16,12 @@ import {
 } from './movement.logic';
 import { wouldCreateCycle } from './nesting.logic';
 import { generatePublicCode } from '../../core/domain/public-code';
-import type { CreateAssetDto, PerformMovementDto } from './dto/asset.dto';
+import type {
+  AddServiceDto,
+  CreateAssetDto,
+  CreateReservationDto,
+  PerformMovementDto,
+} from './dto/asset.dto';
 
 @Injectable()
 export class AssetService {
@@ -145,6 +152,10 @@ export class AssetService {
       throw err;
     }
 
+    // Potvrzení převzetí (§8) jen u předání do držení osoby.
+    const confirmable = ['loan', 'assign', 'handover'].includes(dto.type);
+    const confirmation = dto.requireConfirmation && confirmable ? 'pending' : 'none';
+
     // Append-only ledger (nikdy se needituje).
     await this.repo(Movement).save(
       this.repo(Movement).create({
@@ -158,6 +169,7 @@ export class AssetService {
         actorPersonId: dto.actorPersonId ?? null,
         dueAt: after.dueAt,
         note: dto.note ?? null,
+        confirmation,
       }),
     );
 
@@ -168,5 +180,89 @@ export class AssetService {
     asset.responsiblePersonId = after.responsiblePersonId;
     asset.dueAt = after.dueAt;
     return this.repo(Asset).save(asset);
+  }
+
+  // --- Potvrzení převzetí (§8) ---
+  async confirmMovement(movementId: string): Promise<Movement> {
+    const repo = this.repo(Movement);
+    const mv = await repo.findOne({ where: { id: movementId } });
+    if (!mv) throw new NotFoundException('Pohyb neexistuje');
+    if (mv.confirmation !== 'pending') {
+      throw new BadRequestException('Pohyb nevyžaduje potvrzení nebo už je potvrzený');
+    }
+    mv.confirmation = 'confirmed';
+    mv.confirmedAt = new Date();
+    return repo.save(mv);
+  }
+
+  /** Nepotvrzená předání (pro „vyžaduje pozornost"). */
+  pendingConfirmations(): Promise<Movement[]> {
+    return this.repo(Movement).find({
+      where: { confirmation: 'pending' },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  // --- Servis / revize (§17) ---
+  listServices(assetId: string): Promise<ServiceRecord[]> {
+    return this.repo(ServiceRecord).find({ where: { assetId }, order: { createdAt: 'DESC' } });
+  }
+
+  async addService(assetId: string, dto: AddServiceDto): Promise<ServiceRecord> {
+    await this.get(assetId);
+    const repo = this.repo(ServiceRecord);
+    return repo.save(
+      repo.create({
+        tenantId: this.context.tenantId,
+        assetId,
+        kind: dto.kind,
+        performedAt: dto.performedAt ? new Date(dto.performedAt) : null,
+        nextDueAt: dto.nextDueAt ? new Date(dto.nextDueAt) : null,
+        provider: dto.provider ?? null,
+        cost: dto.cost ?? null,
+        note: dto.note ?? null,
+      }),
+    );
+  }
+
+  /** Servisní záznamy s termínem do `days` dní (blížící se servis/revize). */
+  dueServices(days = 30): Promise<ServiceRecord[]> {
+    const until = new Date(Date.now() + Math.max(0, days) * 24 * 60 * 60 * 1000);
+    return this.repo(ServiceRecord).find({
+      where: { nextDueAt: LessThanOrEqual(until) },
+      order: { nextDueAt: 'ASC' },
+    });
+  }
+
+  // --- Rezervace / požadavky (§15) ---
+  listReservations(): Promise<Reservation[]> {
+    return this.repo(Reservation).find({ order: { createdAt: 'DESC' }, take: 500 });
+  }
+
+  async createReservation(dto: CreateReservationDto): Promise<Reservation> {
+    await this.get(dto.assetId);
+    const repo = this.repo(Reservation);
+    return repo.save(
+      repo.create({
+        tenantId: this.context.tenantId,
+        assetId: dto.assetId,
+        requestedById: dto.requestedById ?? null,
+        fromAt: dto.fromAt ? new Date(dto.fromAt) : null,
+        toAt: dto.toAt ? new Date(dto.toAt) : null,
+        purpose: dto.purpose ?? null,
+        status: 'pending',
+      }),
+    );
+  }
+
+  async setReservationStatus(
+    id: string,
+    status: 'approved' | 'rejected' | 'cancelled',
+  ): Promise<Reservation> {
+    const repo = this.repo(Reservation);
+    const res = await repo.findOne({ where: { id } });
+    if (!res) throw new NotFoundException('Rezervace neexistuje');
+    res.status = status;
+    return repo.save(res);
   }
 }

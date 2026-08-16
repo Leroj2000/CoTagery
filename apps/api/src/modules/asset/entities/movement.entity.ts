@@ -44,6 +44,13 @@ export class Movement {
   @Column({ type: 'text', nullable: true })
   note!: string | null;
 
+  /** Potvrzení převzetí příjemcem (§8): none = nevyžaduje, pending → confirmed. */
+  @Column({ type: 'text', default: 'none' })
+  confirmation!: 'none' | 'pending' | 'confirmed';
+
+  @Column({ type: 'timestamptz', name: 'confirmed_at', nullable: true })
+  confirmedAt!: Date | null;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt!: Date;
 }

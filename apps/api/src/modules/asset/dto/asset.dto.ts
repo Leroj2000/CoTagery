@@ -83,4 +83,58 @@ export class PerformMovementDto {
   @IsString()
   @MaxLength(1000)
   note?: string;
+
+  /** Vyžádat potvrzení převzetí příjemcem (§8). */
+  @IsOptional()
+  @IsBoolean()
+  requireConfirmation?: boolean;
+}
+
+export class AddServiceDto {
+  @IsIn(['service', 'inspection', 'calibration', 'repair'])
+  kind!: 'service' | 'inspection' | 'calibration' | 'repair';
+
+  @IsOptional()
+  @IsString()
+  performedAt?: string;
+
+  @IsOptional()
+  @IsString()
+  nextDueAt?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  provider?: string;
+
+  @IsOptional()
+  @IsString()
+  cost?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  note?: string;
+}
+
+export class CreateReservationDto {
+  @IsUUID()
+  assetId!: string;
+
+  @IsOptional()
+  @IsUUID()
+  requestedById?: string;
+
+  @IsOptional()
+  @IsString()
+  fromAt?: string;
+
+  @IsOptional()
+  @IsString()
+  toAt?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  purpose?: string;
 }

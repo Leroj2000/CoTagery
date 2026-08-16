@@ -1,16 +1,29 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { Package, Home, MapPin, User, CalendarClock, Box } from 'lucide-react';
+import { Package, Home, MapPin, User, CalendarClock, Box, Clock } from 'lucide-react';
 import { apiFetch, ApiError } from '../../../lib/server-api';
-import type { Asset, Movement, Person, Location, DataCarrier } from '../../../lib/types';
+import type { Asset, Movement, Person, Location, DataCarrier, ServiceRecord } from '../../../lib/types';
 import { Section, StatusBadge, Badge, Mono, PageHeader, Table, EmptyState } from '../../ui';
 import { ActionForm } from '../../action-form';
 import { ActionButton } from '../../action-button';
 import { MovementForm } from '../movement-form';
-import { addCarrierToObject, putIntoContainer, removeFromContainer } from '../../actions';
+import {
+  addCarrierToObject,
+  putIntoContainer,
+  removeFromContainer,
+  addService,
+  confirmMovement,
+} from '../../actions';
 
 export const dynamic = 'force-dynamic';
+
+const SERVICE_LABELS: Record<string, string> = {
+  service: 'Servis',
+  inspection: 'Revize',
+  calibration: 'Kalibrace',
+  repair: 'Oprava',
+};
 
 const MOVEMENT_LABELS: Record<string, string> = {
   loan: 'Půjčeno',
@@ -40,13 +53,14 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
     if (e instanceof ApiError && e.status === 404) notFound();
     throw e;
   }
-  const [movements, people, locations, carriers, allAssets, contents] = await Promise.all([
+  const [movements, people, locations, carriers, allAssets, contents, services] = await Promise.all([
     apiFetch<Movement[]>(`/assets/${id}/movements`),
     apiFetch<Person[]>('/people'),
     apiFetch<Location[]>('/locations'),
     apiFetch<DataCarrier[]>(`/objects/${asset.digitalObjectId}/carriers`).catch(() => []),
     apiFetch<Asset[]>('/assets'),
     asset.canContainAssets ? apiFetch<Asset[]>(`/assets/${id}/contents`) : Promise.resolve([]),
+    apiFetch<ServiceRecord[]>(`/assets/${id}/services`),
   ]);
 
   const personName = new Map(people.map((p) => [p.id, p.name]));
@@ -190,15 +204,70 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
         </Section>
       )}
 
+      <Section
+        title="Servis a revize"
+        description="Servis, revize, kalibrace – s termínem příští kontroly (§17)"
+      >
+        <div className="flex flex-col gap-4">
+          {services.length === 0 ? (
+            <EmptyState>Žádné servisní záznamy.</EmptyState>
+          ) : (
+            <Table
+              head={['Typ', 'Provedeno', 'Příští termín', 'Kdo', 'Cena']}
+              rows={services.map((s) => [
+                <Badge key="k" tone="slate">{SERVICE_LABELS[s.kind] ?? s.kind}</Badge>,
+                fmtDate(s.performedAt),
+                s.nextDueAt ? <span key="d" className="inline-flex items-center gap-1"><Clock size={13} className="text-amber-500" />{fmtDate(s.nextDueAt)}</span> : '—',
+                s.provider ?? '—',
+                s.cost ? `${s.cost}` : '—',
+              ])}
+            />
+          )}
+          <ActionForm
+            action={addService}
+            hidden={{ assetId: asset.id }}
+            submitLabel="Přidat servis/revizi"
+            fields={[
+              {
+                name: 'kind',
+                label: 'Typ',
+                required: true,
+                options: [
+                  { value: 'service', label: 'Servis' },
+                  { value: 'inspection', label: 'Revize' },
+                  { value: 'calibration', label: 'Kalibrace' },
+                  { value: 'repair', label: 'Oprava' },
+                ],
+              },
+              { name: 'performedAt', label: 'Provedeno', type: 'text', placeholder: 'YYYY-MM-DD' },
+              { name: 'nextDueAt', label: 'Příští termín', type: 'text', placeholder: 'YYYY-MM-DD' },
+              { name: 'provider', label: 'Kdo (servis)' },
+              { name: 'cost', label: 'Cena' },
+            ]}
+          />
+        </div>
+      </Section>
+
       <Section title={`Historie pohybů (${movements.length})`} description="Nedotknutelný ledger – oprava = nový pohyb">
         <Table
-          head={['Kdy', 'Akce', 'Z', 'Do', 'Poznámka']}
+          head={['Kdy', 'Akce', 'Z', 'Do', 'Potvrzení']}
           rows={movements.map((m) => [
             fmtDateTime(m.createdAt),
             <Badge key="t" tone="brand">{MOVEMENT_LABELS[m.type] ?? m.type}</Badge>,
             label(m.fromType, m.fromId),
             label(m.toType, m.toId),
-            m.note ?? '—',
+            m.confirmation === 'pending' ? (
+              <ActionButton
+                key="c"
+                action={confirmMovement}
+                hidden={{ movementId: m.id, assetId: asset.id }}
+                label="Potvrdit převzetí"
+              />
+            ) : m.confirmation === 'confirmed' ? (
+              <Badge key="c" tone="green">potvrzeno</Badge>
+            ) : (
+              '—'
+            ),
           ])}
         />
       </Section>

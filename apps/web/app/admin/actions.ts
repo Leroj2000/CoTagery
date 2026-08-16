@@ -243,6 +243,56 @@ export async function createAsset(_p: ActionState, fd: FormData): Promise<Action
   );
 }
 
+// --- Servis / revize (§17) ---
+export async function addService(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const assetId = str(fd, 'assetId');
+  return run(
+    `/assets/${assetId}/services`,
+    {
+      kind: str(fd, 'kind'),
+      performedAt: str(fd, 'performedAt') || undefined,
+      nextDueAt: str(fd, 'nextDueAt') || undefined,
+      provider: str(fd, 'provider') || undefined,
+      cost: str(fd, 'cost') || undefined,
+      note: str(fd, 'note') || undefined,
+    },
+    `/admin/assets/${assetId}`,
+    'Servisní záznam přidán.',
+  );
+}
+
+// --- Potvrzení převzetí (§8) ---
+export async function confirmMovement(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const assetId = str(fd, 'assetId');
+  return run(
+    `/assets/movements/${str(fd, 'movementId')}/confirm`,
+    null,
+    assetId ? `/admin/assets/${assetId}` : '/admin/assets',
+    'Převzetí potvrzeno.',
+  );
+}
+
+// --- Rezervace / požadavky (§15) ---
+export async function createReservation(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(
+    '/reservations',
+    {
+      assetId: str(fd, 'assetId'),
+      requestedById: str(fd, 'requestedById') || undefined,
+      fromAt: str(fd, 'fromAt') || undefined,
+      toAt: str(fd, 'toAt') || undefined,
+      purpose: str(fd, 'purpose') || undefined,
+    },
+    '/admin/reservations',
+    'Rezervace vytvořena.',
+  );
+}
+
+export async function setReservationStatus(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const action = str(fd, 'action'); // approve | reject | cancel
+  return run(`/reservations/${str(fd, 'id')}/${action}`, null, '/admin/reservations', 'Stav změněn.');
+}
+
 // --- Asset nesting (§14) ---
 export async function putIntoContainer(_p: ActionState, fd: FormData): Promise<ActionState> {
   const containerId = str(fd, 'containerId');
@@ -281,6 +331,7 @@ export async function performAssetMovement(_p: ActionState, fd: FormData): Promi
       toId,
       dueAt: str(fd, 'dueAt') || undefined,
       note: str(fd, 'note') || undefined,
+      requireConfirmation: str(fd, 'requireConfirmation') === 'true',
     },
     `/admin/assets/${assetId}`,
     'Pohyb zaznamenán.',
