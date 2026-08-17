@@ -45,6 +45,12 @@ export class DataCarriersController {
     return this.carriers.listUnassigned();
   }
 
+  /** ID objektů s přiřazeným identifikátorem – pro UI upozornění „věc bez identifikátoru". */
+  @Get('assigned-object-ids')
+  assignedObjectIds(): Promise<string[]> {
+    return this.carriers.assignedObjectIds();
+  }
+
   @Post('claim')
   @RequireRole('EDITOR')
   claim(@Body() dto: ClaimCarrierDto): Promise<DataCarrier> {

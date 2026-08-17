@@ -7,16 +7,20 @@ import { DispatchForm } from './dispatch-form';
 export const dynamic = 'force-dynamic';
 
 export default async function DispatchPage() {
-  const [assets, people, locations] = await Promise.all([
+  const [assets, people, locations, assignedObjectIds] = await Promise.all([
     apiFetch<Asset[]>('/assets'),
     apiFetch<Person[]>('/people'),
     apiFetch<Location[]>('/locations'),
+    apiFetch<string[]>('/carriers/assigned-object-ids').catch(() => []),
   ]);
+
+  // Objekty s aspoň jedním přiřazeným identifikátorem (carrier).
+  const withCarrier = new Set(assignedObjectIds);
 
   // K výdeji jen věci, které lze půjčit/přidělit (ne retired/loaned).
   const dispatchable = assets
     .filter((a) => a.status === 'available' || a.status === 'assigned' || a.status === 'reserved')
-    .map((a) => ({ id: a.id, name: a.name, status: a.status }));
+    .map((a) => ({ id: a.id, name: a.name, status: a.status, hasCarrier: withCarrier.has(a.digitalObjectId) }));
 
   return (
     <div className="flex flex-col gap-6">

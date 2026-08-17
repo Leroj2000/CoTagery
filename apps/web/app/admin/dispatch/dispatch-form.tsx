@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useActionState, useState } from 'react';
-import { Loader2, CheckCircle2, AlertCircle, Search } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Search, QrCode } from 'lucide-react';
 import { bulkDispatch } from '../actions';
 import type { ActionState } from '../action-form';
 
@@ -9,6 +10,7 @@ interface Item {
   id: string;
   name: string;
   status: string;
+  hasCarrier: boolean;
 }
 interface Opt {
   value: string;
@@ -36,6 +38,8 @@ export function DispatchForm({
   const [checked, setChecked] = useState<Set<string>>(new Set());
 
   const filtered = assets.filter((a) => a.name.toLowerCase().includes(query.toLowerCase()));
+  // Vybrané věci bez přiřazeného identifikátoru – jen upozornění, výdej se neblokuje.
+  const checkedNoCarrier = assets.filter((a) => checked.has(a.id) && !a.hasCarrier);
   const toggle = (id: string) =>
     setChecked((prev) => {
       const n = new Set(prev);
@@ -123,12 +127,45 @@ export function DispatchForm({
                   className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
                 />
                 <span className="flex-1 text-slate-700">{a.name}</span>
+                {!a.hasCarrier && (
+                  <Link
+                    href={`/admin/assets/${a.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 hover:bg-amber-100"
+                    title="Věc nemá identifikátor – přidej ho na kartě věci"
+                  >
+                    <QrCode size={11} /> bez identifikátoru
+                  </Link>
+                )}
                 <span className="text-xs text-slate-400">{a.status}</span>
               </label>
             ))
           )}
         </div>
       </div>
+
+      {checkedNoCarrier.length > 0 && (
+        <div className="flex flex-col gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+          <span className="flex items-center gap-1.5 font-medium">
+            <AlertCircle size={15} /> {checkedNoCarrier.length}{' '}
+            {checkedNoCarrier.length === 1 ? 'vybraná věc nemá' : 'vybraných věcí nemá'} identifikátor
+          </span>
+          <span className="text-xs text-amber-700">
+            Můžeš je vydat i tak, nebo nejdřív přidej QR/NFC identifikátor na kartě věci:
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {checkedNoCarrier.map((a) => (
+              <Link
+                key={a.id}
+                href={`/admin/assets/${a.id}`}
+                className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-xs text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100"
+              >
+                <QrCode size={11} /> {a.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {state?.error && (
         <p className="flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">

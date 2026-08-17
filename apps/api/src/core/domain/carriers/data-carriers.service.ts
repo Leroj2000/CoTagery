@@ -122,6 +122,16 @@ export class DataCarriersService {
     });
   }
 
+  /** ID digitálních objektů, které mají aspoň jeden přiřazený identifikátor (pro UI kontrolu). */
+  async assignedObjectIds(): Promise<string[]> {
+    const rows = await this.carriers()
+      .createQueryBuilder('c')
+      .select('DISTINCT c.digital_object_id', 'objectId')
+      .where('c.digital_object_id IS NOT NULL')
+      .getRawMany<{ objectId: string }>();
+    return rows.map((r) => r.objectId);
+  }
+
   /** Přiřadí předgenerovaný kód k objektu (claim). */
   async claim(publicCode: string, objectId: string): Promise<DataCarrier> {
     const carrier = await this.carriers().findOne({ where: { publicCode } });
