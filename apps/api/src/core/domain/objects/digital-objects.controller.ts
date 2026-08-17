@@ -16,7 +16,7 @@ import { DigitalObjectsService } from './digital-objects.service';
 import { DataCarriersService } from '../carriers/data-carriers.service';
 import { CreateDigitalObjectDto } from './dto/create-digital-object.dto';
 import { UpdateDigitalObjectDto } from './dto/update-digital-object.dto';
-import { CreateDataCarrierDto } from '../carriers/dto/carrier.dto';
+import { AdoptCarrierDto, CreateDataCarrierDto } from '../carriers/dto/carrier.dto';
 import type { DigitalObject } from '../entities/digital-object.entity';
 import type { DataCarrier } from '../entities/data-carrier.entity';
 
@@ -72,5 +72,15 @@ export class DigitalObjectsController {
     @Body() dto: CreateDataCarrierDto,
   ): Promise<DataCarrier> {
     return this.carriers.createForObject(id, dto);
+  }
+
+  /** Adopce cizího kódu jako alias + vytvoření nativního carrieru (viz service). */
+  @Post(':id/carriers/adopt')
+  @RequireRole('EDITOR')
+  adoptCarrier(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AdoptCarrierDto,
+  ): Promise<DataCarrier> {
+    return this.carriers.adoptExternal(id, dto);
   }
 }

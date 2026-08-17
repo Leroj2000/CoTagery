@@ -7,7 +7,12 @@ import { TenantContextService } from '../../tenancy/tenant-context.service';
 import { DataCarrier } from '../entities/data-carrier.entity';
 import { DigitalObject } from '../entities/digital-object.entity';
 import { generatePublicCode } from '../public-code';
-import type { CreateDataCarrierDto, GenerateBatchDto, NfcPairDto } from './dto/carrier.dto';
+import type {
+  AdoptCarrierDto,
+  CreateDataCarrierDto,
+  GenerateBatchDto,
+  NfcPairDto,
+} from './dto/carrier.dto';
 
 const UNIQUE_VIOLATION = '23505';
 const MAX_BATCH = 500;
@@ -85,6 +90,41 @@ export class DataCarriersService {
   async createForObject(objectId: string, dto: CreateDataCarrierDto): Promise<DataCarrier> {
     await this.assertObject(objectId);
     return this.createCarrier(objectId, dto.carrierType ?? 'qr', 'active');
+  }
+
+  /**
+   * Adopce cizího identifikátoru: uloží externí kód jako ALIAS (rozpozná ho jen
+   * interní skener v tenant kontextu) a ZÁROVEŇ vygeneruje náš nativní public_code,
+   * takže carrier je použitelný i pro veřejný resolver. Veřejný path se nemění.
+   */
+  async adoptExternal(objectId: string, dto: AdoptCarrierDto): Promise<DataCarrier> {
+    await this.assertObject(objectId);
+    const externalCode = dto.externalCode.trim();
+    if (!externalCode) throw new BadRequestException('Externí kód je prázdný');
+
+    // Per-tenant: kód nesmí být adoptovaný dvakrát (index je backstop na race).
+    const existing = await this.carriers().findOne({ where: { externalCode } });
+    if (existing) {
+      throw new BadRequestException('Tento kód je už adoptovaný u jiné věci');
+    }
+
+    return this.createCarrier(objectId, dto.carrierType ?? 'qr', 'active', {
+      externalCode,
+      externalScheme: dto.externalScheme ?? 'custom',
+      origin: 'adopted',
+    });
+  }
+
+  /**
+   * Interní lookup naskenovaného kódu (tenant kontext): pozná náš public_code
+   * i adoptovaný external_code. NEPOUŽÍVAT ve veřejném resolveru (ten jede jen
+   * přes public_code přes SECURITY DEFINER).
+   */
+  findByCode(code: string): Promise<DataCarrier | null> {
+    const trimmed = code.trim();
+    return this.carriers().findOne({
+      where: [{ publicCode: trimmed }, { externalCode: trimmed }],
+    });
   }
 
   /**

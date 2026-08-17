@@ -59,6 +59,6 @@ import { ModuleRegistry } from './module-handler';
     PeopleService,
     ModuleRegistry,
   ],
-  exports: [ModuleRegistry],
+  exports: [ModuleRegistry, DataCarriersService],
 })
 export class DomainModule {}

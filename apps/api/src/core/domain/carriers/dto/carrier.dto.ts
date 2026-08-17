@@ -47,6 +47,21 @@ export class ClaimCarrierDto {
   objectId!: string;
 }
 
+export class AdoptCarrierDto {
+  /** Cizí kód, který chceme adoptovat (EAN, URL, vlastní kód). */
+  @IsString()
+  @MaxLength(512)
+  externalCode!: string;
+
+  @IsOptional()
+  @IsIn(['ean13', 'url', 'custom'])
+  externalScheme?: 'ean13' | 'url' | 'custom';
+
+  @IsOptional()
+  @IsIn(['qr', 'nfc', 'hybrid'])
+  carrierType?: 'qr' | 'nfc' | 'hybrid';
+}
+
 export class NfcPairDto {
   @IsString()
   @MaxLength(64)

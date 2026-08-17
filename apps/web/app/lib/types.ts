@@ -177,6 +177,9 @@ export interface DataCarrier {
   resolverUrl: string | null;
   selfActivatable?: boolean;
   moduleTemplate?: string | null;
+  externalCode?: string | null;
+  externalScheme?: 'ean13' | 'url' | 'custom' | null;
+  origin?: 'native' | 'adopted';
 }
 
 /** Výsledek generování batche identifikátorů (pin je jen jednou, k tisku). */

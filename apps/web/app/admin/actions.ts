@@ -540,6 +540,23 @@ export async function addCarrierToObject(_p: ActionState, fd: FormData): Promise
   );
 }
 
+/** Adopce cizího kódu: uloží externí alias + vytvoří náš nativní carrier. */
+export async function adoptCarrier(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const objectId = str(fd, 'objectId');
+  const assetId = str(fd, 'assetId');
+  const revalidate = assetId ? `/admin/assets/${assetId}` : `/admin/objects/${objectId}`;
+  return run(
+    `/objects/${objectId}/carriers/adopt`,
+    {
+      externalCode: str(fd, 'externalCode'),
+      externalScheme: str(fd, 'externalScheme') || undefined,
+      carrierType: str(fd, 'carrierType') || 'qr',
+    },
+    revalidate,
+    'Kód adoptován – vytvořen i náš identifikátor.',
+  );
+}
+
 export async function archiveObject(_p: ActionState, fd: FormData): Promise<ActionState> {
   return run(`/objects/${str(fd, 'objectId')}`, null, '/admin/objects', 'Objekt archivován.', 'DELETE');
 }

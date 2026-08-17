@@ -2,8 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { In, Repository } from 'typeorm';
 import { TenantContextService } from '../../core/tenancy/tenant-context.service';
 import { WebhookService } from '../../core/webhooks/webhook.service';
+import { DataCarriersService } from '../../core/domain/carriers/data-carriers.service';
 import { Asset } from '../asset/entities/asset.entity';
-import { DataCarrier } from '../../core/domain/entities/data-carrier.entity';
 import { InventoryCheck } from './entities/inventory-check.entity';
 import { InventoryScan } from './entities/inventory-scan.entity';
 import { classifyScan, computeResult, type InventoryResult } from './inventory.logic';
@@ -23,6 +23,7 @@ export class InventoryService {
   constructor(
     private readonly context: TenantContextService,
     private readonly webhooks: WebhookService,
+    private readonly carriers: DataCarriersService,
   ) {}
 
   private repo<T extends object>(entity: { new (): T }): Repository<T> {
@@ -68,7 +69,8 @@ export class InventoryService {
 
     let assetId = dto.assetId ?? null;
     if (!assetId && dto.publicCode) {
-      const carrier = await this.repo(DataCarrier).findOne({ where: { publicCode: dto.publicCode } });
+      // Interní skener: pozná náš public_code i adoptovaný externí kód (alias).
+      const carrier = await this.carriers.findByCode(dto.publicCode);
       if (!carrier?.digitalObjectId) throw new NotFoundException('Identifikátor nenalezen nebo nepřiřazený');
       const asset = await this.repo(Asset).findOne({ where: { digitalObjectId: carrier.digitalObjectId } });
       if (!asset) throw new NotFoundException('K identifikátoru není přiřazený asset');

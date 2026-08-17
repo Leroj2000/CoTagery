@@ -14,6 +14,7 @@ import { ReturnForm } from '../return-form';
 import type { AssetMedia, Tenant } from '../../../lib/types';
 import {
   addCarrierToObject,
+  adoptCarrier,
   putIntoContainer,
   removeFromContainer,
   addService,
@@ -186,17 +187,82 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
 
       <div id="identifikator" className="scroll-mt-4">
       <Section title="Identifikátor (QR)" description="Štítek na věci – stabilní identifikátor">
-        {carriers.length === 0 ? (
-          <div className="flex flex-col gap-3">
-            <EmptyState>Věc zatím nemá identifikátor.</EmptyState>
+        <div className="flex flex-col gap-4">
+          {carriers.length === 0 ? (
+            <div className="flex flex-col gap-3">
+              <EmptyState>Věc zatím nemá identifikátor.</EmptyState>
+              <ActionForm
+                action={addCarrierToObject}
+                hidden={{ objectId: asset.digitalObjectId }}
+                submitLabel="Přidat QR identifikátor"
+                fields={[
+                  {
+                    name: 'carrierType',
+                    label: 'Typ',
+                    options: [
+                      { value: 'qr', label: 'QR' },
+                      { value: 'nfc', label: 'NFC' },
+                    ],
+                  },
+                ]}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-4">
+              {carriers.map((c) => (
+                <div key={c.id} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+                  <Image
+                    src={`/api/qr/${c.id}`}
+                    alt={c.publicCode}
+                    width={72}
+                    height={72}
+                    unoptimized
+                    className="rounded border border-slate-200 bg-white"
+                  />
+                  <div>
+                    <Mono>{c.publicCode}</Mono>
+                    <p className="text-xs text-slate-400">{c.carrierType}</p>
+                    {c.externalCode && (
+                      <p className="mt-1">
+                        <Badge tone="brand">
+                          alias{c.externalScheme ? ` (${c.externalScheme})` : ''}: {c.externalCode}
+                        </Badge>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Adopce cizího kódu: uloží externí alias (pozná ho jen interní skener)
+              a zároveň vytvoří náš nativní identifikátor pro veřejný resolver. */}
+          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-3">
+            <p className="mb-2 text-xs font-medium text-slate-600">
+              Adoptovat existující kód
+            </p>
+            <p className="mb-3 text-xs text-slate-500">
+              Cizí QR/EAN/kód uložíme jako alias rozpoznatelný interním skenerem a vytvoříme k němu
+              i náš vlastní identifikátor pro veřejný resolver.
+            </p>
             <ActionForm
-              action={addCarrierToObject}
-              hidden={{ objectId: asset.digitalObjectId }}
-              submitLabel="Přidat QR identifikátor"
+              action={adoptCarrier}
+              hidden={{ objectId: asset.digitalObjectId, assetId: asset.id }}
+              submitLabel="Adoptovat kód"
               fields={[
+                { name: 'externalCode', label: 'Externí kód', required: true, placeholder: 'EAN / URL / vlastní kód' },
+                {
+                  name: 'externalScheme',
+                  label: 'Typ kódu',
+                  options: [
+                    { value: 'custom', label: 'Vlastní' },
+                    { value: 'ean13', label: 'EAN-13' },
+                    { value: 'url', label: 'URL' },
+                  ],
+                },
                 {
                   name: 'carrierType',
-                  label: 'Typ',
+                  label: 'Náš nosič',
                   options: [
                     { value: 'qr', label: 'QR' },
                     { value: 'nfc', label: 'NFC' },
@@ -205,26 +271,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
               ]}
             />
           </div>
-        ) : (
-          <div className="flex flex-wrap gap-4">
-            {carriers.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
-                <Image
-                  src={`/api/qr/${c.id}`}
-                  alt={c.publicCode}
-                  width={72}
-                  height={72}
-                  unoptimized
-                  className="rounded border border-slate-200 bg-white"
-                />
-                <div>
-                  <Mono>{c.publicCode}</Mono>
-                  <p className="text-xs text-slate-400">{c.carrierType}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        </div>
       </Section>
       </div>
 

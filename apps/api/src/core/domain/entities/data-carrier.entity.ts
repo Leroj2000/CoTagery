@@ -43,4 +43,17 @@ export class DataCarrier extends BaseTenantEntity {
 
   @Column({ type: 'text', name: 'module_template', nullable: true })
   moduleTemplate!: string | null;
+
+  // --- Adopce cizího identifikátoru (alias jen pro interní skener) ---
+  /** Externí kód (EAN / URL / vlastní). Rozpozná ho JEN interní skener, ne veřejný resolver. */
+  @Index('ix_data_carriers_external_code', { where: '"external_code" IS NOT NULL' })
+  @Column({ type: 'text', name: 'external_code', nullable: true })
+  externalCode!: string | null;
+
+  @Column({ type: 'text', name: 'external_scheme', nullable: true })
+  externalScheme!: 'ean13' | 'url' | 'custom' | null;
+
+  /** Původ carrieru: 'native' (jen náš kód) | 'adopted' (adoptovaný cizí kód + náš). */
+  @Column({ type: 'text', default: 'native' })
+  origin!: 'native' | 'adopted';
 }
