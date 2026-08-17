@@ -35,6 +35,9 @@ Reálná **Stripe integrace** místo `StubPspService` (ADR-0007) – adaptér s 
 - `pnpm --filter @tagery/api seed:demo` naplní demo tenant přes reálné služby (idempotentní, čisté ukončení). Runbook: **`DEMO.md`**. Ověřeno na čisté DB (objects=3, tiers=2, members=3, memberships=3, unassigned=7, subs=1, users=3, groups=1, access=1, 16 skenů). Login `owner@demo.tagery`/`demo1234`. Pozn.: `seed:demo` bootstrapuje AppModule (Redis+DB musí běžet); vypíše PINy self-aktivačních nosičů + temp heslo editora.
 - **Další (varianta B – MVP-hardening):** reálné Stripe místo StubPsp, e-mailová invite (SMTP), deployment na hosting (HTTPS/secrets), OAuth2/SSO.
 
+## 📌 TODO na později
+- [ ] **Napojit doménový webhook do n8n** – v `/admin/webhooks` zaregistrovat n8n Webhook node URL a otestovat reálný tok událostí (`movement.created`, `inventory.mismatch`, `issue.reported`, `found_report.created`). n8n už na VPS běží (`n8n_*` kontejnery). Webhook posílá HMAC podpis v hlavičce `x-tagery-signature` (secret u endpointu). *(přání uživatele 2026-08-17)*
+
 ## Nevyřešené úkoly (backlog)
 - ✅ **Veřejná self-aktivace (PIN)** – HOTOVO. Aktivační HTML stránka i HOTOVO (`apps/web/app/activate/[code]`). Follow-up: doručení PINu přes SMS, edit-token authed edit endpointy. Spec: `tasks/FEAT-public-self-activation/`.
 - ✅ **EPIC-16 Membership + EPIC-17 Billing (stub)** – HOTOVO na `main`. Zbývá: reálné Stripe (viz Další krok).
