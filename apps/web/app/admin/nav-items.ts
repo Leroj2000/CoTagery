@@ -16,6 +16,8 @@ import {
   Users,
   UsersRound,
   Settings,
+  MapPinned,
+  Webhook,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -43,5 +45,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/admin/access', label: 'Přístup', icon: ShieldCheck },
   { href: '/admin/users', label: 'Uživatelé', icon: Users },
   { href: '/admin/groups', label: 'Skupiny', icon: UsersRound },
+  { href: '/admin/found', label: 'Nálezy', icon: MapPinned },
+  { href: '/admin/webhooks', label: 'Webhooky', icon: Webhook },
   { href: '/admin/settings', label: 'Nastavení', icon: Settings },
 ];

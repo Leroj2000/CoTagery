@@ -82,6 +82,34 @@ export interface Issue {
   createdAt: string;
 }
 
+export interface FoundReport {
+  id: string;
+  publicCode: string;
+  message: string;
+  finderContact: string | null;
+  status: string;
+  createdAt: string;
+}
+
+export interface WebhookEndpoint {
+  id: string;
+  url: string;
+  secret: string;
+  events: string[];
+  active: boolean;
+  createdAt: string;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  endpointId: string;
+  event: string;
+  statusCode: number | null;
+  ok: boolean;
+  error: string | null;
+  createdAt: string;
+}
+
 export interface Attention {
   overdue: Asset[];
   pendingConfirmations: Movement[];

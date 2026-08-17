@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { In, Repository } from 'typeorm';
 import { TenantContextService } from '../../core/tenancy/tenant-context.service';
+import { WebhookService } from '../../core/webhooks/webhook.service';
 import { Asset } from '../asset/entities/asset.entity';
 import { DataCarrier } from '../../core/domain/entities/data-carrier.entity';
 import { InventoryCheck } from './entities/inventory-check.entity';
@@ -19,7 +20,10 @@ export interface InventoryDetail {
 
 @Injectable()
 export class InventoryService {
-  constructor(private readonly context: TenantContextService) {}
+  constructor(
+    private readonly context: TenantContextService,
+    private readonly webhooks: WebhookService,
+  ) {}
 
   private repo<T extends object>(entity: { new (): T }): Repository<T> {
     return this.context.manager.getRepository(entity);
@@ -96,6 +100,18 @@ export class InventoryService {
     check.missingCount = result.missing.length;
     check.unexpectedCount = result.unexpected.length;
     await this.repo(InventoryCheck).save(check);
+
+    // Webhook jen při nesrovnalosti (chybí / navíc).
+    if (result.missing.length > 0 || result.unexpected.length > 0) {
+      await this.webhooks.emit('inventory.mismatch', {
+        checkId: check.id,
+        subjectType: check.subjectType,
+        subjectId: check.subjectId,
+        found: result.found.length,
+        missing: result.missing.length,
+        unexpected: result.unexpected.length,
+      });
+    }
     return this.detail(checkId);
   }
 

@@ -19,6 +19,6 @@ import { ActivationService } from './activation.service';
     ScanLoggerService,
     ActivationService,
   ],
-  exports: [ResolverCacheService],
+  exports: [ResolverCacheService, RateLimitService],
 })
 export class ResolverModule {}

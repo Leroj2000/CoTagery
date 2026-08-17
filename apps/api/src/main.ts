@@ -12,6 +12,7 @@ async function bootstrap(): Promise<void> {
     exclude: [
       { path: 'r/:code', method: RequestMethod.GET },
       { path: 'r/:code/activate', method: RequestMethod.POST },
+      { path: 'r/:code/found', method: RequestMethod.POST },
     ],
   });
   app.enableCors();

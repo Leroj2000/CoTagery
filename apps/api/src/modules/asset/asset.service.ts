@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import { LessThanOrEqual, Repository } from 'typeorm';
 import { TenantContextService } from '../../core/tenancy/tenant-context.service';
 import { STORAGE, type StoragePort } from '../../core/storage/storage.port';
+import { WebhookService } from '../../core/webhooks/webhook.service';
 import { Location } from '../../core/domain/entities/location.entity';
 import { Person } from '../../core/domain/entities/person.entity';
 import { DigitalObject } from '../../core/domain/entities/digital-object.entity';
@@ -35,6 +36,7 @@ export class AssetService {
   constructor(
     private readonly context: TenantContextService,
     @Inject(STORAGE) private readonly storage: StoragePort,
+    private readonly webhooks: WebhookService,
   ) {}
 
   private repo<T extends object>(entity: { new (): T }): Repository<T> {
@@ -199,7 +201,17 @@ export class AssetService {
     asset.currentHolderId = after.holderId;
     asset.responsiblePersonId = after.responsiblePersonId;
     asset.dueAt = after.dueAt;
-    return this.repo(Asset).save(asset);
+    const saved = await this.repo(Asset).save(asset);
+
+    await this.webhooks.emit('movement.created', {
+      assetId: asset.id,
+      assetName: asset.name,
+      type: dto.type,
+      toType: after.holderType,
+      toId: after.holderId,
+      status: after.status,
+    });
+    return saved;
   }
 
   // --- Potvrzení převzetí (§8) ---
@@ -434,7 +446,7 @@ export class AssetService {
   ): Promise<Issue> {
     await this.get(assetId);
     const repo = this.repo(Issue);
-    return repo.save(
+    const issue = await repo.save(
       repo.create({
         tenantId: this.context.tenantId,
         assetId,
@@ -444,6 +456,13 @@ export class AssetService {
         status: 'open',
       }),
     );
+    await this.webhooks.emit('issue.reported', {
+      assetId,
+      issueId: issue.id,
+      kind: dto.kind,
+      description: dto.description,
+    });
+    return issue;
   }
 
   async resolveIssue(issueId: string): Promise<Issue> {

@@ -56,6 +56,15 @@ export default function ScanPage({ params }: { params: Promise<{ code: string }>
         )}
 
         {state && <ScanBody code={code} status={state.status} body={state.body} />}
+
+        {state && state.status !== 404 && (
+          <Link
+            href={`/found/${code}`}
+            className="text-center text-sm text-slate-500 underline-offset-2 hover:text-brand-600 hover:underline"
+          >
+            Našli jste tuto věc? Nahlásit nález →
+          </Link>
+        )}
       </div>
     </main>
   );

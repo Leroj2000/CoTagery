@@ -270,6 +270,29 @@ export async function bulkDispatch(_p: ActionState, fd: FormData): Promise<Actio
   }
 }
 
+// --- Nálezy + webhooky (🔵) ---
+export async function handleFoundReport(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(`/found-reports/${str(fd, 'id')}/handle`, null, '/admin/found', 'Vyřízeno.');
+}
+
+export async function createWebhook(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const events = str(fd, 'events');
+  return run(
+    '/webhooks',
+    { url: str(fd, 'url'), events: events ? events.split(',').map((e) => e.trim()).filter(Boolean) : [] },
+    '/admin/webhooks',
+    'Endpoint přidán.',
+  );
+}
+
+export async function testWebhook(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(`/webhooks/${str(fd, 'id')}/test`, null, '/admin/webhooks', 'Test odeslán.');
+}
+
+export async function deleteWebhook(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(`/webhooks/${str(fd, 'id')}`, null, '/admin/webhooks', 'Endpoint smazán.', 'DELETE');
+}
+
 // --- Nahlášení problému + inventura subjekt ---
 export async function reportIssue(_p: ActionState, fd: FormData): Promise<ActionState> {
   const assetId = str(fd, 'assetId');
