@@ -5,9 +5,12 @@ import { Asset } from './entities/asset.entity';
 import { Movement } from './entities/movement.entity';
 import { ServiceRecord } from './entities/service-record.entity';
 import { Reservation } from './entities/reservation.entity';
+import { Category } from './entities/category.entity';
 import { AssetService } from './asset.service';
+import { CategoriesService } from './categories.service';
 import { AssetController } from './asset.controller';
 import { ReservationsController } from './reservations.controller';
+import { CategoriesController } from './categories.controller';
 import { AssetHandler } from './asset.handler';
 
 /**
@@ -17,11 +20,11 @@ import { AssetHandler } from './asset.handler';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Asset, Movement, ServiceRecord, Reservation]),
+    TypeOrmModule.forFeature([Asset, Movement, ServiceRecord, Reservation, Category]),
     DomainModule,
   ],
-  controllers: [AssetController, ReservationsController],
-  providers: [AssetService, AssetHandler],
+  controllers: [AssetController, ReservationsController, CategoriesController],
+  providers: [AssetService, CategoriesService, AssetHandler],
   exports: [AssetService],
 })
 export class AssetModule {}

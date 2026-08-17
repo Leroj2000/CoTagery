@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Package, AlertTriangle } from 'lucide-react';
 import { apiFetch } from '../../lib/server-api';
-import type { Asset, Person, Location } from '../../lib/types';
+import type { Asset, Person, Location, Category } from '../../lib/types';
 import { PageHeader, Section, Table, StatusBadge, EmptyState } from '../ui';
 import { ActionForm } from '../action-form';
 import { createAsset } from '../actions';
@@ -13,11 +13,16 @@ function fmtDate(iso: string | null): string {
 }
 
 export default async function AssetsPage() {
-  const [assets, people, locations] = await Promise.all([
+  const [assets, people, locations, categories] = await Promise.all([
     apiFetch<Asset[]>('/assets'),
     apiFetch<Person[]>('/people'),
     apiFetch<Location[]>('/locations'),
+    apiFetch<Category[]>('/categories'),
   ]);
+  const categoryOptions = [
+    { value: '', label: '— bez kategorie —' },
+    ...categories.map((c) => ({ value: c.id, label: c.name })),
+  ];
 
   const personName = new Map(people.map((p) => [p.id, p.name]));
   const locName = new Map(locations.map((l) => [l.id, l.name]));
@@ -70,7 +75,7 @@ export default async function AssetsPage() {
           submitLabel="Vytvořit věc"
           fields={[
             { name: 'name', label: 'Název', required: true, placeholder: 'Aku vrtačka Makita' },
-            { name: 'category', label: 'Kategorie', placeholder: 'Elektrické nářadí' },
+            { name: 'categoryId', label: 'Kategorie', options: categoryOptions },
             { name: 'manufacturer', label: 'Výrobce', placeholder: 'Makita' },
             { name: 'serialNumber', label: 'Sériové číslo' },
             { name: 'homeLocationId', label: 'Patří do (home)', options: locationOptions },

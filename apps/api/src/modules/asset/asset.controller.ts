@@ -15,14 +15,12 @@ import { AssetService } from './asset.service';
 import {
   AddServiceDto,
   CreateAssetDto,
-  CreateReservationDto,
   PerformMovementDto,
   PutIntoContainerDto,
 } from './dto/asset.dto';
 import type { Asset } from './entities/asset.entity';
 import type { Movement } from './entities/movement.entity';
 import type { ServiceRecord } from './entities/service-record.entity';
-import type { Reservation } from './entities/reservation.entity';
 import type { MovementType } from './movement.logic';
 
 @Controller('assets')

@@ -226,13 +226,32 @@ export async function addBenefit(_p: ActionState, fd: FormData): Promise<ActionS
   );
 }
 
+// --- Kategorie věcí ---
+export async function createCategory(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run('/categories', { name: str(fd, 'name') }, '/admin/categories', 'Kategorie vytvořena.');
+}
+
+export async function renameCategory(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(
+    `/categories/${str(fd, 'id')}`,
+    { name: str(fd, 'name') },
+    '/admin/categories',
+    'Přejmenováno.',
+    'PATCH',
+  );
+}
+
+export async function deleteCategory(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(`/categories/${str(fd, 'id')}`, null, '/admin/categories', 'Kategorie smazána.', 'DELETE');
+}
+
 // --- Asset custody (Fáze A/B) ---
 export async function createAsset(_p: ActionState, fd: FormData): Promise<ActionState> {
   return run(
     '/assets',
     {
       name: str(fd, 'name'),
-      category: str(fd, 'category') || undefined,
+      categoryId: str(fd, 'categoryId') || undefined,
       manufacturer: str(fd, 'manufacturer') || undefined,
       serialNumber: str(fd, 'serialNumber') || undefined,
       homeLocationId: str(fd, 'homeLocationId') || undefined,

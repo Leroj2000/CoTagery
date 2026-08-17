@@ -36,6 +36,12 @@ export interface Movement {
   createdAt: string;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  color: string | null;
+}
+
 export interface ServiceRecord {
   id: string;
   assetId: string;

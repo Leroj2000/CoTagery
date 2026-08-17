@@ -25,6 +25,10 @@ export class CreateAssetDto {
   category?: string;
 
   @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @IsOptional()
   @IsString()
   @MaxLength(200)
   manufacturer?: string;
@@ -57,6 +61,25 @@ export class CreateAssetDto {
 export class PutIntoContainerDto {
   @IsUUID()
   childAssetId!: string;
+}
+
+export class CreateCategoryDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  color?: string;
+}
+
+export class UpdateCategoryDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  name!: string;
 }
 
 export class PerformMovementDto {

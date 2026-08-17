@@ -6,6 +6,7 @@ import { Asset } from './entities/asset.entity';
 import { Movement } from './entities/movement.entity';
 import { ServiceRecord } from './entities/service-record.entity';
 import { Reservation } from './entities/reservation.entity';
+import { Category } from './entities/category.entity';
 import {
   applyMovement,
   availableActions,
@@ -47,6 +48,15 @@ export class AssetService {
 
   /** Založí asset + jeho DigitalObject (nosič se přidá zvlášť přes /objects). */
   async create(dto: CreateAssetDto): Promise<Asset> {
+    // Kategorie z číselníku: přednost má categoryId (doplní denorm. název).
+    const categoryId: string | null = dto.categoryId ?? null;
+    let categoryName: string | null = dto.category ?? null;
+    if (categoryId) {
+      const cat = await this.repo(Category).findOne({ where: { id: categoryId } });
+      if (!cat) throw new NotFoundException('Kategorie neexistuje');
+      categoryName = cat.name;
+    }
+
     const objectRepo = this.repo(DigitalObject);
     const object = await objectRepo.save(
       objectRepo.create({
@@ -64,7 +74,8 @@ export class AssetService {
         tenantId: this.context.tenantId,
         digitalObjectId: object.id,
         name: dto.name,
-        category: dto.category ?? null,
+        category: categoryName,
+        categoryId,
         manufacturer: dto.manufacturer ?? null,
         model: dto.model ?? null,
         serialNumber: dto.serialNumber ?? null,

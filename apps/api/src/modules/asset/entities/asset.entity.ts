@@ -17,8 +17,13 @@ export class Asset extends BaseTenantEntity {
   @Column({ type: 'text' })
   name!: string;
 
+  /** Denormalizovaný název kategorie (pro rychlé zobrazení v seznamech). */
   @Column({ type: 'text', nullable: true })
   category!: string | null;
+
+  /** Vazba na číselník kategorií (null = bez kategorie / volný text). */
+  @Column({ type: 'uuid', name: 'category_id', nullable: true })
+  categoryId!: string | null;
 
   @Column({ type: 'text', nullable: true })
   manufacturer!: string | null;
