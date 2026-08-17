@@ -19,6 +19,7 @@ import {
   type MovementType,
 } from './movement.logic';
 import { wouldCreateCycle } from './nesting.logic';
+import { Issue } from './entities/issue.entity';
 import { toCsv, csvToObjects } from './csv.logic';
 import { randomUUID } from 'node:crypto';
 import { generatePublicCode } from '../../core/domain/public-code';
@@ -420,5 +421,56 @@ export class AssetService {
     const asset = await this.get(assetId);
     if (!asset.photoKey) throw new NotFoundException('Věc nemá fotografii');
     return { buffer: await this.storage.get(asset.photoKey), mime: asset.photoMime ?? 'image/jpeg' };
+  }
+
+  // --- Nahlášení problému / poškození ---
+  listIssues(assetId: string): Promise<Issue[]> {
+    return this.repo(Issue).find({ where: { assetId }, order: { createdAt: 'DESC' } });
+  }
+
+  async reportIssue(
+    assetId: string,
+    dto: { kind: Issue['kind']; description: string; reportedById?: string },
+  ): Promise<Issue> {
+    await this.get(assetId);
+    const repo = this.repo(Issue);
+    return repo.save(
+      repo.create({
+        tenantId: this.context.tenantId,
+        assetId,
+        reportedById: dto.reportedById ?? null,
+        kind: dto.kind,
+        description: dto.description,
+        status: 'open',
+      }),
+    );
+  }
+
+  async resolveIssue(issueId: string): Promise<Issue> {
+    const repo = this.repo(Issue);
+    const issue = await repo.findOne({ where: { id: issueId } });
+    if (!issue) throw new NotFoundException('Hlášení neexistuje');
+    issue.status = 'resolved';
+    issue.resolvedAt = new Date();
+    return repo.save(issue);
+  }
+
+  // --- „Vyžaduje pozornost" (akční agregace) ---
+  /** Souhrn věcí vyžadujících akci: po termínu, nepotvrzeno, problémy, servis. */
+  async attention(): Promise<{
+    overdue: Asset[];
+    pendingConfirmations: Movement[];
+    openIssues: Issue[];
+    dueServices: ServiceRecord[];
+  }> {
+    const now = new Date();
+    const [assets, pendingConfirmations, openIssues, dueServices] = await Promise.all([
+      this.repo(Asset).find({ where: { status: 'loaned' } }),
+      this.pendingConfirmations(),
+      this.repo(Issue).find({ where: { status: 'open' }, order: { createdAt: 'DESC' } }),
+      this.dueServices(30),
+    ]);
+    const overdue = assets.filter((a) => a.dueAt && a.dueAt.getTime() < now.getTime());
+    return { overdue, pendingConfirmations, openIssues, dueServices };
   }
 }

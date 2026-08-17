@@ -1,8 +1,19 @@
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class StartInventoryDto {
+  /** Nad čím inventura: 'location' (default), 'person' nebo 'asset' (kontejner). */
+  @IsOptional()
+  @IsIn(['location', 'person', 'asset'])
+  subjectType?: 'location' | 'person' | 'asset';
+
+  /** ID subjektu (lokace/osoby/kontejneru). Alias `locationId` kvůli kompatibilitě. */
+  @IsOptional()
   @IsUUID()
-  locationId!: string;
+  subjectId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  locationId?: string;
 }
 
 export class ScanInventoryDto {

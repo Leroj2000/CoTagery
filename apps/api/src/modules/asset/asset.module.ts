@@ -6,6 +6,7 @@ import { Movement } from './entities/movement.entity';
 import { ServiceRecord } from './entities/service-record.entity';
 import { Reservation } from './entities/reservation.entity';
 import { Category } from './entities/category.entity';
+import { Issue } from './entities/issue.entity';
 import { AssetService } from './asset.service';
 import { CategoriesService } from './categories.service';
 import { AssetController } from './asset.controller';
@@ -20,7 +21,7 @@ import { AssetHandler } from './asset.handler';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Asset, Movement, ServiceRecord, Reservation, Category]),
+    TypeOrmModule.forFeature([Asset, Movement, ServiceRecord, Reservation, Category, Issue]),
     DomainModule,
   ],
   controllers: [AssetController, ReservationsController, CategoriesController],

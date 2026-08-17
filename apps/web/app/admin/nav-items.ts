@@ -1,5 +1,6 @@
 import {
   LayoutDashboard,
+  Bell,
   Package,
   MapPin,
   Contact,
@@ -27,6 +28,7 @@ export interface NavItem {
 /** Položky admin navigace (sdíleno server dashboardem i client nav). */
 export const NAV_ITEMS: NavItem[] = [
   { href: '/admin', label: 'Přehled', icon: LayoutDashboard },
+  { href: '/admin/attention', label: 'Vyžaduje pozornost', icon: Bell },
   { href: '/admin/assets', label: 'Věci', icon: Package },
   { href: '/admin/dispatch', label: 'Výdej', icon: PackageCheck },
   { href: '/admin/locations', label: 'Místa', icon: MapPin },

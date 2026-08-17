@@ -73,6 +73,22 @@ export interface Person {
   company: string | null;
 }
 
+export interface Issue {
+  id: string;
+  assetId: string;
+  kind: string;
+  description: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface Attention {
+  overdue: Asset[];
+  pendingConfirmations: Movement[];
+  openIssues: Issue[];
+  dueServices: ServiceRecord[];
+}
+
 export interface Location {
   id: string;
   name: string;
@@ -83,7 +99,9 @@ export interface Location {
 
 export interface InventoryCheck {
   id: string;
-  locationId: string;
+  subjectType: 'location' | 'person' | 'asset';
+  subjectId: string | null;
+  locationId: string | null;
   status: 'open' | 'closed';
   expectedAssetIds: string[];
   foundCount: number;

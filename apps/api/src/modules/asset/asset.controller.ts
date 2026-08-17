@@ -25,10 +25,12 @@ import {
   ImportCsvDto,
   PerformMovementDto,
   PutIntoContainerDto,
+  ReportIssueDto,
 } from './dto/asset.dto';
 import type { Asset } from './entities/asset.entity';
 import type { Movement } from './entities/movement.entity';
 import type { ServiceRecord } from './entities/service-record.entity';
+import type { Issue } from './entities/issue.entity';
 import type { MovementType } from './movement.logic';
 
 /** Minimální tvar nahraného souboru (bez závislosti na typech express/multer). */
@@ -77,6 +79,17 @@ export class AssetController {
   ): Promise<{ ok: number; failed: { assetId: string; error: string }[] }> {
     const { assetIds, ...movement } = dto;
     return this.assets.bulkMovement(assetIds, movement);
+  }
+
+  // --- „Vyžaduje pozornost" (musí být před :id) ---
+  @Get('attention')
+  attention(): Promise<{
+    overdue: Asset[];
+    pendingConfirmations: Movement[];
+    openIssues: Issue[];
+    dueServices: ServiceRecord[];
+  }> {
+    return this.assets.attention();
   }
 
   @Get(':id')
@@ -169,5 +182,26 @@ export class AssetController {
   async photo(@Param('id', ParseUUIDPipe) id: string): Promise<StreamableFile> {
     const { buffer, mime } = await this.assets.getPhoto(id);
     return new StreamableFile(buffer, { type: mime });
+  }
+
+  // --- Nahlášení problému / poškození ---
+  @Get(':id/issues')
+  issues(@Param('id', ParseUUIDPipe) id: string): Promise<Issue[]> {
+    return this.assets.listIssues(id);
+  }
+
+  @Post(':id/issues')
+  @RequireRole('EDITOR')
+  reportIssue(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReportIssueDto,
+  ): Promise<Issue> {
+    return this.assets.reportIssue(id, dto);
+  }
+
+  @Post('issues/:issueId/resolve')
+  @RequireRole('EDITOR')
+  resolveIssue(@Param('issueId', ParseUUIDPipe) issueId: string): Promise<Issue> {
+    return this.assets.resolveIssue(issueId);
   }
 }

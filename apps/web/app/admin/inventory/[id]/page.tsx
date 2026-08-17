@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Check, X, HelpCircle, ClipboardCheck } from 'lucide-react';
 import { apiFetch, ApiError } from '../../../lib/server-api';
-import type { InventoryDetail, Location, Asset } from '../../../lib/types';
+import type { InventoryDetail, Location, Asset, Person } from '../../../lib/types';
 import { PageHeader, Section, Badge, StatusBadge, Table, EmptyState } from '../../ui';
 import { ActionForm } from '../../action-form';
 import { ActionButton } from '../../action-button';
@@ -20,12 +20,20 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
     if (e instanceof ApiError && e.status === 404) notFound();
     throw e;
   }
-  const [locations, assets] = await Promise.all([
+  const [locations, assets, people] = await Promise.all([
     apiFetch<Location[]>('/locations'),
     apiFetch<Asset[]>('/assets'),
+    apiFetch<Person[]>('/people'),
   ]);
   const locName = new Map(locations.map((l) => [l.id, l.name]));
   const { check } = detail;
+  const subjectId = check.subjectId ?? check.locationId;
+  const subjectName =
+    check.subjectType === 'person'
+      ? (people.find((p) => p.id === subjectId)?.name ?? 'osoba')
+      : check.subjectType === 'asset'
+        ? (assets.find((a) => a.id === subjectId)?.name ?? 'kontejner')
+        : (locName.get(subjectId ?? '') ?? 'místo');
   const open = check.status === 'open';
   const expected = check.expectedAssetIds.length;
 
@@ -46,7 +54,7 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
         </Link>
         <div className="mt-1">
           <PageHeader
-            title={`Inventura — ${locName.get(check.locationId) ?? 'místo'}`}
+            title={`Inventura — ${subjectName}`}
             description={`Očekáváno: ${expected} · naskenováno: ${detail.scannedCount}`}
             icon={<ClipboardCheck size={18} />}
             action={open ? <Badge tone="amber">probíhá</Badge> : <Badge tone="green">uzavřeno</Badge>}

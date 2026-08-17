@@ -270,6 +270,37 @@ export async function bulkDispatch(_p: ActionState, fd: FormData): Promise<Actio
   }
 }
 
+// --- Nahlášení problému + inventura subjekt ---
+export async function reportIssue(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const assetId = str(fd, 'assetId');
+  return run(
+    `/assets/${assetId}/issues`,
+    {
+      kind: str(fd, 'kind'),
+      description: str(fd, 'description'),
+      reportedById: str(fd, 'reportedById') || undefined,
+    },
+    `/admin/assets/${assetId}`,
+    'Problém nahlášen.',
+  );
+}
+
+export async function resolveIssue(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const assetId = str(fd, 'assetId');
+  return run(
+    `/assets/issues/${str(fd, 'issueId')}/resolve`,
+    null,
+    assetId ? `/admin/assets/${assetId}` : '/admin/attention',
+    'Vyřešeno.',
+  );
+}
+
+export async function startInventorySubject(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const subject = str(fd, 'subject'); // "type:id"
+  const [subjectType, subjectId] = subject.includes(':') ? subject.split(':') : ['location', subject];
+  return run('/inventory', { subjectType, subjectId }, '/admin/inventory', 'Inventura spuštěna.');
+}
+
 // --- Kategorie věcí ---
 export async function createCategory(_p: ActionState, fd: FormData): Promise<ActionState> {
   return run('/categories', { name: str(fd, 'name') }, '/admin/categories', 'Kategorie vytvořena.');

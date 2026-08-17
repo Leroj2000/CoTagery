@@ -7,8 +7,16 @@ import { BaseTenantEntity } from '../../../core/database/base-tenant.entity';
  */
 @Entity('inventory_checks')
 export class InventoryCheck extends BaseTenantEntity {
-  @Column({ type: 'uuid', name: 'location_id' })
-  locationId!: string;
+  /** Nad čím inventura probíhá: místo / osoba / kontejner. */
+  @Column({ type: 'text', name: 'subject_type', default: 'location' })
+  subjectType!: 'location' | 'person' | 'asset';
+
+  @Column({ type: 'uuid', name: 'subject_id', nullable: true })
+  subjectId!: string | null;
+
+  /** Zpětná kompatibilita – u inventur nad lokací. */
+  @Column({ type: 'uuid', name: 'location_id', nullable: true })
+  locationId!: string | null;
 
   @Column({ type: 'text', default: 'open' })
   status!: 'open' | 'closed';

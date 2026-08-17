@@ -77,6 +77,20 @@ export class ImportCsvDto {
   csv!: string;
 }
 
+export class ReportIssueDto {
+  @IsIn(['damage', 'malfunction', 'missing_part', 'other'])
+  kind!: 'damage' | 'malfunction' | 'missing_part' | 'other';
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(1000)
+  description!: string;
+
+  @IsOptional()
+  @IsUUID()
+  reportedById?: string;
+}
+
 export class CreateCategoryDto {
   @IsString()
   @MinLength(1)

@@ -15,9 +15,19 @@ import {
   removeFromContainer,
   addService,
   confirmMovement,
+  reportIssue,
+  resolveIssue,
 } from '../../actions';
+import type { Issue } from '../../../lib/types';
 
 export const dynamic = 'force-dynamic';
+
+const ISSUE_LABELS: Record<string, string> = {
+  damage: 'Poškození',
+  malfunction: 'Závada',
+  missing_part: 'Chybí díl',
+  other: 'Jiné',
+};
 
 const SERVICE_LABELS: Record<string, string> = {
   service: 'Servis',
@@ -63,6 +73,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
     asset.canContainAssets ? apiFetch<Asset[]>(`/assets/${id}/contents`) : Promise.resolve([]),
     apiFetch<ServiceRecord[]>(`/assets/${id}/services`),
   ]);
+  const issues = await apiFetch<Issue[]>(`/assets/${id}/issues`);
 
   const personName = new Map(people.map((p) => [p.id, p.name]));
   const locName = new Map(locations.map((l) => [l.id, l.name]));
@@ -223,6 +234,54 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
           </div>
         </Section>
       )}
+
+      <Section title="Problémy / poškození" description="Nahlášení závady – condition je oddělený od půjčení">
+        <div className="flex flex-col gap-4">
+          {issues.length === 0 ? (
+            <EmptyState>Žádná hlášení.</EmptyState>
+          ) : (
+            <Table
+              head={['Kdy', 'Typ', 'Popis', 'Stav']}
+              rows={issues.map((i) => [
+                fmtDate(i.createdAt),
+                <Badge key="k" tone={i.status === 'open' ? 'red' : 'slate'}>
+                  {ISSUE_LABELS[i.kind] ?? i.kind}
+                </Badge>,
+                i.description,
+                i.status === 'open' ? (
+                  <ActionButton
+                    key="r"
+                    action={resolveIssue}
+                    hidden={{ issueId: i.id, assetId: asset.id }}
+                    label="Vyřešit"
+                  />
+                ) : (
+                  <Badge key="r" tone="green">vyřešeno</Badge>
+                ),
+              ])}
+            />
+          )}
+          <ActionForm
+            action={reportIssue}
+            hidden={{ assetId: asset.id }}
+            submitLabel="Nahlásit problém"
+            fields={[
+              {
+                name: 'kind',
+                label: 'Typ',
+                required: true,
+                options: [
+                  { value: 'damage', label: 'Poškození' },
+                  { value: 'malfunction', label: 'Závada' },
+                  { value: 'missing_part', label: 'Chybí díl' },
+                  { value: 'other', label: 'Jiné' },
+                ],
+              },
+              { name: 'description', label: 'Popis', required: true },
+            ]}
+          />
+        </div>
+      </Section>
 
       <Section
         title="Servis a revize"

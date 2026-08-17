@@ -29,16 +29,22 @@ export class InventoryService {
     return this.repo(InventoryCheck).find({ order: { createdAt: 'DESC' }, take: 200 });
   }
 
-  /** Spustí inventuru: zmrazí očekávané assety aktuálně přiřazené lokaci. */
+  /** Spustí inventuru nad místem/osobou/kontejnerem: zmrazí očekávané assety. */
   async start(dto: StartInventoryDto): Promise<InventoryCheck> {
+    const subjectType = dto.subjectType ?? 'location';
+    const subjectId = dto.subjectId ?? dto.locationId;
+    if (!subjectId) throw new BadRequestException('Chybí subjectId / locationId');
+
     const expected = await this.repo(Asset).find({
-      where: { currentHolderType: 'location', currentHolderId: dto.locationId },
+      where: { currentHolderType: subjectType, currentHolderId: subjectId },
     });
     const repo = this.repo(InventoryCheck);
     return repo.save(
       repo.create({
         tenantId: this.context.tenantId,
-        locationId: dto.locationId,
+        subjectType,
+        subjectId,
+        locationId: subjectType === 'location' ? subjectId : null,
         status: 'open',
         expectedAssetIds: expected.map((a) => a.id),
       }),
