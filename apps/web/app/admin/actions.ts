@@ -245,13 +245,34 @@ export async function deleteCategory(_p: ActionState, fd: FormData): Promise<Act
   return run(`/categories/${str(fd, 'id')}`, null, '/admin/categories', 'Kategorie smazána.', 'DELETE');
 }
 
+/** Najde kategorii podle názvu, nebo ji vytvoří. Vrací její id. */
+async function findOrCreateCategory(name: string): Promise<string | undefined> {
+  try {
+    const cat = await apiFetch<{ id: string }>('/categories', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+    return cat.id;
+  } catch {
+    // Nejspíš už existuje (duplicitní název) → dohledej ji.
+    const list = await apiFetch<{ id: string; name: string }[]>('/categories');
+    return list.find((c) => c.name.toLowerCase() === name.toLowerCase())?.id;
+  }
+}
+
 // --- Asset custody (Fáze A/B) ---
 export async function createAsset(_p: ActionState, fd: FormData): Promise<ActionState> {
+  // Inline „➕ Nová kategorie…": categoryId='__new__' + newCategory → založ ji.
+  let categoryId = str(fd, 'categoryId');
+  const newCategory = str(fd, 'newCategory');
+  if (categoryId === '__new__') {
+    categoryId = newCategory ? ((await findOrCreateCategory(newCategory)) ?? '') : '';
+  }
   return run(
     '/assets',
     {
       name: str(fd, 'name'),
-      categoryId: str(fd, 'categoryId') || undefined,
+      categoryId: categoryId || undefined,
       manufacturer: str(fd, 'manufacturer') || undefined,
       serialNumber: str(fd, 'serialNumber') || undefined,
       homeLocationId: str(fd, 'homeLocationId') || undefined,

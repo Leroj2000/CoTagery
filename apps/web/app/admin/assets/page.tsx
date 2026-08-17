@@ -3,8 +3,7 @@ import { Package, AlertTriangle } from 'lucide-react';
 import { apiFetch } from '../../lib/server-api';
 import type { Asset, Person, Location, Category } from '../../lib/types';
 import { PageHeader, Section, Table, StatusBadge, EmptyState } from '../ui';
-import { ActionForm } from '../action-form';
-import { createAsset } from '../actions';
+import { AssetForm } from './asset-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,10 +18,7 @@ export default async function AssetsPage() {
     apiFetch<Location[]>('/locations'),
     apiFetch<Category[]>('/categories'),
   ]);
-  const categoryOptions = [
-    { value: '', label: '— bez kategorie —' },
-    ...categories.map((c) => ({ value: c.id, label: c.name })),
-  ];
+  const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }));
 
   const personName = new Map(people.map((p) => [p.id, p.name]));
   const locName = new Map(locations.map((l) => [l.id, l.name]));
@@ -36,10 +32,7 @@ export default async function AssetsPage() {
   const now = Date.now();
   const overdue = assets.filter((a) => a.dueAt && new Date(a.dueAt).getTime() < now && a.status === 'loaned');
 
-  const locationOptions = [
-    { value: '', label: '— žádné —' },
-    ...locations.map((l) => ({ value: l.id, label: l.name })),
-  ];
+  const locationOptions = locations.map((l) => ({ value: l.id, label: l.name }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -70,25 +63,7 @@ export default async function AssetsPage() {
       )}
 
       <Section title="Nová věc">
-        <ActionForm
-          action={createAsset}
-          submitLabel="Vytvořit věc"
-          fields={[
-            { name: 'name', label: 'Název', required: true, placeholder: 'Aku vrtačka Makita' },
-            { name: 'categoryId', label: 'Kategorie', options: categoryOptions },
-            { name: 'manufacturer', label: 'Výrobce', placeholder: 'Makita' },
-            { name: 'serialNumber', label: 'Sériové číslo' },
-            { name: 'homeLocationId', label: 'Patří do (home)', options: locationOptions },
-            {
-              name: 'canContainAssets',
-              label: 'Kontejner (může obsahovat věci)',
-              options: [
-                { value: 'false', label: 'Ne' },
-                { value: 'true', label: 'Ano (dodávka, kufr…)' },
-              ],
-            },
-          ]}
-        />
+        <AssetForm categories={categoryOptions} locations={locationOptions} />
       </Section>
 
       <Section title={`Věci (${assets.length})`}>
