@@ -208,12 +208,12 @@ export class MembershipService {
 
     const carrierRepo = this.repo(DataCarrier);
     const carrier = await carrierRepo.findOne({ where: { id: dto.dataCarrierId } });
-    if (!carrier) throw new NotFoundException('Nosič neexistuje');
+    if (!carrier) throw new NotFoundException('Identifikátor neexistuje');
     if (carrier.digitalObjectId) {
-      throw new BadRequestException('Nosič je už přiřazený jinému objektu');
+      throw new BadRequestException('Identifikátor je už přiřazený jinému objektu');
     }
 
-    // Karta = DigitalObject typu membership, na který nosič ukazuje (resolver).
+    // Karta = DigitalObject typu membership, na který identifikátor ukazuje (resolver).
     const objectRepo = this.repo(DigitalObject);
     const object = await objectRepo.save(
       objectRepo.create({
@@ -263,7 +263,7 @@ export class MembershipService {
     }
   }
 
-  /** Kartu najde přes nosič (pro scan handler i entitlement provider). */
+  /** Kartu najde přes identifikátor (pro scan handler i entitlement provider). */
   async cardByCarrier(carrierId: string): Promise<MembershipCard | null> {
     return this.repo(MembershipCard).findOne({ where: { dataCarrierId: carrierId } });
   }

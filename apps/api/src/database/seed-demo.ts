@@ -18,7 +18,7 @@ import { ScanEvent } from '../core/domain/entities/scan-event.entity';
 /**
  * Demo seed (varianta A – „co ukazovat"): naplní demo tenant realistickými daty
  * přes reálné služby (žádné raw SQL) – tiery, členové, členství, karta, pool
- * nosičů (vč. self-aktivace), produkty, přístupový bod + audit, předplatné +
+ * identifikátorů (vč. self-aktivace), produkty, přístupový bod + audit, předplatné +
  * faktura, uživatelé, skupina, skeny pro analytiku. Idempotentní.
  *
  * Předpoklad: `pnpm --filter @tagery/api seed` (demo tenant + owner) proběhl.
@@ -75,21 +75,21 @@ async function seedDemo(): Promise<void> {
     const janaMembership = await memberships.issueMembership({ memberId: jana.id, tierId: vip.id });
     await memberships.issueMembership({ memberId: petr.id, tierId: basic.id });
 
-    // Produkty + nosiče
+    // Produkty + identifikátory
     const kava = await objects.create({ moduleType: 'product', slug: 'demo-kava-etiopie' });
     const tricko = await objects.create({ moduleType: 'product', slug: 'demo-tricko-bio' });
     await carriers.createForObject(kava.id, { carrierType: 'qr' });
     await carriers.createForObject(tricko.id, { carrierType: 'qr' });
 
-    // Pool nosičů: 5 běžných + 3 self-aktivační (PIN)
+    // Pool identifikátorů: 5 běžných + 3 self-aktivační (PIN)
     const pool = await carriers.generateBatch({ count: 5 });
     const selfAct = await carriers.generateBatch({ count: 3, selfActivatable: true, moduleTemplate: 'contact' });
     console.log(
-      'Self-aktivační nosiče (kód/PIN k tisku):',
+      'Self-aktivační identifikátory (kód/PIN k tisku):',
       selfAct.map((g) => `${g.carrier.publicCode}:${g.pin}`).join(', '),
     );
 
-    // VIP karta pro Janu na jeden nosič z poolu
+    // VIP karta pro Janu na jeden identifikátor z poolu
     const cardCarrierId = pool[0].carrier.id;
     await memberships.issueCard(janaMembership.id, { dataCarrierId: cardCarrierId });
     const cardCarrier = await ctx.manager.getRepository(DataCarrier).findOne({ where: { id: cardCarrierId } });

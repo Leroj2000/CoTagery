@@ -179,7 +179,7 @@ export interface DataCarrier {
   moduleTemplate?: string | null;
 }
 
-/** Výsledek generování batche nosičů (pin je jen jednou, k tisku). */
+/** Výsledek generování batche identifikátorů (pin je jen jednou, k tisku). */
 export interface GeneratedCarrier {
   id: string;
   publicCode: string;

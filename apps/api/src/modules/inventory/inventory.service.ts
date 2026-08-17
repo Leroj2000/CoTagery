@@ -69,9 +69,9 @@ export class InventoryService {
     let assetId = dto.assetId ?? null;
     if (!assetId && dto.publicCode) {
       const carrier = await this.repo(DataCarrier).findOne({ where: { publicCode: dto.publicCode } });
-      if (!carrier?.digitalObjectId) throw new NotFoundException('Nosič nenalezen nebo nepřiřazený');
+      if (!carrier?.digitalObjectId) throw new NotFoundException('Identifikátor nenalezen nebo nepřiřazený');
       const asset = await this.repo(Asset).findOne({ where: { digitalObjectId: carrier.digitalObjectId } });
-      if (!asset) throw new NotFoundException('K nosiči není přiřazený asset');
+      if (!asset) throw new NotFoundException('K identifikátoru není přiřazený asset');
       assetId = asset.id;
     }
     if (!assetId) throw new BadRequestException('Chybí assetId nebo publicCode');

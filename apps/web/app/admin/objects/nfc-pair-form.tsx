@@ -4,7 +4,7 @@ import { useActionState } from 'react';
 import { pairNfc } from '../actions';
 import type { ActionState } from '../action-form';
 
-/** Kompaktní inline formulář pro spárování NFC UID s nosičem (Server Action). */
+/** Kompaktní inline formulář pro spárování NFC UID s identifikátorem (Server Action). */
 export function NfcPairForm({ carrierId, objectId }: { carrierId: string; objectId: string }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(pairNfc, null);
 

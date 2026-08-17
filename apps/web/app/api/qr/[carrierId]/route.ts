@@ -1,7 +1,7 @@
 import { apiBase, getAccessToken } from '../../../lib/session';
 
 /**
- * BFF proxy pro QR obrázek nosiče. API endpoint `/carriers/:id/qr` vyžaduje
+ * BFF proxy pro QR obrázek identifikátory. API endpoint `/carriers/:id/qr` vyžaduje
  * JWT (Bearer), který drží server v httpOnly cookie – proto ho nelze načíst
  * přímo <img> tagem. Tudy protéká s Bearerem a streamuje PNG zpět.
  */

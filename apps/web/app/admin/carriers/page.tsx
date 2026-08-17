@@ -19,9 +19,9 @@ export default async function CarriersPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold">Nosiče (pool)</h1>
+        <h1 className="text-xl font-semibold">Identifikátory (pool)</h1>
         <p className="text-sm text-neutral-500">
-          Předgenerované nepřiřazené nosiče, self-aktivace (PIN) a claim na objekt.
+          Předgenerované nepřiřazené identifikátory, self-aktivace (PIN) a claim na objekt.
         </p>
       </div>
 
@@ -54,15 +54,15 @@ export default async function CarriersPage() {
           />
         </Section>
 
-        <Section title="Claim nosiče na objekt">
+        <Section title="Claim identifikátoru na objekt">
           {unassigned.length === 0 || objects.length === 0 ? (
-            <p className="text-sm text-neutral-400">Potřebuješ nepřiřazený nosič a objekt.</p>
+            <p className="text-sm text-neutral-400">Potřebuješ nepřiřazený identifikátor a objekt.</p>
           ) : (
             <ActionForm
               action={claimCarrier}
               submitLabel="Přiřadit"
               fields={[
-                { name: 'publicCode', label: 'Kód nosiče', required: true, options: codeOptions },
+                { name: 'publicCode', label: 'Kód identifikátoru', required: true, options: codeOptions },
                 { name: 'objectId', label: 'Objekt', required: true, options: objectOptions },
               ]}
             />
@@ -70,7 +70,7 @@ export default async function CarriersPage() {
         </Section>
       </div>
 
-      <Section title={`Nepřiřazené nosiče (${unassigned.length})`}>
+      <Section title={`Nepřiřazené identifikátory (${unassigned.length})`}>
         <Table
           head={['Kód', 'Typ', 'Self-aktivace', 'Modul']}
           rows={unassigned.map((c) => [

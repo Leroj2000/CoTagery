@@ -172,14 +172,14 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
         </Section>
       )}
 
-      <Section title="Nosič (QR)" description="Štítek na věci – stabilní identifikátor">
+      <Section title="Identifikátor (QR)" description="Štítek na věci – stabilní identifikátor">
         {carriers.length === 0 ? (
           <div className="flex flex-col gap-3">
-            <EmptyState>Věc zatím nemá nosič.</EmptyState>
+            <EmptyState>Věc zatím nemá identifikátor.</EmptyState>
             <ActionForm
               action={addCarrierToObject}
               hidden={{ objectId: asset.digitalObjectId }}
-              submitLabel="Přidat QR nosič"
+              submitLabel="Přidat QR identifikátor"
               fields={[
                 {
                   name: 'carrierType',

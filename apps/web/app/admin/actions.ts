@@ -33,7 +33,7 @@ function num(fd: FormData, key: string): number | undefined {
   return v === '' ? undefined : Number(v);
 }
 
-// --- Objekty & nosiče ---
+// --- Objekty & identifikátory ---
 export async function createObject(_p: ActionState, fd: FormData): Promise<ActionState> {
   return run(
     '/objects',
@@ -52,7 +52,7 @@ export async function generateCarriers(_p: ActionState, fd: FormData): Promise<A
     '/carriers/batch',
     { count: num(fd, 'count') ?? 1, carrierType: str(fd, 'carrierType') || 'qr' },
     '/admin/objects',
-    'Nosiče vygenerovány.',
+    'Identifikátory vygenerovány.',
   );
 }
 
@@ -126,7 +126,7 @@ export async function issueCard(_p: ActionState, fd: FormData): Promise<ActionSt
   );
 }
 
-// --- Nosiče: pool + claim ---
+// --- Identifikátory: pool + claim ---
 export async function generatePool(_p: ActionState, fd: FormData): Promise<ActionState> {
   const selfAct = str(fd, 'selfActivatable') === 'on' || str(fd, 'selfActivatable') === 'true';
   const body: Record<string, unknown> = {
@@ -157,7 +157,7 @@ export async function claimCarrier(_p: ActionState, fd: FormData): Promise<Actio
     '/carriers/claim',
     { publicCode: str(fd, 'publicCode'), objectId: str(fd, 'objectId') },
     '/admin/carriers',
-    'Nosič přiřazen.',
+    'Identifikátor přiřazen.',
   );
 }
 
@@ -536,7 +536,7 @@ export async function addCarrierToObject(_p: ActionState, fd: FormData): Promise
     `/objects/${objectId}/carriers`,
     { carrierType: str(fd, 'carrierType') || 'qr' },
     `/admin/objects/${objectId}`,
-    'Nosič přidán.',
+    'Identifikátor přidán.',
   );
 }
 

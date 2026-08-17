@@ -27,7 +27,7 @@ export default async function AdminDashboard() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="Digitální objekty" value={overview.totalObjects} icon={<Boxes size={20} />} />
-        <StatCard label="Nosiče (QR/NFC)" value={overview.totalCarriers} icon={<QrCode size={20} />} />
+        <StatCard label="Identifikátory (QR/NFC)" value={overview.totalCarriers} icon={<QrCode size={20} />} />
         <StatCard label="Skeny celkem" value={overview.totalScans} icon={<ScanLine size={20} />} />
       </div>
 

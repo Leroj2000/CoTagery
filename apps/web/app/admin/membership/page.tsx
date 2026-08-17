@@ -94,10 +94,10 @@ export default async function MembershipPage() {
           )}
         </Section>
 
-        <Section title="Vydat kartu (na nosič)">
+        <Section title="Vydat kartu (na identifikátor)">
           {memberships.length === 0 || unassigned.length === 0 ? (
             <p className="text-sm text-neutral-400">
-              Potřebuješ vydané členství a nepřiřazený nosič (viz Nosiče).
+              Potřebuješ vydané členství a nepřiřazený identifikátor (viz Identifikátory).
             </p>
           ) : (
             <ActionForm
@@ -105,7 +105,7 @@ export default async function MembershipPage() {
               submitLabel="Vydat kartu"
               fields={[
                 { name: 'membershipId', label: 'Členství', required: true, options: membershipOptions },
-                { name: 'dataCarrierId', label: 'Nosič', required: true, options: carrierOptions },
+                { name: 'dataCarrierId', label: 'Identifikátor', required: true, options: carrierOptions },
               ]}
             />
           )}

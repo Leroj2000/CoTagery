@@ -46,11 +46,11 @@ export default async function ObjectDetail({ params }: { params: Promise<{ id: s
         )}
       </div>
 
-      <Section title="Přidat nosič">
+      <Section title="Přidat identifikátor">
         <ActionForm
           action={addCarrierToObject}
           hidden={{ objectId: object.id }}
-          submitLabel="Přidat nosič"
+          submitLabel="Přidat identifikátor"
           fields={[
             {
               name: 'carrierType',
@@ -65,7 +65,7 @@ export default async function ObjectDetail({ params }: { params: Promise<{ id: s
         />
       </Section>
 
-      <Section title={`Nosiče (${carriers.length})`}>
+      <Section title={`Identifikátory (${carriers.length})`}>
         <Table
           head={['QR', 'Kód', 'Typ', 'Stav', 'NFC']}
           rows={carriers.map((c) => [

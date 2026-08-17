@@ -39,7 +39,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/admin/inventory', label: 'Inventura', icon: ClipboardCheck },
   { href: '/admin/reservations', label: 'Požadavky', icon: CalendarClock },
   { href: '/admin/objects', label: 'Objekty', icon: Boxes },
-  { href: '/admin/carriers', label: 'Nosiče', icon: QrCode },
+  { href: '/admin/carriers', label: 'Identifikátory', icon: QrCode },
   { href: '/admin/membership', label: 'Členství', icon: CreditCard },
   { href: '/admin/billing', label: 'Předplatné', icon: Receipt },
   { href: '/admin/access', label: 'Přístup', icon: ShieldCheck },

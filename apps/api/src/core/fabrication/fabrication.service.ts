@@ -12,7 +12,7 @@ export interface FabricationOutput {
 }
 
 /**
- * Export nosiče do tiskových souborů (EPIC-02, větev A). Synchronní label
+ * Export identifikátory do tiskových souborů (EPIC-02, větev A). Synchronní label
  * export: SVG (vektor), PNG, PDF. FabricationTemplate/Job + async je follow-up.
  */
 @Injectable()
@@ -23,7 +23,7 @@ export class FabricationService {
     const carrier = await this.context.manager
       .getRepository(DataCarrier)
       .findOne({ where: { id } });
-    if (!carrier) throw new NotFoundException('Nosič neexistuje');
+    if (!carrier) throw new NotFoundException('Identifikátor neexistuje');
     return carrier;
   }
 

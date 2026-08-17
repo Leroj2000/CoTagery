@@ -39,7 +39,7 @@ export class DataCarriersService {
     return object;
   }
 
-  /** Vytvoří nosič s unikátním public_code (retry na kolizi). */
+  /** Vytvoří identifikátor s unikátním public_code (retry na kolizi). */
   private async createCarrier(
     digitalObjectId: string | null,
     carrierType: 'qr' | 'nfc' | 'hybrid',
@@ -88,7 +88,7 @@ export class DataCarriersService {
   }
 
   /**
-   * Předgeneruje N nepřiřazených nosičů (pool k tisku). Při `selfActivatable`
+   * Předgeneruje N nepřiřazených identifikátorů (pool k tisku). Při `selfActivatable`
    * ke každému vygeneruje 6místný PIN (v DB jen hash) – vrací se plaintext k tisku.
    */
   async generateBatch(dto: GenerateBatchDto): Promise<GeneratedCarrier[]> {
@@ -137,7 +137,7 @@ export class DataCarriersService {
 
   async get(id: string): Promise<DataCarrier> {
     const carrier = await this.carriers().findOne({ where: { id } });
-    if (!carrier) throw new NotFoundException('Nosič neexistuje');
+    if (!carrier) throw new NotFoundException('Identifikátor neexistuje');
     return carrier;
   }
 

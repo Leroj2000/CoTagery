@@ -14,8 +14,8 @@ export default async function ObjectsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold">Objekty a nosiče</h1>
-        <p className="text-sm text-neutral-500">Digitální objekty a jejich QR/NFC nosiče.</p>
+        <h1 className="text-xl font-semibold">Objekty a identifikátory</h1>
+        <p className="text-sm text-neutral-500">Digitální objekty a jejich QR/NFC identifikátory.</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -31,7 +31,7 @@ export default async function ObjectsPage() {
           />
         </Section>
 
-        <Section title="Vygenerovat nosiče (batch)">
+        <Section title="Vygenerovat identifikátory (batch)">
           <ActionForm
             action={generateCarriers}
             submitLabel="Vygenerovat"
