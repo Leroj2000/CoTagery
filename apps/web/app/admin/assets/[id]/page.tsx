@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { Package, Home, MapPin, User, CalendarClock, Box, Clock } from 'lucide-react';
+import { Package, Home, MapPin, User, CalendarClock, Box, Clock, QrCode } from 'lucide-react';
 import { apiFetch, ApiError } from '../../../lib/server-api';
 import type { Asset, Movement, Person, Location, DataCarrier, ServiceRecord } from '../../../lib/types';
 import { Section, StatusBadge, Badge, Mono, PageHeader, Table, EmptyState } from '../../ui';
@@ -163,6 +163,18 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
 
       {otherActions.length > 0 && (
         <Section title="Akce" description="Kontextové akce podle aktuálního stavu věci">
+          {carriers.length === 0 && (
+            <a
+              href="#identifikator"
+              className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800 transition hover:bg-amber-100"
+            >
+              <QrCode size={15} className="mt-0.5 shrink-0" />
+              <span>
+                <span className="font-medium">Věc nemá identifikátor.</span> Vydat ji můžeš i tak – nebo
+                nejdřív přidej QR/NFC identifikátor níže.
+              </span>
+            </a>
+          )}
           <MovementForm
             assetId={asset.id}
             actions={otherActions}
@@ -172,6 +184,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
         </Section>
       )}
 
+      <div id="identifikator" className="scroll-mt-4">
       <Section title="Identifikátor (QR)" description="Štítek na věci – stabilní identifikátor">
         {carriers.length === 0 ? (
           <div className="flex flex-col gap-3">
@@ -213,6 +226,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
           </div>
         )}
       </Section>
+      </div>
 
       {asset.parentAssetId && (
         <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
