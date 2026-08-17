@@ -9,6 +9,7 @@ import { Asset } from './entities/asset.entity';
 import { AssetMedia } from './entities/asset-media.entity';
 
 const DEFAULT_MAX_MEDIA_PER_EVENT = 5;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface AddMediaInput {
   buffer: Buffer;
@@ -83,7 +84,7 @@ export class MediaService {
         caption: input.caption ?? null,
         sha256,
         capturedAt: new Date(),
-        capturedBy: input.capturedBy ?? null,
+        capturedBy: input.capturedBy && UUID_RE.test(input.capturedBy) ? input.capturedBy : null,
       }),
     );
 
