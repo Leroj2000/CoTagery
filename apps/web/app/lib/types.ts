@@ -17,6 +17,7 @@ export interface Asset {
   dueAt: string | null;
   canContainAssets: boolean;
   parentAssetId: string | null;
+  photoKey: string | null;
   actions?: string[];
 }
 

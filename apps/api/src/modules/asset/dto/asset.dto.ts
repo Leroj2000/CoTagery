@@ -1,4 +1,13 @@
-import { IsBoolean, IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsIn,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import type { HolderType, MovementType } from '../movement.logic';
 
 const MOVEMENT_TYPES: MovementType[] = [
@@ -63,6 +72,11 @@ export class PutIntoContainerDto {
   childAssetId!: string;
 }
 
+export class ImportCsvDto {
+  @IsString()
+  csv!: string;
+}
+
 export class CreateCategoryDto {
   @IsString()
   @MinLength(1)
@@ -111,6 +125,12 @@ export class PerformMovementDto {
   @IsOptional()
   @IsBoolean()
   requireConfirmation?: boolean;
+}
+
+export class BulkMovementDto extends PerformMovementDto {
+  @IsArray()
+  @IsUUID('4', { each: true })
+  assetIds!: string[];
 }
 
 export class AddServiceDto {

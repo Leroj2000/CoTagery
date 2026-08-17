@@ -66,4 +66,11 @@ export class Asset extends BaseTenantEntity {
   /** Nadřazená věc (v čem je tato věc uložena). Null = není v ničem. */
   @Column({ type: 'uuid', name: 'parent_asset_id', nullable: true })
   parentAssetId!: string | null;
+
+  /** Fotografie věci – klíč v úložišti (StoragePort) + MIME. */
+  @Column({ type: 'text', name: 'photo_key', nullable: true })
+  photoKey!: string | null;
+
+  @Column({ type: 'text', name: 'photo_mime', nullable: true })
+  photoMime!: string | null;
 }

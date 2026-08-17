@@ -2,8 +2,10 @@ import Link from 'next/link';
 import { Package, AlertTriangle } from 'lucide-react';
 import { apiFetch } from '../../lib/server-api';
 import type { Asset, Person, Location, Category } from '../../lib/types';
+import Image from 'next/image';
 import { PageHeader, Section, Table, StatusBadge, EmptyState } from '../ui';
 import { AssetForm } from './asset-form';
+import { CsvTools } from './csv-tools';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,17 +64,37 @@ export default async function AssetsPage() {
         </div>
       )}
 
-      <Section title="Nová věc">
-        <AssetForm categories={categoryOptions} locations={locationOptions} />
-      </Section>
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <Section title="Nová věc">
+          <AssetForm categories={categoryOptions} locations={locationOptions} />
+        </Section>
+        <Section title="Import / export CSV" description="Hromadné nahrání a stažení věcí">
+          <CsvTools />
+        </Section>
+      </div>
 
       <Section title={`Věci (${assets.length})`}>
         {assets.length === 0 ? (
           <EmptyState>Zatím žádné věci.</EmptyState>
         ) : (
           <Table
-            head={['Název', 'Stav', 'Kde je / kdo má', 'Vrátit do']}
+            head={['', 'Název', 'Stav', 'Kde je / kdo má', 'Vrátit do']}
             rows={assets.map((a) => [
+              a.photoKey ? (
+                <Image
+                  key="p"
+                  src={`/api/asset-photo/${a.id}`}
+                  alt={a.name}
+                  width={36}
+                  height={36}
+                  unoptimized
+                  className="h-9 w-9 rounded-lg border border-slate-200 object-cover"
+                />
+              ) : (
+                <span key="p" className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-[10px] text-slate-400">
+                  —
+                </span>
+              ),
               <Link key="n" href={`/admin/assets/${a.id}`} className="font-medium text-brand-700 hover:underline">
                 {a.name}
               </Link>,

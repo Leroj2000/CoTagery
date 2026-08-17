@@ -1,6 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { LessThanOrEqual, Repository } from 'typeorm';
 import { TenantContextService } from '../../core/tenancy/tenant-context.service';
+import { STORAGE, type StoragePort } from '../../core/storage/storage.port';
+import { Location } from '../../core/domain/entities/location.entity';
+import { Person } from '../../core/domain/entities/person.entity';
 import { DigitalObject } from '../../core/domain/entities/digital-object.entity';
 import { Asset } from './entities/asset.entity';
 import { Movement } from './entities/movement.entity';
@@ -16,6 +19,8 @@ import {
   type MovementType,
 } from './movement.logic';
 import { wouldCreateCycle } from './nesting.logic';
+import { toCsv, csvToObjects } from './csv.logic';
+import { randomUUID } from 'node:crypto';
 import { generatePublicCode } from '../../core/domain/public-code';
 import type {
   AddServiceDto,
@@ -26,7 +31,10 @@ import type {
 
 @Injectable()
 export class AssetService {
-  constructor(private readonly context: TenantContextService) {}
+  constructor(
+    private readonly context: TenantContextService,
+    @Inject(STORAGE) private readonly storage: StoragePort,
+  ) {}
 
   private repo<T extends object>(entity: { new (): T }): Repository<T> {
     return this.context.manager.getRepository(entity);
@@ -275,5 +283,142 @@ export class AssetService {
     if (!res) throw new NotFoundException('Rezervace neexistuje');
     res.status = status;
     return repo.save(res);
+  }
+
+  // --- Hromadný výdej (bulk movement) ---
+  /** Provede stejný pohyb nad více věcmi; vrátí souhrn OK / chyb. */
+  async bulkMovement(
+    assetIds: string[],
+    dto: PerformMovementDto,
+  ): Promise<{ ok: number; failed: { assetId: string; error: string }[] }> {
+    const failed: { assetId: string; error: string }[] = [];
+    let ok = 0;
+    for (const id of assetIds) {
+      try {
+        await this.performMovement(id, dto);
+        ok++;
+      } catch (e) {
+        failed.push({ assetId: id, error: e instanceof Error ? e.message : 'chyba' });
+      }
+    }
+    return { ok, failed };
+  }
+
+  // --- CSV export / import ---
+  /** Export všech věcí do CSV (názvy kategorie/home lokace/holdera). */
+  async exportCsv(): Promise<string> {
+    const [assets, locations, people] = await Promise.all([
+      this.repo(Asset).find({ order: { createdAt: 'DESC' } }),
+      this.repo(Location).find(),
+      this.repo(Person).find(),
+    ]);
+    const locName = new Map(locations.map((l) => [l.id, l.name]));
+    const perName = new Map(people.map((p) => [p.id, p.name]));
+    const holder = (a: Asset): string =>
+      a.currentHolderType === 'person'
+        ? (perName.get(a.currentHolderId ?? '') ?? '')
+        : (locName.get(a.currentHolderId ?? '') ?? '');
+
+    const header = [
+      'name',
+      'category',
+      'manufacturer',
+      'model',
+      'serialNumber',
+      'inventoryNumber',
+      'status',
+      'homeLocation',
+      'holder',
+    ];
+    const rows = assets.map((a) => [
+      a.name,
+      a.category ?? '',
+      a.manufacturer ?? '',
+      a.model ?? '',
+      a.serialNumber ?? '',
+      a.inventoryNumber ?? '',
+      a.status,
+      locName.get(a.homeLocationId ?? '') ?? '',
+      holder(a),
+    ]);
+    return toCsv([header, ...rows]);
+  }
+
+  /**
+   * Import věcí z CSV. Sloupce (hlavička): name (povinné), category, manufacturer,
+   * model, serialNumber, inventoryNumber, homeLocation. Kategorie i home lokace se
+   * dohledají podle názvu, nebo založí (find-or-create). Vrací souhrn.
+   */
+  async importCsv(csv: string): Promise<{ created: number; failed: { row: number; error: string }[] }> {
+    const objs = csvToObjects(csv);
+    const catRepo = this.repo(Category);
+    const locRepo = this.repo(Location);
+    const cats = await catRepo.find();
+    const locs = await locRepo.find();
+    const catByName = new Map(cats.map((c) => [c.name.toLowerCase(), c]));
+    const locByName = new Map(locs.map((l) => [l.name.toLowerCase(), l]));
+
+    const failed: { row: number; error: string }[] = [];
+    let created = 0;
+    for (let i = 0; i < objs.length; i++) {
+      const o = objs[i];
+      const name = o.name?.trim();
+      if (!name) {
+        failed.push({ row: i + 2, error: 'chybí name' });
+        continue;
+      }
+      try {
+        let categoryId: string | undefined;
+        if (o.category) {
+          let cat = catByName.get(o.category.toLowerCase());
+          if (!cat) {
+            cat = await catRepo.save(
+              catRepo.create({ tenantId: this.context.tenantId, name: o.category, color: null }),
+            );
+            catByName.set(cat.name.toLowerCase(), cat);
+          }
+          categoryId = cat.id;
+        }
+        let homeLocationId: string | undefined;
+        const locName = o.homelocation || o.homeLocation;
+        if (locName) {
+          let loc = locByName.get(locName.toLowerCase());
+          if (!loc) {
+            loc = await locRepo.save(locRepo.create({ tenantId: this.context.tenantId, name: locName }));
+            locByName.set(loc.name.toLowerCase(), loc);
+          }
+          homeLocationId = loc.id;
+        }
+        await this.create({
+          name,
+          categoryId,
+          manufacturer: o.manufacturer || undefined,
+          model: o.model || undefined,
+          serialNumber: o.serialnumber || o.serialNumber || undefined,
+          inventoryNumber: o.inventorynumber || o.inventoryNumber || undefined,
+          homeLocationId,
+        });
+        created++;
+      } catch (e) {
+        failed.push({ row: i + 2, error: e instanceof Error ? e.message : 'chyba' });
+      }
+    }
+    return { created, failed };
+  }
+
+  // --- Fotografie věci ---
+  async setPhoto(assetId: string, buffer: Buffer, mime: string): Promise<Asset> {
+    const asset = await this.get(assetId);
+    const key = `assets/${this.context.tenantId}/${assetId}/${randomUUID()}`;
+    await this.storage.put(key, buffer, mime);
+    asset.photoKey = key;
+    asset.photoMime = mime;
+    return this.repo(Asset).save(asset);
+  }
+
+  async getPhoto(assetId: string): Promise<{ buffer: Buffer; mime: string }> {
+    const asset = await this.get(assetId);
+    if (!asset.photoKey) throw new NotFoundException('Věc nemá fotografii');
+    return { buffer: await this.storage.get(asset.photoKey), mime: asset.photoMime ?? 'image/jpeg' };
   }
 }

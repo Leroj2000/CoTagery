@@ -4,6 +4,7 @@ import {
   MapPin,
   Contact,
   Tags,
+  PackageCheck,
   ClipboardCheck,
   CalendarClock,
   Boxes,
@@ -27,6 +28,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { href: '/admin', label: 'Přehled', icon: LayoutDashboard },
   { href: '/admin/assets', label: 'Věci', icon: Package },
+  { href: '/admin/dispatch', label: 'Výdej', icon: PackageCheck },
   { href: '/admin/locations', label: 'Místa', icon: MapPin },
   { href: '/admin/people', label: 'Lidé', icon: Contact },
   { href: '/admin/categories', label: 'Kategorie', icon: Tags },
