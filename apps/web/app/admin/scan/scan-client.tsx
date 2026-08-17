@@ -1,0 +1,313 @@
+'use client';
+
+import Link from 'next/link';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Loader2,
+  ScanLine,
+  Camera,
+  CameraOff,
+  Search,
+  AlertCircle,
+  Home,
+  MapPin,
+  User,
+  CalendarClock,
+  QrCode,
+  ArrowRight,
+} from 'lucide-react';
+import type { ScanResult } from '../../lib/types';
+import { StatusBadge, Badge, Mono } from '../ui';
+
+const ACTION_LABEL: Record<string, string> = {
+  loan: 'Předat',
+  assign: 'Přidělit',
+  move: 'Přesunout',
+  return: 'Vrátit',
+  handover: 'Předat dál',
+  service_out: 'Do servisu',
+  service_return: 'Vrátit ze servisu',
+  dispose: 'Vyřadit',
+};
+
+const inputCls =
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
+
+/** Formáty, které umí BarcodeDetector rozpoznat (QR i adoptované čárové kódy). */
+const FORMATS = ['qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39', 'data_matrix'];
+
+function fmtDate(iso: string | null): string {
+  return iso ? new Date(iso).toLocaleDateString('cs-CZ') : '—';
+}
+
+export function ScanClient() {
+  const [code, setCode] = useState('');
+  const [result, setResult] = useState<ScanResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [camOn, setCamOn] = useState(false);
+  const [camSupported, setCamSupported] = useState(true);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const lookup = useCallback(async (raw: string) => {
+    const c = raw.trim();
+    if (!c) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/scan?code=${encodeURIComponent(c)}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(res.status === 401 ? 'Nepřihlášeno' : 'Chyba skenu');
+      setResult((await res.json()) as ScanResult);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Neočekávaná chyba');
+      setResult(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const stopCamera = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setCamOn(false);
+  }, []);
+
+  const startCamera = useCallback(async () => {
+    const Detector = (window as unknown as { BarcodeDetector?: unknown }).BarcodeDetector as
+      | (new (o: { formats: string[] }) => { detect: (s: CanvasImageSource) => Promise<{ rawValue: string }[]> })
+      | undefined;
+    if (!Detector) {
+      setCamSupported(false);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+      });
+      streamRef.current = stream;
+      setCamOn(true);
+      const video = videoRef.current!;
+      video.srcObject = stream;
+      await video.play();
+
+      const detector = new Detector({ formats: FORMATS });
+      const tick = async () => {
+        if (!streamRef.current) return;
+        try {
+          const codes = await detector.detect(video);
+          if (codes.length > 0 && codes[0].rawValue) {
+            const found = codes[0].rawValue;
+            setCode(found);
+            stopCamera();
+            void lookup(found);
+            return;
+          }
+        } catch {
+          /* přeskoč snímek */
+        }
+        rafRef.current = requestAnimationFrame(tick);
+      };
+      rafRef.current = requestAnimationFrame(tick);
+    } catch {
+      setError('Kameru se nepodařilo spustit (oprávnění / HTTPS).');
+      stopCamera();
+    }
+  }, [lookup, stopCamera]);
+
+  // Cleanup při odchodu.
+  useEffect(() => () => stopCamera(), [stopCamera]);
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Vstup: kamera + ruční / HW čtečka */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
+        <div className="mb-4 overflow-hidden rounded-xl bg-slate-900">
+          {camOn ? (
+            <video ref={videoRef} className="h-56 w-full object-cover" muted playsInline />
+          ) : (
+            <div className="flex h-56 w-full flex-col items-center justify-center gap-2 text-slate-400">
+              <ScanLine size={40} />
+              <p className="text-xs">Namiř kameru na QR / čárový kód nebo zadej kód ručně</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          {camOn ? (
+            <button
+              onClick={stopCamera}
+              className="inline-flex items-center gap-2 rounded-lg bg-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-300"
+            >
+              <CameraOff size={16} /> Vypnout kameru
+            </button>
+          ) : (
+            <button
+              onClick={startCamera}
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
+            >
+              <Camera size={16} /> Skenovat kamerou
+            </button>
+          )}
+        </div>
+        {!camSupported && (
+          <p className="mt-2 text-xs text-amber-600">
+            Tento prohlížeč nepodporuje skenování kamerou. Použij ruční zadání nebo HW čtečku níže.
+          </p>
+        )}
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void lookup(code);
+          }}
+          className="mt-4 flex gap-2"
+        >
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-3 text-slate-400" />
+            <input
+              ref={inputRef}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="Kód (náš nebo adoptovaný) – i z HW čtečky + Enter"
+              className={`${inputCls} pl-9`}
+              autoFocus
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading || !code.trim()}
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-900 disabled:opacity-50"
+          >
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <ScanLine size={16} />}
+            Najít
+          </button>
+        </form>
+      </div>
+
+      {error && (
+        <p className="flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-700">
+          <AlertCircle size={15} /> {error}
+        </p>
+      )}
+
+      {result && <ResultCard result={result} />}
+    </div>
+  );
+}
+
+function ResultCard({ result }: { result: ScanResult }) {
+  if (!result.found) {
+    return (
+      <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800 shadow-card">
+        <AlertCircle size={18} className="mt-0.5 shrink-0" />
+        <div>
+          <p className="font-medium">Kód nenalezen</p>
+          <p className="mt-0.5 text-amber-700">
+            Kód <Mono>{result.code}</Mono> není v tomto tenantu evidovaný (ani jako náš identifikátor, ani jako
+            adoptovaný alias).
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const { asset, carrier, context, primaryAction, object } = result;
+
+  // Kód sedí, ale není to věc (pool / členská karta / produkt).
+  if (!asset) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
+        <p className="text-sm font-medium text-slate-800">Kód rozpoznán</p>
+        <p className="mt-1 text-sm text-slate-500">
+          {carrier && <>Identifikátor <Mono>{carrier.publicCode}</Mono>. </>}
+          {object ? (
+            <>Vede na objekt typu <Badge tone="slate">{object.moduleType}</Badge>, není to evidovaná věc.</>
+          ) : (
+            <>Zatím nepřiřazený kód z poolu.</>
+          )}
+        </p>
+      </div>
+    );
+  }
+
+  const primaryLabel = primaryAction ? ACTION_LABEL[primaryAction] ?? primaryAction : null;
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
+      <div className="flex items-center gap-4 border-b border-slate-100 p-5">
+        {asset.photoKey ? (
+          <img
+            src={`/api/asset-photo/${asset.id}`}
+            alt={asset.name}
+            className="h-16 w-16 rounded-xl border border-slate-200 object-cover"
+          />
+        ) : (
+          <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-slate-100 text-[10px] text-slate-400">
+            bez fotky
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-base font-semibold text-slate-900">{asset.name}</p>
+          <div className="mt-1">
+            <StatusBadge status={asset.status} />
+          </div>
+        </div>
+      </div>
+
+      {/* Kontext: patří do ≠ kde je ≠ kdo má */}
+      <div className="grid gap-3 p-5 sm:grid-cols-3">
+        <Ctx icon={<Home size={15} />} label="Patří do" value={context?.homeName ?? '—'} />
+        <Ctx
+          icon={asset.currentHolderType === 'person' ? <User size={15} /> : <MapPin size={15} />}
+          label={asset.currentHolderType === 'person' ? 'Má ji' : 'Kde je'}
+          value={context?.holderName ?? '—'}
+        />
+        <Ctx icon={<CalendarClock size={15} />} label="Vrátit do" value={fmtDate(asset.dueAt)} />
+      </div>
+
+      {carrier?.origin === 'adopted' && carrier.externalCode && (
+        <div className="px-5 pb-2">
+          <Badge tone="brand">
+            <QrCode size={11} className="mr-1 inline" /> alias: {carrier.externalCode}
+          </Badge>
+        </div>
+      )}
+
+      {/* Kontextová akce */}
+      <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 p-5">
+        {primaryLabel && (
+          <Link
+            href={`/admin/assets/${asset.id}`}
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
+          >
+            {primaryLabel} <ArrowRight size={16} />
+          </Link>
+        )}
+        <Link
+          href={`/admin/assets/${asset.id}`}
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Detail věci
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function Ctx({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
+        <span className="text-slate-400">{icon}</span>
+        {label}
+      </div>
+      <p className="mt-1 truncate text-sm font-semibold text-slate-800">{value}</p>
+    </div>
+  );
+}

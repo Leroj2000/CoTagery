@@ -7,6 +7,7 @@ import { Location } from '../../core/domain/entities/location.entity';
 import { Person } from '../../core/domain/entities/person.entity';
 import { Tenant } from '../../core/domain/entities/tenant.entity';
 import { DigitalObject } from '../../core/domain/entities/digital-object.entity';
+import { DataCarriersService } from '../../core/domain/carriers/data-carriers.service';
 import { Asset } from './entities/asset.entity';
 import { Movement } from './entities/movement.entity';
 import { ServiceRecord } from './entities/service-record.entity';
@@ -32,12 +33,35 @@ import type {
   PerformMovementDto,
 } from './dto/asset.dto';
 
+/** Výsledek Global Scanu: co jsme naskenovali a co s tím jde dělat. */
+export interface ScanResult {
+  found: boolean;
+  code: string;
+  carrier?: {
+    id: string;
+    publicCode: string;
+    externalCode: string | null;
+    origin: 'native' | 'adopted';
+    carrierType: string;
+  };
+  asset?: (Asset & { actions: MovementType[] }) | null;
+  object?: { id: string; moduleType: string; slug: string } | null;
+  primaryAction?: MovementType | null;
+  /** Rozřešená jména pro kartu po skenu (Patří do / Kde je / Má ji). */
+  context?: {
+    homeName: string | null;
+    holderName: string | null;
+    responsibleName: string | null;
+  } | null;
+}
+
 @Injectable()
 export class AssetService {
   constructor(
     private readonly context: TenantContextService,
     @Inject(STORAGE) private readonly storage: StoragePort,
     private readonly webhooks: WebhookService,
+    private readonly carriers: DataCarriersService,
   ) {}
 
   private repo<T extends object>(entity: { new (): T }): Repository<T> {
@@ -144,6 +168,93 @@ export class AssetService {
   /** Akce nabídnuté po skenu podle stavu (věc → co s ní). */
   actionsFor(asset: Asset): MovementType[] {
     return availableActions(asset.status);
+  }
+
+  /**
+   * Kontextová primární akce po skenu (Global Scan router):
+   * má-li věc někdo v držení → VRÁTIT; v servisu → vrátit ze servisu; jinak PŘEDAT.
+   * Vždy z množiny povolených akcí daného stavu.
+   */
+  primaryActionFor(asset: Asset, actions: MovementType[]): MovementType | null {
+    let candidate: MovementType | null = null;
+    if (asset.currentHolderType === 'person') candidate = 'return';
+    else if (asset.status === 'service') candidate = 'service_return';
+    else if (asset.status === 'available' || asset.status === 'reserved') candidate = 'loan';
+    if (candidate && actions.includes(candidate)) return candidate;
+    return actions[0] ?? null;
+  }
+
+  /**
+   * Global Scan: naskenovaný kód (náš public_code NEBO adoptovaný external_code)
+   * → věc + odvozený stav + kontextová akce. Tenant kontext (interní skener),
+   * veřejný resolver se nepoužívá.
+   */
+  async scanLookup(rawCode: string): Promise<ScanResult> {
+    const code = rawCode.trim();
+    if (!code) throw new BadRequestException('Prázdný kód');
+
+    const carrier = await this.carriers.findByCode(code);
+    if (!carrier) return { found: false, code };
+
+    const carrierInfo = {
+      id: carrier.id,
+      publicCode: carrier.publicCode,
+      externalCode: carrier.externalCode,
+      origin: carrier.origin,
+      carrierType: carrier.carrierType,
+    };
+
+    if (!carrier.digitalObjectId) {
+      // Nepřiřazený pool kód – zatím bez objektu/věci.
+      return { found: true, code, carrier: carrierInfo, asset: null, object: null, primaryAction: null };
+    }
+
+    const object = await this.repo(DigitalObject).findOne({ where: { id: carrier.digitalObjectId } });
+    const asset = await this.getByObject(carrier.digitalObjectId);
+
+    if (!asset) {
+      // Objekt existuje, ale není to „věc" (např. členská karta / produkt).
+      return {
+        found: true,
+        code,
+        carrier: carrierInfo,
+        asset: null,
+        object: object ? { id: object.id, moduleType: object.moduleType, slug: object.slug } : null,
+        primaryAction: null,
+      };
+    }
+
+    const actions = this.actionsFor(asset);
+    return {
+      found: true,
+      code,
+      carrier: carrierInfo,
+      asset: { ...asset, actions },
+      object: object ? { id: object.id, moduleType: object.moduleType, slug: object.slug } : null,
+      primaryAction: this.primaryActionFor(asset, actions),
+      context: await this.resolveContext(asset),
+    };
+  }
+
+  /** Rozřeší jména držitele / domovské lokace / odpovědné osoby pro scan kartu. */
+  private async resolveContext(asset: Asset): Promise<ScanResult['context']> {
+    const locName = async (id: string | null): Promise<string | null> =>
+      id ? (await this.repo(Location).findOne({ where: { id } }))?.name ?? null : null;
+    const personName = async (id: string | null): Promise<string | null> =>
+      id ? (await this.repo(Person).findOne({ where: { id } }))?.name ?? null : null;
+    const assetName = async (id: string | null): Promise<string | null> =>
+      id ? (await this.repo(Asset).findOne({ where: { id } }))?.name ?? null : null;
+
+    let holderName: string | null = null;
+    if (asset.currentHolderType === 'person') holderName = await personName(asset.currentHolderId);
+    else if (asset.currentHolderType === 'location') holderName = await locName(asset.currentHolderId);
+    else if (asset.currentHolderType === 'asset') holderName = await assetName(asset.currentHolderId);
+
+    return {
+      homeName: await locName(asset.homeLocationId),
+      holderName,
+      responsibleName: await personName(asset.responsiblePersonId),
+    };
   }
 
   /** Politika tenanta: vyžadovat foto při vrácení? */

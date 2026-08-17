@@ -18,6 +18,7 @@ import {
   Settings,
   MapPinned,
   Webhook,
+  ScanLine,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -30,6 +31,7 @@ export interface NavItem {
 /** Položky admin navigace (sdíleno server dashboardem i client nav). */
 export const NAV_ITEMS: NavItem[] = [
   { href: '/admin', label: 'Přehled', icon: LayoutDashboard },
+  { href: '/admin/scan', label: 'Sken', icon: ScanLine },
   { href: '/admin/attention', label: 'Vyžaduje pozornost', icon: Bell },
   { href: '/admin/assets', label: 'Věci', icon: Package },
   { href: '/admin/dispatch', label: 'Výdej', icon: PackageCheck },

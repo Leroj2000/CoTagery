@@ -191,6 +191,26 @@ export interface GeneratedCarrier {
   pin: string | null;
 }
 
+export interface ScanResult {
+  found: boolean;
+  code: string;
+  carrier?: {
+    id: string;
+    publicCode: string;
+    externalCode: string | null;
+    origin: 'native' | 'adopted';
+    carrierType: string;
+  };
+  asset?: (Asset & { actions?: string[] }) | null;
+  object?: { id: string; moduleType: string; slug: string } | null;
+  primaryAction?: string | null;
+  context?: {
+    homeName: string | null;
+    holderName: string | null;
+    responsibleName: string | null;
+  } | null;
+}
+
 export interface MembershipTier {
   id: string;
   name: string;

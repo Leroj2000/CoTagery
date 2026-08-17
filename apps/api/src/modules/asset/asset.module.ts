@@ -13,6 +13,7 @@ import { AssetService } from './asset.service';
 import { CategoriesService } from './categories.service';
 import { MediaService } from './media.service';
 import { AssetController } from './asset.controller';
+import { ScanController } from './scan.controller';
 import { ReservationsController } from './reservations.controller';
 import { CategoriesController } from './categories.controller';
 import { MediaController } from './media.controller';
@@ -37,7 +38,13 @@ import { AssetHandler } from './asset.handler';
     ]),
     DomainModule,
   ],
-  controllers: [AssetController, ReservationsController, CategoriesController, MediaController],
+  controllers: [
+    AssetController,
+    ScanController,
+    ReservationsController,
+    CategoriesController,
+    MediaController,
+  ],
   providers: [AssetService, CategoriesService, MediaService, AssetHandler],
   exports: [AssetService],
 })
