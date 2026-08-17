@@ -10,7 +10,8 @@ import { ActionButton } from '../../action-button';
 import { MovementForm } from '../movement-form';
 import { PhotoUpload } from '../photo-upload';
 import { MediaTimeline } from '../media-timeline';
-import type { AssetMedia } from '../../../lib/types';
+import { ReturnForm } from '../return-form';
+import type { AssetMedia, Tenant } from '../../../lib/types';
 import {
   addCarrierToObject,
   putIntoContainer,
@@ -77,6 +78,11 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
   ]);
   const issues = await apiFetch<Issue[]>(`/assets/${id}/issues`);
   const media = await apiFetch<AssetMedia[]>(`/assets/${id}/media`);
+  const tenant = await apiFetch<Tenant>('/tenant');
+  const requireReturnPhoto = tenant.settings?.requireReturnPhoto === true;
+  const actions = asset.actions ?? [];
+  const canReturn = actions.includes('return');
+  const otherActions = actions.filter((a) => a !== 'return');
 
   const personName = new Map(people.map((p) => [p.id, p.name]));
   const locName = new Map(locations.map((l) => [l.id, l.name]));
@@ -146,14 +152,25 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
         <MediaTimeline assetId={asset.id} media={media} />
       </Section>
 
-      <Section title="Akce" description="Kontextové akce podle aktuálního stavu věci">
-        <MovementForm
-          assetId={asset.id}
-          actions={asset.actions ?? []}
-          people={people.map((p) => ({ id: p.id, label: p.name }))}
-          locations={locations.map((l) => ({ id: l.id, label: l.name }))}
-        />
-      </Section>
+      {canReturn && (
+        <Section
+          title="Vrátit věc"
+          description={requireReturnPhoto ? 'Politika tenanta vyžaduje foto stavu' : 'Vrácení do assetu (foto volitelné)'}
+        >
+          <ReturnForm assetId={asset.id} requirePhoto={requireReturnPhoto} />
+        </Section>
+      )}
+
+      {otherActions.length > 0 && (
+        <Section title="Akce" description="Kontextové akce podle aktuálního stavu věci">
+          <MovementForm
+            assetId={asset.id}
+            actions={otherActions}
+            people={people.map((p) => ({ id: p.id, label: p.name }))}
+            locations={locations.map((l) => ({ id: l.id, label: l.name }))}
+          />
+        </Section>
+      )}
 
       <Section title="Nosič (QR)" description="Štítek na věci – stabilní identifikátor">
         {carriers.length === 0 ? (

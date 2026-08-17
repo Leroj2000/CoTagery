@@ -192,13 +192,13 @@ export async function removeGroupMember(_p: ActionState, fd: FormData): Promise<
 // --- Tenant nastavení ---
 export async function updateTenant(_p: ActionState, fd: FormData): Promise<ActionState> {
   const maxMedia = num(fd, 'maxMediaPerEvent');
+  const settings: Record<string, unknown> = {
+    requireReturnPhoto: str(fd, 'requireReturnPhoto') === 'true',
+  };
+  if (maxMedia && maxMedia > 0) settings.maxMediaPerEvent = maxMedia;
   return run(
     '/tenant',
-    {
-      name: str(fd, 'name'),
-      brandingDomain: str(fd, 'brandingDomain'),
-      settings: maxMedia && maxMedia > 0 ? { maxMediaPerEvent: maxMedia } : undefined,
-    },
+    { name: str(fd, 'name'), brandingDomain: str(fd, 'brandingDomain'), settings },
     '/admin/settings',
     'Nastavení uloženo.',
     'PATCH',

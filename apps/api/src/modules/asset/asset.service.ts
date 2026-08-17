@@ -5,6 +5,7 @@ import { STORAGE, type StoragePort } from '../../core/storage/storage.port';
 import { WebhookService } from '../../core/webhooks/webhook.service';
 import { Location } from '../../core/domain/entities/location.entity';
 import { Person } from '../../core/domain/entities/person.entity';
+import { Tenant } from '../../core/domain/entities/tenant.entity';
 import { DigitalObject } from '../../core/domain/entities/digital-object.entity';
 import { Asset } from './entities/asset.entity';
 import { Movement } from './entities/movement.entity';
@@ -145,11 +146,36 @@ export class AssetService {
     return availableActions(asset.status);
   }
 
+  /** Politika tenanta: vyžadovat foto při vrácení? */
+  async requireReturnPhoto(): Promise<boolean> {
+    const tenant = await this.repo(Tenant).findOne({ where: { id: this.context.tenantId } });
+    return tenant?.settings?.requireReturnPhoto === true;
+  }
+
+  /** ID posledního pohybu věci (pro navázání médií po vrácení). */
+  async lastMovementId(assetId: string): Promise<string | null> {
+    const mv = await this.repo(Movement).findOne({
+      where: { assetId },
+      order: { createdAt: 'DESC' },
+    });
+    return mv?.id ?? null;
+  }
+
   /**
    * Provede pohyb: vyhodnotí stavový automat, zapíše NEMĚNNÝ Movement do
    * ledgeru a přepočítá odvozený stav assetu. Vše v tenant transakci (RLS).
+   * `skipReturnPhotoCheck` použije jen atomický return-with-photo endpoint.
    */
-  async performMovement(assetId: string, dto: PerformMovementDto): Promise<Asset> {
+  async performMovement(
+    assetId: string,
+    dto: PerformMovementDto,
+    opts?: { skipReturnPhotoCheck?: boolean },
+  ): Promise<Asset> {
+    // Politika: vrácení bez fotky odmítni (nejde obejít generickým endpointem).
+    if (dto.type === 'return' && !opts?.skipReturnPhotoCheck && (await this.requireReturnPhoto())) {
+      throw new BadRequestException('Vrácení vyžaduje fotku stavu (politika tenanta)');
+    }
+
     const asset = await this.get(assetId);
 
     const before: AssetState = {

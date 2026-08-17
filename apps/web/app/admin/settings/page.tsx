@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 export default async function SettingsPage() {
   const tenant = await apiFetch<Tenant>('/tenant');
   const maxMedia = Number(tenant.settings?.maxMediaPerEvent) || 5;
+  const requireReturnPhoto = tenant.settings?.requireReturnPhoto === true;
 
   return (
     <div className="flex flex-col gap-6">
@@ -36,6 +37,15 @@ export default async function SettingsPage() {
               label: 'Max. fotek na událost',
               type: 'number',
               defaultValue: String(maxMedia),
+            },
+            {
+              name: 'requireReturnPhoto',
+              label: 'Vyžadovat foto při vrácení',
+              options: [
+                { value: 'false', label: 'Ne' },
+                { value: 'true', label: 'Ano' },
+              ],
+              defaultValue: requireReturnPhoto ? 'true' : 'false',
             },
           ]}
         />
