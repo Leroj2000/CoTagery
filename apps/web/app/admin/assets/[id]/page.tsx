@@ -9,6 +9,8 @@ import { ActionForm } from '../../action-form';
 import { ActionButton } from '../../action-button';
 import { MovementForm } from '../movement-form';
 import { PhotoUpload } from '../photo-upload';
+import { MediaTimeline } from '../media-timeline';
+import type { AssetMedia } from '../../../lib/types';
 import {
   addCarrierToObject,
   putIntoContainer,
@@ -74,6 +76,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
     apiFetch<ServiceRecord[]>(`/assets/${id}/services`),
   ]);
   const issues = await apiFetch<Issue[]>(`/assets/${id}/issues`);
+  const media = await apiFetch<AssetMedia[]>(`/assets/${id}/media`);
 
   const personName = new Map(people.map((p) => [p.id, p.name]));
   const locName = new Map(locations.map((l) => [l.id, l.name]));
@@ -135,6 +138,13 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
         />
         <StateTile icon={<CalendarClock size={16} />} label="Vrátit do" value={fmtDate(asset.dueAt)} />
       </div>
+
+      <Section
+        title="Časová galerie"
+        description="Fotodokumentace stavu v čase – porovnání při půjčení a vrácení"
+      >
+        <MediaTimeline assetId={asset.id} media={media} />
+      </Section>
 
       <Section title="Akce" description="Kontextové akce podle aktuálního stavu věci">
         <MovementForm

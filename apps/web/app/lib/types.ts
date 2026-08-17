@@ -54,6 +54,19 @@ export interface ServiceRecord {
   note: string | null;
 }
 
+export interface AssetMedia {
+  id: string;
+  assetId: string;
+  movementId: string | null;
+  phase: 'at_loan' | 'at_return' | 'at_service' | 'general';
+  kind: string;
+  mime: string;
+  caption: string | null;
+  sha256: string | null;
+  capturedAt: string;
+  createdAt: string;
+}
+
 export interface Reservation {
   id: string;
   assetId: string;

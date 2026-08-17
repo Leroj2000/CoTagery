@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
   const tenant = await apiFetch<Tenant>('/tenant');
+  const maxMedia = Number(tenant.settings?.maxMediaPerEvent) || 5;
 
   return (
     <div className="flex flex-col gap-6">
@@ -29,6 +30,12 @@ export default async function SettingsPage() {
               label: 'Doména (branding)',
               placeholder: 'napr. tagy.firma.cz',
               defaultValue: tenant.brandingDomain ?? '',
+            },
+            {
+              name: 'maxMediaPerEvent',
+              label: 'Max. fotek na událost',
+              type: 'number',
+              defaultValue: String(maxMedia),
             },
           ]}
         />

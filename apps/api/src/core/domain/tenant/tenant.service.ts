@@ -27,7 +27,8 @@ export class TenantService {
     const tenant = await this.current();
     if (dto.name !== undefined) tenant.name = dto.name;
     if (dto.brandingDomain !== undefined) tenant.brandingDomain = dto.brandingDomain || null;
-    if (dto.settings !== undefined) tenant.settings = dto.settings;
+    // Nastavení se slučují (nepřepisují), aby dílčí změna nesmazala ostatní klíče.
+    if (dto.settings !== undefined) tenant.settings = { ...tenant.settings, ...dto.settings };
     return this.repo().save(tenant);
   }
 }
