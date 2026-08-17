@@ -4,9 +4,7 @@ import { Check, X, HelpCircle, ClipboardCheck } from 'lucide-react';
 import { apiFetch, ApiError } from '../../../lib/server-api';
 import type { InventoryDetail, Location, Asset, Person } from '../../../lib/types';
 import { PageHeader, Section, Badge, StatusBadge, Table, EmptyState } from '../../ui';
-import { ActionForm } from '../../action-form';
-import { ActionButton } from '../../action-button';
-import { scanInventory, closeInventory } from '../../actions';
+import { InventoryScanner } from './inventory-scanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,12 +35,6 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
   const open = check.status === 'open';
   const expected = check.expectedAssetIds.length;
 
-  // Ve výběru pro sken jen assety, které ještě nebyly naskenované.
-  const scannedIds = new Set([...detail.found, ...detail.unexpected].map((a) => a.id));
-  const scanOptions = assets
-    .filter((a) => !scannedIds.has(a.id))
-    .map((a) => ({ value: a.id, label: a.name }));
-
   const assetRows = (list: Asset[]): (string | React.ReactNode)[][] =>
     list.map((a) => [a.name, <StatusBadge key="s" status={a.status} />, a.manufacturer ?? '—']);
 
@@ -62,47 +54,30 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
         </div>
       </div>
 
-      {/* Souhrn */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Summary icon={<Check size={18} />} tone="green" label="Nalezeno" value={detail.found.length} />
-        <Summary icon={<X size={18} />} tone="red" label="Chybí" value={detail.missing.length} />
-        <Summary icon={<HelpCircle size={18} />} tone="amber" label="Navíc" value={detail.unexpected.length} />
-      </div>
+      {open ? (
+        <InventoryScanner checkId={check.id} expected={expected} initialDetail={detail} />
+      ) : (
+        <>
+          {/* Souhrn uzavřené inventury */}
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Summary icon={<Check size={18} />} tone="green" label="Nalezeno" value={detail.found.length} />
+            <Summary icon={<X size={18} />} tone="red" label="Chybí" value={detail.missing.length} />
+            <Summary icon={<HelpCircle size={18} />} tone="amber" label="Navíc" value={detail.unexpected.length} />
+          </div>
 
-      {open && (
-        <Section title="Naskenovat věc" description="Vyber věc (na mobilu = sken QR)">
-          {scanOptions.length === 0 ? (
-            <EmptyState>Všechny věci jsou naskenované.</EmptyState>
-          ) : (
-            <div className="flex flex-col gap-4">
-              <ActionForm
-                action={scanInventory}
-                hidden={{ checkId: check.id }}
-                submitLabel="Naskenovat"
-                fields={[{ name: 'assetId', label: 'Věc', required: true, options: scanOptions }]}
-              />
-              <ActionButton
-                action={closeInventory}
-                hidden={{ checkId: check.id }}
-                label="Uzavřít inventuru"
-                confirm="Uzavřít inventuru a spočítat výsledek?"
-              />
-            </div>
-          )}
-        </Section>
+          <div className="grid gap-6 lg:grid-cols-3">
+            <Section title={`Nalezeno (${detail.found.length})`}>
+              {detail.found.length === 0 ? <EmptyState>—</EmptyState> : <Table head={['Věc', 'Stav', 'Výrobce']} rows={assetRows(detail.found)} />}
+            </Section>
+            <Section title={`Chybí (${detail.missing.length})`}>
+              {detail.missing.length === 0 ? <EmptyState>—</EmptyState> : <Table head={['Věc', 'Stav', 'Výrobce']} rows={assetRows(detail.missing)} />}
+            </Section>
+            <Section title={`Navíc (${detail.unexpected.length})`}>
+              {detail.unexpected.length === 0 ? <EmptyState>—</EmptyState> : <Table head={['Věc', 'Stav', 'Výrobce']} rows={assetRows(detail.unexpected)} />}
+            </Section>
+          </div>
+        </>
       )}
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Section title={`Nalezeno (${detail.found.length})`}>
-          {detail.found.length === 0 ? <EmptyState>—</EmptyState> : <Table head={['Věc', 'Stav', 'Výrobce']} rows={assetRows(detail.found)} />}
-        </Section>
-        <Section title={`Chybí (${detail.missing.length})`}>
-          {detail.missing.length === 0 ? <EmptyState>—</EmptyState> : <Table head={['Věc', 'Stav', 'Výrobce']} rows={assetRows(detail.missing)} />}
-        </Section>
-        <Section title={`Navíc (${detail.unexpected.length})`}>
-          {detail.unexpected.length === 0 ? <EmptyState>—</EmptyState> : <Table head={['Věc', 'Stav', 'Výrobce']} rows={assetRows(detail.unexpected)} />}
-        </Section>
-      </div>
     </div>
   );
 }
