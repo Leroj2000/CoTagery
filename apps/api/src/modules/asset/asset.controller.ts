@@ -17,7 +17,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { RolesGuard, RequireRole } from '../../core/rbac/roles.guard';
-import { AssetService } from './asset.service';
+import { AssetService, type WorkflowValidation } from './asset.service';
 import {
   AddServiceDto,
   BulkMovementDto,
@@ -26,6 +26,7 @@ import {
   PerformMovementDto,
   PutIntoContainerDto,
   ReportIssueDto,
+  WorkflowValidateDto,
 } from './dto/asset.dto';
 import type { Asset } from './entities/asset.entity';
 import type { Movement } from './entities/movement.entity';
@@ -79,6 +80,13 @@ export class AssetController {
   ): Promise<{ ok: number; failed: { assetId: string; error: string }[] }> {
     const { assetIds, ...movement } = dto;
     return this.assets.bulkMovement(assetIds, movement);
+  }
+
+  // --- Workflow Scanner: pre-flight validace (musí být před :id) ---
+  @Post('workflow/validate')
+  @RequireRole('EDITOR')
+  validateWorkflow(@Body() dto: WorkflowValidateDto): Promise<WorkflowValidation> {
+    return this.assets.validateWorkflow(dto);
   }
 
   // --- „Vyžaduje pozornost" (musí být před :id) ---

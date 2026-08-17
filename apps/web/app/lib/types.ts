@@ -211,6 +211,23 @@ export interface ScanResult {
   } | null;
 }
 
+export interface WorkflowItem {
+  code: string;
+  assetId: string | null;
+  name: string | null;
+  status: string | null;
+  ok: boolean;
+  reason?: string;
+  duplicate?: boolean;
+}
+
+export interface WorkflowValidation {
+  items: WorkflowItem[];
+  okCount: number;
+  blockedCount: number;
+  assetIds: string[];
+}
+
 export interface MembershipTier {
   id: string;
   name: string;

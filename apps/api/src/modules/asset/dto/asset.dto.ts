@@ -147,6 +147,29 @@ export class BulkMovementDto extends PerformMovementDto {
   assetIds!: string[];
 }
 
+/** Workflow Scanner: pre-flight validace naskenovaných kódů proti zvolené akci. */
+export class WorkflowValidateDto {
+  @IsIn(MOVEMENT_TYPES)
+  type!: MovementType;
+
+  @IsOptional()
+  @IsIn(HOLDER_TYPES)
+  toType?: HolderType;
+
+  @IsOptional()
+  @IsUUID()
+  toId?: string;
+
+  @IsOptional()
+  @IsString()
+  dueAt?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(512, { each: true })
+  codes!: string[];
+}
+
 export class AddServiceDto {
   @IsIn(['service', 'inspection', 'calibration', 'repair'])
   kind!: 'service' | 'inspection' | 'calibration' | 'repair';

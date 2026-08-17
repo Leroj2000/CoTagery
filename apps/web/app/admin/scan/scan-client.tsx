@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   Loader2,
   ScanLine,
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { ScanResult } from '../../lib/types';
 import { StatusBadge, Badge, Mono } from '../ui';
+import { useBarcodeScanner } from './use-scanner';
 
 const ACTION_LABEL: Record<string, string> = {
   loan: 'Předat',
@@ -33,9 +34,6 @@ const ACTION_LABEL: Record<string, string> = {
 const inputCls =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
 
-/** Formáty, které umí BarcodeDetector rozpoznat (QR i adoptované čárové kódy). */
-const FORMATS = ['qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39', 'data_matrix'];
-
 function fmtDate(iso: string | null): string {
   return iso ? new Date(iso).toLocaleDateString('cs-CZ') : '—';
 }
@@ -45,12 +43,6 @@ export function ScanClient() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [camOn, setCamOn] = useState(false);
-  const [camSupported, setCamSupported] = useState(true);
-
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const rafRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const lookup = useCallback(async (raw: string) => {
@@ -70,58 +62,20 @@ export function ScanClient() {
     }
   }, []);
 
-  const stopCamera = useCallback(() => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    setCamOn(false);
-  }, []);
-
-  const startCamera = useCallback(async () => {
-    const Detector = (window as unknown as { BarcodeDetector?: unknown }).BarcodeDetector as
-      | (new (o: { formats: string[] }) => { detect: (s: CanvasImageSource) => Promise<{ rawValue: string }[]> })
-      | undefined;
-    if (!Detector) {
-      setCamSupported(false);
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-      });
-      streamRef.current = stream;
-      setCamOn(true);
-      const video = videoRef.current!;
-      video.srcObject = stream;
-      await video.play();
-
-      const detector = new Detector({ formats: FORMATS });
-      const tick = async () => {
-        if (!streamRef.current) return;
-        try {
-          const codes = await detector.detect(video);
-          if (codes.length > 0 && codes[0].rawValue) {
-            const found = codes[0].rawValue;
-            setCode(found);
-            stopCamera();
-            void lookup(found);
-            return;
-          }
-        } catch {
-          /* přeskoč snímek */
-        }
-        rafRef.current = requestAnimationFrame(tick);
-      };
-      rafRef.current = requestAnimationFrame(tick);
-    } catch {
-      setError('Kameru se nepodařilo spustit (oprávnění / HTTPS).');
-      stopCamera();
-    }
-  }, [lookup, stopCamera]);
-
-  // Cleanup při odchodu.
-  useEffect(() => () => stopCamera(), [stopCamera]);
+  const {
+    videoRef,
+    camOn,
+    camSupported,
+    error: camError,
+    start: startCamera,
+    stop: stopCamera,
+  } = useBarcodeScanner(
+    (found) => {
+      setCode(found);
+      void lookup(found);
+    },
+    { continuous: false },
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -190,9 +144,9 @@ export function ScanClient() {
         </form>
       </div>
 
-      {error && (
+      {(error || camError) && (
         <p className="flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-700">
-          <AlertCircle size={15} /> {error}
+          <AlertCircle size={15} /> {error ?? camError}
         </p>
       )}
 

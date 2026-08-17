@@ -31,7 +31,26 @@ import type {
   CreateAssetDto,
   CreateReservationDto,
   PerformMovementDto,
+  WorkflowValidateDto,
 } from './dto/asset.dto';
+
+/** Jeden naskenovaný řádek workflow scanneru (validní nebo blocker). */
+export interface WorkflowItem {
+  code: string;
+  assetId: string | null;
+  name: string | null;
+  status: string | null;
+  ok: boolean;
+  reason?: string;
+  duplicate?: boolean;
+}
+
+export interface WorkflowValidation {
+  items: WorkflowItem[];
+  okCount: number;
+  blockedCount: number;
+  assetIds: string[];
+}
 
 /** Výsledek Global Scanu: co jsme naskenovali a co s tím jde dělat. */
 export interface ScanResult {
@@ -452,6 +471,71 @@ export class AssetService {
       }
     }
     return { ok, failed };
+  }
+
+  /**
+   * Workflow Scanner pre-flight: pro každý naskenovaný kód rozhodne, zda zvolenou
+   * akci lze provést – DRY-RUN přes stejný `applyMovement` jako reálná operace.
+   * Vrací blockers s důvodem, dedup podle věci, a seznam validních assetIds.
+   */
+  async validateWorkflow(dto: WorkflowValidateDto): Promise<WorkflowValidation> {
+    const blockReturnPhoto = dto.type === 'return' && (await this.requireReturnPhoto());
+    const seen = new Set<string>();
+    const items: WorkflowItem[] = [];
+
+    for (const raw of dto.codes) {
+      const code = (raw ?? '').trim();
+      if (!code) continue;
+
+      const carrier = await this.carriers.findByCode(code);
+      if (!carrier?.digitalObjectId) {
+        items.push({ code, assetId: null, name: null, status: null, ok: false, reason: 'Kód nenalezen nebo nepřiřazený' });
+        continue;
+      }
+      const asset = await this.getByObject(carrier.digitalObjectId);
+      if (!asset) {
+        items.push({ code, assetId: null, name: null, status: null, ok: false, reason: 'Kód nevede na věc' });
+        continue;
+      }
+      if (seen.has(asset.id)) {
+        items.push({ code, assetId: asset.id, name: asset.name, status: asset.status, ok: false, reason: 'Duplicitní sken', duplicate: true });
+        continue;
+      }
+      seen.add(asset.id);
+
+      let ok = true;
+      let reason: string | undefined;
+      if (blockReturnPhoto) {
+        ok = false;
+        reason = 'Vrácení vyžaduje foto (politika) – vrať přes kartu věci';
+      } else {
+        try {
+          applyMovement(
+            {
+              status: asset.status,
+              holderType: asset.currentHolderType,
+              holderId: asset.currentHolderId,
+              responsiblePersonId: asset.responsiblePersonId,
+              dueAt: asset.dueAt,
+            },
+            {
+              type: dto.type,
+              toType: dto.toType ?? null,
+              toId: dto.toId ?? null,
+              dueAt: dto.dueAt ? new Date(dto.dueAt) : null,
+              homeLocationId: asset.homeLocationId,
+            },
+          );
+        } catch (e) {
+          ok = false;
+          reason = e instanceof MovementError ? e.message : 'Akci nelze provést';
+        }
+      }
+      items.push({ code, assetId: asset.id, name: asset.name, status: asset.status, ok, reason });
+    }
+
+    const assetIds = items.filter((i) => i.ok && i.assetId).map((i) => i.assetId as string);
+    return { items, okCount: assetIds.length, blockedCount: items.length - assetIds.length, assetIds };
   }
 
   // --- CSV export / import ---
