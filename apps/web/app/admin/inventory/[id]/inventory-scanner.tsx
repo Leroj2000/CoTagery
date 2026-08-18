@@ -10,9 +10,10 @@ import {
   Check,
   HelpCircle,
   Loader2,
+  ArrowRight,
 } from 'lucide-react';
-import type { InventoryDetail } from '../../../lib/types';
-import { StatusBadge, EmptyState } from '../../ui';
+import type { InventoryDetail, Asset } from '../../../lib/types';
+import { StatusBadge, EmptyState, Badge } from '../../ui';
 import { useBarcodeScanner } from '../../scan/use-scanner';
 
 const inputCls =
@@ -22,10 +23,16 @@ export function InventoryScanner({
   checkId,
   expected,
   initialDetail,
+  canReconcile,
+  locationName,
+  nameOf,
 }: {
   checkId: string;
   expected: number;
   initialDetail: InventoryDetail;
+  canReconcile: boolean;
+  locationName: string;
+  nameOf: Record<string, string>;
 }) {
   const router = useRouter();
   const [detail, setDetail] = useState<InventoryDetail>(initialDetail);
@@ -33,6 +40,9 @@ export function InventoryScanner({
   const [last, setLast] = useState<{ name: string; result: 'found' | 'unexpected' } | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [reconciled, setReconciled] = useState<Set<string>>(new Set());
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [reconciling, setReconciling] = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showFlash = useCallback((msg: string) => {
@@ -94,6 +104,31 @@ export function InventoryScanner({
       setBusy(false);
     }
   }
+
+  async function reconcile(assetId: string) {
+    setReconciling(assetId);
+    try {
+      const res = await fetch(`/api/inventory/${checkId}/reconcile`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ assetId }),
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        showFlash('Přesun evidence selhal');
+        return;
+      }
+      setDetail((await res.json()) as InventoryDetail);
+      setReconciled((prev) => new Set(prev).add(assetId));
+    } finally {
+      setReconciling(null);
+    }
+  }
+
+  const holderLabel = (a: Asset): string => {
+    if (!a.currentHolderId) return '—';
+    return nameOf[a.currentHolderId] ?? (a.currentHolderType === 'person' ? 'osoba' : 'místo');
+  };
 
   const foundN = detail.found.length;
   const pct = expected > 0 ? Math.min(100, Math.round((foundN / expected) * 100)) : 0;
@@ -204,11 +239,61 @@ export function InventoryScanner({
           title={`Chybí (${detail.missing.length})`}
           items={detail.missing.map((a) => ({ id: a.id, name: a.name, status: a.status }))}
         />
-        <LiveList
-          title={`Navíc (${detail.unexpected.length})`}
-          tone="amber"
-          items={detail.unexpected.map((a) => ({ id: a.id, name: a.name, status: a.status }))}
-        />
+
+        {/* Navíc + reconcile dialog (nalezeno tady, ale vedeno jinde) */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
+          <h2 className="mb-3 text-sm font-semibold text-slate-800">Navíc ({detail.unexpected.length})</h2>
+          {detail.unexpected.length === 0 ? (
+            <EmptyState>—</EmptyState>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {detail.unexpected.map((a) => {
+                const done = reconciled.has(a.id);
+                const skip = dismissed.has(a.id);
+                return (
+                  <li key={a.id} className="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
+                    <div className="flex items-center gap-2">
+                      <span className="flex-1 truncate text-sm font-medium text-amber-900">{a.name}</span>
+                      <StatusBadge status={a.status} />
+                    </div>
+                    {done ? (
+                      <div className="mt-2">
+                        <Badge tone="green">
+                          <Check size={11} className="mr-1 inline" /> evidence přesunuta do „{locationName}"
+                        </Badge>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="mt-1 text-xs text-amber-700">
+                          Evidováno: <span className="font-medium">{holderLabel(a)}</span> · fyzicky nalezeno tady ({locationName})
+                        </p>
+                        {canReconcile && !skip && (
+                          <div className="mt-2 flex gap-2">
+                            <button
+                              onClick={() => reconcile(a.id)}
+                              disabled={reconciling === a.id}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                            >
+                              {reconciling === a.id ? <Loader2 size={12} className="animate-spin" /> : <ArrowRight size={12} />}
+                              Přesunout evidenci sem
+                            </button>
+                            <button
+                              onClick={() => setDismissed((prev) => new Set(prev).add(a.id))}
+                              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                            >
+                              Nechat
+                            </button>
+                          </div>
+                        )}
+                        {skip && <p className="mt-2 text-xs text-slate-400">Ponecháno beze změny.</p>}
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </div>
 
       <button

@@ -26,3 +26,9 @@ export class ScanInventoryDto {
   @IsString()
   publicCode?: string;
 }
+
+export class ReconcileDto {
+  /** Věc z „navíc", jejíž evidenci chceme přesunout do inventarizovaného místa. */
+  @IsUUID()
+  assetId!: string;
+}

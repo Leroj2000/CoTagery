@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DomainModule } from '../../core/domain/domain.module';
+import { AssetModule } from '../asset/asset.module';
 import { Asset } from '../asset/entities/asset.entity';
 import { DataCarrier } from '../../core/domain/entities/data-carrier.entity';
 import { InventoryCheck } from './entities/inventory-check.entity';
@@ -16,6 +17,7 @@ import { InventoryController } from './inventory.controller';
   imports: [
     TypeOrmModule.forFeature([InventoryCheck, InventoryScan, Asset, DataCarrier]),
     DomainModule,
+    AssetModule,
   ],
   controllers: [InventoryController],
   providers: [InventoryService],

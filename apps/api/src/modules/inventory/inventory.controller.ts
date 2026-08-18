@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@n
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { RolesGuard, RequireRole } from '../../core/rbac/roles.guard';
 import { InventoryService, type InventoryDetail } from './inventory.service';
-import { ScanInventoryDto, StartInventoryDto } from './dto/inventory.dto';
+import { ReconcileDto, ScanInventoryDto, StartInventoryDto } from './dto/inventory.dto';
 import type { InventoryCheck } from './entities/inventory-check.entity';
 import type { InventoryScan } from './entities/inventory-scan.entity';
 
@@ -34,6 +34,15 @@ export class InventoryController {
     @Body() dto: ScanInventoryDto,
   ): Promise<InventoryScan> {
     return this.inventory.scan(id, dto);
+  }
+
+  @Post(':id/reconcile')
+  @RequireRole('EDITOR')
+  reconcile(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReconcileDto,
+  ): Promise<InventoryDetail> {
+    return this.inventory.reconcile(id, dto.assetId);
   }
 
   @Post(':id/close')

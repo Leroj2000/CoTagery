@@ -35,6 +35,15 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
   const open = check.status === 'open';
   const expected = check.expectedAssetIds.length;
 
+  // Reconcile jen u inventury MÍSTA; jmenný map pro „vedeno u koho".
+  const canReconcile = check.subjectType === 'location' || !!check.locationId;
+  const nameOf: Record<string, string> = {
+    ...Object.fromEntries(people.map((p) => [p.id, p.name])),
+    ...Object.fromEntries(locations.map((l) => [l.id, l.name])),
+    ...Object.fromEntries(assets.map((a) => [a.id, a.name])),
+  };
+  const locationName = canReconcile ? subjectName : '';
+
   const assetRows = (list: Asset[]): (string | React.ReactNode)[][] =>
     list.map((a) => [a.name, <StatusBadge key="s" status={a.status} />, a.manufacturer ?? '—']);
 
@@ -55,7 +64,14 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
       </div>
 
       {open ? (
-        <InventoryScanner checkId={check.id} expected={expected} initialDetail={detail} />
+        <InventoryScanner
+          checkId={check.id}
+          expected={expected}
+          initialDetail={detail}
+          canReconcile={canReconcile}
+          locationName={locationName}
+          nameOf={nameOf}
+        />
       ) : (
         <>
           {/* Souhrn uzavřené inventury */}

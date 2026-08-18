@@ -3,6 +3,7 @@ import { In, Repository } from 'typeorm';
 import { TenantContextService } from '../../core/tenancy/tenant-context.service';
 import { WebhookService } from '../../core/webhooks/webhook.service';
 import { DataCarriersService } from '../../core/domain/carriers/data-carriers.service';
+import { AssetService } from '../asset/asset.service';
 import { Asset } from '../asset/entities/asset.entity';
 import { InventoryCheck } from './entities/inventory-check.entity';
 import { InventoryScan } from './entities/inventory-scan.entity';
@@ -24,6 +25,7 @@ export class InventoryService {
     private readonly context: TenantContextService,
     private readonly webhooks: WebhookService,
     private readonly carriers: DataCarriersService,
+    private readonly assets: AssetService,
   ) {}
 
   private repo<T extends object>(entity: { new (): T }): Repository<T> {
@@ -86,6 +88,29 @@ export class InventoryService {
     return scans.save(
       scans.create({ tenantId: this.context.tenantId, checkId, assetId, result }),
     );
+  }
+
+  /**
+   * Reconcile „navíc" věci: přesune EVIDENCI (holder) do inventarizovaného místa
+   * jako reálný auditní `move` (ne automaticky – jen na explicitní potvrzení).
+   * Platí jen pro inventuru MÍSTA a věc klasifikovanou jako unexpected.
+   */
+  async reconcile(checkId: string, assetId: string): Promise<InventoryDetail> {
+    const check = await this.getCheck(checkId);
+    if (check.status !== 'open') throw new BadRequestException('Inventura je uzavřená');
+
+    const locationId =
+      check.locationId ?? (check.subjectType === 'location' ? check.subjectId : null);
+    if (!locationId) throw new BadRequestException('Reconcile lze jen u inventury místa');
+
+    const scan = await this.repo(InventoryScan).findOne({ where: { checkId, assetId } });
+    if (!scan || scan.result !== 'unexpected') {
+      throw new BadRequestException("Věc není mezi 'navíc'");
+    }
+
+    // Reálný pohyb (neměnný ledger + webhook) přes stejnou service jako běžný přesun.
+    await this.assets.performMovement(assetId, { type: 'move', toType: 'location', toId: locationId });
+    return this.detail(checkId);
   }
 
   /** Uzavře inventuru a spočítá výsledek (nalezeno/chybí/navíc). */
