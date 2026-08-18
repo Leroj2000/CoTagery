@@ -1,6 +1,14 @@
 # EPIC-18-AUTHZ-V2 – Autorizační architektura + multi-org identita
 
-## Stav: ⬜ plán ke schválení (2026-08-18)
+## Stav: 🟡 Fáze 0.1 + 0.2 hotové a e2e ověřené (2026-08-18); 0.3/0.4 + Fáze 1+ ke schválení
+
+### Hotovo (0.1 + 0.2)
+- [x] `org_memberships` (název `memberships` patří EPIC-16) + `role_assignments` (RLS) + backfill (3 users → 3 členství)
+- [x] users globální unikátní email; entity `OrgMembership`, `RoleAssignment`
+- [x] `my_memberships()` SECURITY DEFINER (identity-layer čtení napříč orgy)
+- [x] login/refresh vydávají token pro aktivní org z membershipu; `POST /auth/switch-org`; `GET /auth/memberships`
+- [x] invite/updateRole/seed zakládají/srovnávají membership
+- [x] **e2e ověřeno:** identita ve 2 orgách (Demo Tenant=OWNER, Druhá Firma=MANAGER); přehled členství; přepnutí org → jiná role; izolace (org1 46 assetů / org2 0); switch bez členství → 403; refresh drží aktivní org
 
 ## Cíl
 Přijmout autorizační model z technického zadání (`technicke_zadani_autorizacni_a_modularni_architektura.docx`):
