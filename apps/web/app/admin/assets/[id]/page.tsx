@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { Package, Home, MapPin, User, CalendarClock, Box, Clock, QrCode } from 'lucide-react';
+import { Package, Home, MapPin, User, CalendarClock, Box, Clock, QrCode, Eye } from 'lucide-react';
 import { apiFetch, ApiError } from '../../../lib/server-api';
 import type { Asset, Movement, Person, Location, DataCarrier, ServiceRecord } from '../../../lib/types';
 import { Section, StatusBadge, Badge, Mono, PageHeader, Table, EmptyState } from '../../ui';
@@ -11,7 +11,7 @@ import { MovementForm } from '../movement-form';
 import { PhotoUpload } from '../photo-upload';
 import { MediaTimeline } from '../media-timeline';
 import { ReturnForm } from '../return-form';
-import type { AssetMedia, Tenant } from '../../../lib/types';
+import type { AssetMedia, Tenant, Observation } from '../../../lib/types';
 import {
   addCarrierToObject,
   adoptCarrier,
@@ -31,6 +31,11 @@ const ISSUE_LABELS: Record<string, string> = {
   malfunction: 'Závada',
   missing_part: 'Chybí díl',
   other: 'Jiné',
+};
+
+const OBSERVATION_SOURCE: Record<string, string> = {
+  scan: 'Sken',
+  inventory: 'Inventura',
 };
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -79,6 +84,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
   ]);
   const issues = await apiFetch<Issue[]>(`/assets/${id}/issues`);
   const media = await apiFetch<AssetMedia[]>(`/assets/${id}/media`);
+  const observations = await apiFetch<Observation[]>(`/assets/${id}/observations`).catch(() => []);
   const tenant = await apiFetch<Tenant>('/tenant');
   const requireReturnPhoto = tenant.settings?.requireReturnPhoto === true;
   const actions = asset.actions ?? [];
@@ -145,6 +151,48 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
         />
         <StateTile icon={<CalendarClock size={16} />} label="Vrátit do" value={fmtDate(asset.dueAt)} />
       </div>
+
+      {/* Last Observation – kde byla naposledy VIDĚNA (≠ evidence výše) */}
+      <Section
+        title="Naposledy viděno"
+        description="Poslední sken věci – kde byla fyzicky spatřena. Nemění evidenci (kde je vedená)."
+      >
+        {observations.length === 0 ? (
+          <EmptyState>Zatím nenaskenováno.</EmptyState>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/60 p-3 text-sm">
+              <Eye size={16} className="text-slate-400" />
+              <div className="flex-1">
+                <span className="font-medium text-slate-800">{fmtDateTime(observations[0].observedAt)}</span>
+                {observations[0].locationName && (
+                  <span className="text-slate-600"> · {observations[0].locationName}</span>
+                )}
+              </div>
+              <Badge tone="slate">
+                {OBSERVATION_SOURCE[observations[0].source] ?? observations[0].source}
+                {observations[0].actorName ? ` · ${observations[0].actorName}` : ''}
+              </Badge>
+            </div>
+            {observations.length > 1 && (
+              <ul className="flex flex-col divide-y divide-slate-100 text-xs text-slate-500">
+                {observations.slice(1, 5).map((o) => (
+                  <li key={o.id} className="flex items-center gap-2 py-1.5">
+                    <span className="flex-1">
+                      {fmtDateTime(o.observedAt)}
+                      {o.locationName ? ` · ${o.locationName}` : ''}
+                    </span>
+                    <span className="text-slate-400">
+                      {OBSERVATION_SOURCE[o.source] ?? o.source}
+                      {o.actorName ? ` · ${o.actorName}` : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </Section>
 
       <Section
         title="Časová galerie"

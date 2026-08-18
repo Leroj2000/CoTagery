@@ -111,6 +111,16 @@ export class AssetController {
     return this.assets.listMovements(id);
   }
 
+  /** Last Observation: kde/kdy byla věc naposledy VIDĚNA (samostatná vrstva). */
+  @Get(':id/observations')
+  observations(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<
+    { id: string; source: string; observedAt: string; locationName: string | null; actorName: string | null }[]
+  > {
+    return this.assets.listObservations(id);
+  }
+
   @Post(':id/movements')
   @RequireRole('EDITOR')
   perform(

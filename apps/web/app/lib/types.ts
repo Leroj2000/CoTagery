@@ -67,6 +67,14 @@ export interface AssetMedia {
   createdAt: string;
 }
 
+export interface Observation {
+  id: string;
+  source: string;
+  observedAt: string;
+  locationName: string | null;
+  actorName: string | null;
+}
+
 export interface Reservation {
   id: string;
   assetId: string;

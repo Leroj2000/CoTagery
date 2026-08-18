@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
+import { JwtAuthGuard, type RequestUser } from '../../core/auth/jwt-auth.guard';
+import { CurrentUser } from '../../core/auth/decorators';
 import { RolesGuard, RequireRole } from '../../core/rbac/roles.guard';
 import { InventoryService, type InventoryDetail } from './inventory.service';
 import { ReconcileDto, ScanInventoryDto, StartInventoryDto } from './dto/inventory.dto';
@@ -32,8 +33,9 @@ export class InventoryController {
   scan(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ScanInventoryDto,
+    @CurrentUser() user: RequestUser | undefined,
   ): Promise<InventoryScan> {
-    return this.inventory.scan(id, dto);
+    return this.inventory.scan(id, dto, user?.userId);
   }
 
   @Post(':id/reconcile')

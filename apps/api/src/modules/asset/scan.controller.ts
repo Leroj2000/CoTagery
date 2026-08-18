@@ -1,5 +1,6 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
+import { JwtAuthGuard, type RequestUser } from '../../core/auth/jwt-auth.guard';
+import { CurrentUser } from '../../core/auth/decorators';
 import { RolesGuard } from '../../core/rbac/roles.guard';
 import { AssetService, type ScanResult } from './asset.service';
 
@@ -14,7 +15,10 @@ export class ScanController {
   constructor(private readonly assets: AssetService) {}
 
   @Get()
-  lookup(@Query('code') code: string): Promise<ScanResult> {
-    return this.assets.scanLookup(code ?? '');
+  lookup(
+    @Query('code') code: string,
+    @CurrentUser() user: RequestUser | undefined,
+  ): Promise<ScanResult> {
+    return this.assets.scanLookup(code ?? '', user?.userId);
   }
 }

@@ -65,7 +65,7 @@ export class InventoryService {
   }
 
   /** Naskenuje asset do inventury: klasifikuje found/unexpected (idempotentně). */
-  async scan(checkId: string, dto: ScanInventoryDto): Promise<InventoryScan> {
+  async scan(checkId: string, dto: ScanInventoryDto, actorUserId?: string): Promise<InventoryScan> {
     const check = await this.getCheck(checkId);
     if (check.status !== 'open') throw new BadRequestException('Inventura je uzavřená');
 
@@ -79,6 +79,10 @@ export class InventoryService {
       assetId = asset.id;
     }
     if (!assetId) throw new BadRequestException('Chybí assetId nebo publicCode');
+
+    // Last Observation: každý fyzický sken = věc VIDĚNA na místě inventury.
+    const locationId = check.locationId ?? (check.subjectType === 'location' ? check.subjectId : null);
+    await this.assets.recordObservation(assetId, { source: 'inventory', locationId, actorUserId });
 
     const scans = this.repo(InventoryScan);
     const existing = await scans.findOne({ where: { checkId, assetId } });

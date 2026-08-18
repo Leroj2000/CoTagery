@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { LessThanOrEqual, Repository } from 'typeorm';
+import { In, LessThanOrEqual, Repository } from 'typeorm';
 import { TenantContextService } from '../../core/tenancy/tenant-context.service';
 import { STORAGE, type StoragePort } from '../../core/storage/storage.port';
 import { WebhookService } from '../../core/webhooks/webhook.service';
@@ -8,11 +8,13 @@ import { Person } from '../../core/domain/entities/person.entity';
 import { Tenant } from '../../core/domain/entities/tenant.entity';
 import { DigitalObject } from '../../core/domain/entities/digital-object.entity';
 import { DataCarriersService } from '../../core/domain/carriers/data-carriers.service';
+import { User } from '../../core/auth/entities/user.entity';
 import { Asset } from './entities/asset.entity';
 import { Movement } from './entities/movement.entity';
 import { ServiceRecord } from './entities/service-record.entity';
 import { Reservation } from './entities/reservation.entity';
 import { Category } from './entities/category.entity';
+import { AssetObservation } from './entities/asset-observation.entity';
 import {
   applyMovement,
   availableActions,
@@ -191,6 +193,61 @@ export class AssetService {
     return availableActions(asset.status);
   }
 
+  // --- Last Observation (kde/kdy byla věc naposledy VIDĚNA) ---
+
+  /**
+   * Zapíše pozorování věci (naposledy viděno). Samostatná vrstva – NEMĚNÍ stav
+   * ani evidenci (current_holder). Tiché selhání nesmí shodit sken/inventuru.
+   */
+  async recordObservation(
+    assetId: string,
+    opts: { source: 'scan' | 'inventory'; locationId?: string | null; actorUserId?: string | null; note?: string | null },
+  ): Promise<void> {
+    try {
+      const repo = this.repo(AssetObservation);
+      await repo.save(
+        repo.create({
+          tenantId: this.context.tenantId,
+          assetId,
+          source: opts.source,
+          locationId: opts.locationId ?? null,
+          actorUserId: opts.actorUserId ?? null,
+          note: opts.note ?? null,
+          observedAt: new Date(),
+        }),
+      );
+    } catch {
+      /* observability nesmí blokovat hlavní operaci */
+    }
+  }
+
+  /** Poslední pozorování věci s rozřešenými jmény (místo, kdo). */
+  async listObservations(
+    assetId: string,
+    limit = 10,
+  ): Promise<
+    { id: string; source: string; observedAt: string; locationName: string | null; actorName: string | null }[]
+  > {
+    const rows = await this.repo(AssetObservation).find({
+      where: { assetId },
+      order: { observedAt: 'DESC' },
+      take: Math.min(50, Math.max(1, limit)),
+    });
+    const locIds = [...new Set(rows.map((r) => r.locationId).filter((x): x is string => !!x))];
+    const userIds = [...new Set(rows.map((r) => r.actorUserId).filter((x): x is string => !!x))];
+    const locs = locIds.length ? await this.repo(Location).find({ where: { id: In(locIds) } }) : [];
+    const users = userIds.length ? await this.repo(User).find({ where: { id: In(userIds) } }) : [];
+    const locName = new Map(locs.map((l) => [l.id, l.name]));
+    const userName = new Map(users.map((u) => [u.id, u.name]));
+    return rows.map((r) => ({
+      id: r.id,
+      source: r.source,
+      observedAt: r.observedAt.toISOString(),
+      locationName: r.locationId ? (locName.get(r.locationId) ?? null) : null,
+      actorName: r.actorUserId ? (userName.get(r.actorUserId) ?? null) : null,
+    }));
+  }
+
   /**
    * Kontextová primární akce po skenu (Global Scan router):
    * má-li věc někdo v držení → VRÁTIT; v servisu → vrátit ze servisu; jinak PŘEDAT.
@@ -210,7 +267,7 @@ export class AssetService {
    * → věc + odvozený stav + kontextová akce. Tenant kontext (interní skener),
    * veřejný resolver se nepoužívá.
    */
-  async scanLookup(rawCode: string): Promise<ScanResult> {
+  async scanLookup(rawCode: string, actorUserId?: string): Promise<ScanResult> {
     const code = rawCode.trim();
     if (!code) throw new BadRequestException('Prázdný kód');
 
@@ -244,6 +301,9 @@ export class AssetService {
         primaryAction: null,
       };
     }
+
+    // Last Observation: sken = věc byla právě VIDĚNA (nemění evidenci).
+    await this.recordObservation(asset.id, { source: 'scan', actorUserId });
 
     const actions = this.actionsFor(asset);
     return {
