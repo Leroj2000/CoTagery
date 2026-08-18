@@ -546,10 +546,42 @@ export class AssetService {
     const seen = new Set<string>();
     const items: WorkflowItem[] = [];
 
-    for (const raw of dto.codes) {
+    // Sdílená kontrola pro už načtenou věc (dry-run přes stejný applyMovement).
+    const evalAsset = (asset: Asset, code: string): WorkflowItem => {
+      if (seen.has(asset.id)) {
+        return { code, assetId: asset.id, name: asset.name, status: asset.status, ok: false, reason: 'Duplicitní', duplicate: true };
+      }
+      seen.add(asset.id);
+      if (blockReturnPhoto) {
+        return { code, assetId: asset.id, name: asset.name, status: asset.status, ok: false, reason: 'Vrácení vyžaduje foto (politika) – vrať přes kartu věci' };
+      }
+      try {
+        applyMovement(
+          {
+            status: asset.status,
+            holderType: asset.currentHolderType,
+            holderId: asset.currentHolderId,
+            responsiblePersonId: asset.responsiblePersonId,
+            dueAt: asset.dueAt,
+          },
+          {
+            type: dto.type,
+            toType: dto.toType ?? null,
+            toId: dto.toId ?? null,
+            dueAt: dto.dueAt ? new Date(dto.dueAt) : null,
+            homeLocationId: asset.homeLocationId,
+          },
+        );
+        return { code, assetId: asset.id, name: asset.name, status: asset.status, ok: true };
+      } catch (e) {
+        return { code, assetId: asset.id, name: asset.name, status: asset.status, ok: false, reason: e instanceof MovementError ? e.message : 'Akci nelze provést' };
+      }
+    };
+
+    // A) Naskenované kódy (náš public_code i adoptovaný alias).
+    for (const raw of dto.codes ?? []) {
       const code = (raw ?? '').trim();
       if (!code) continue;
-
       const carrier = await this.carriers.findByCode(code);
       if (!carrier?.digitalObjectId) {
         items.push({ code, assetId: null, name: null, status: null, ok: false, reason: 'Kód nenalezen nebo nepřiřazený' });
@@ -560,41 +592,17 @@ export class AssetService {
         items.push({ code, assetId: null, name: null, status: null, ok: false, reason: 'Kód nevede na věc' });
         continue;
       }
-      if (seen.has(asset.id)) {
-        items.push({ code, assetId: asset.id, name: asset.name, status: asset.status, ok: false, reason: 'Duplicitní sken', duplicate: true });
+      items.push(evalAsset(asset, code));
+    }
+
+    // B) Věci vybrané ze seznamu (web) – sjednocený vstup s výdejem.
+    for (const id of dto.assetIds ?? []) {
+      const asset = await this.repo(Asset).findOne({ where: { id } });
+      if (!asset) {
+        items.push({ code: id, assetId: null, name: null, status: null, ok: false, reason: 'Věc neexistuje' });
         continue;
       }
-      seen.add(asset.id);
-
-      let ok = true;
-      let reason: string | undefined;
-      if (blockReturnPhoto) {
-        ok = false;
-        reason = 'Vrácení vyžaduje foto (politika) – vrať přes kartu věci';
-      } else {
-        try {
-          applyMovement(
-            {
-              status: asset.status,
-              holderType: asset.currentHolderType,
-              holderId: asset.currentHolderId,
-              responsiblePersonId: asset.responsiblePersonId,
-              dueAt: asset.dueAt,
-            },
-            {
-              type: dto.type,
-              toType: dto.toType ?? null,
-              toId: dto.toId ?? null,
-              dueAt: dto.dueAt ? new Date(dto.dueAt) : null,
-              homeLocationId: asset.homeLocationId,
-            },
-          );
-        } catch (e) {
-          ok = false;
-          reason = e instanceof MovementError ? e.message : 'Akci nelze provést';
-        }
-      }
-      items.push({ code, assetId: asset.id, name: asset.name, status: asset.status, ok, reason });
+      items.push(evalAsset(asset, id));
     }
 
     const assetIds = items.filter((i) => i.ok && i.assetId).map((i) => i.assetId as string);

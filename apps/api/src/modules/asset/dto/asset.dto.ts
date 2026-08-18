@@ -147,7 +147,7 @@ export class BulkMovementDto extends PerformMovementDto {
   assetIds!: string[];
 }
 
-/** Workflow Scanner: pre-flight validace naskenovaných kódů proti zvolené akci. */
+/** Workflow Scanner: pre-flight validace naskenovaných kódů / vybraných věcí. */
 export class WorkflowValidateDto {
   @IsIn(MOVEMENT_TYPES)
   type!: MovementType;
@@ -164,10 +164,18 @@ export class WorkflowValidateDto {
   @IsString()
   dueAt?: string;
 
+  /** Naskenované kódy (mobil / HW čtečka). */
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   @MaxLength(512, { each: true })
-  codes!: string[];
+  codes?: string[];
+
+  /** Věci vybrané ze seznamu (web výdej) – sjednocený vstup. */
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  assetIds?: string[];
 }
 
 export class AddServiceDto {

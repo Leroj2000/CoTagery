@@ -14,6 +14,7 @@ import {
   Undo2,
   MoveRight,
   Trash2,
+  Check,
 } from 'lucide-react';
 import type { WorkflowValidation } from '../../lib/types';
 import { StatusBadge, Badge } from '../ui';
@@ -22,6 +23,12 @@ import { useBarcodeScanner } from '../scan/use-scanner';
 interface Opt {
   value: string;
   label: string;
+}
+
+interface Item {
+  id: string;
+  name: string;
+  status: string;
 }
 
 type ActionKey = 'loan' | 'return' | 'move';
@@ -35,54 +42,66 @@ const ACTIONS: { key: ActionKey; label: string; icon: typeof PackageCheck; needs
 const inputCls =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
 
-export function WorkflowClient({ people, locations }: { people: Opt[]; locations: Opt[] }) {
+export function WorkflowClient({
+  people,
+  locations,
+  assets,
+}: {
+  people: Opt[];
+  locations: Opt[];
+  assets: Item[];
+}) {
   const [action, setAction] = useState<ActionKey>('loan');
   const [targetId, setTargetId] = useState('');
   const [dueAt, setDueAt] = useState('');
   const [codes, setCodes] = useState<string[]>([]);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
   const [validation, setValidation] = useState<WorkflowValidation | null>(null);
   const [manual, setManual] = useState('');
+  const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: number; failed: { assetId: string; error: string }[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const reqIdRef = useRef(0);
+  const codesRef = useRef<string[]>([]);
+  const pickedRef = useRef<Set<string>>(new Set());
   const cfg = ACTIONS.find((a) => a.key === action)!;
   const needsTarget = cfg.needs !== null;
   const targetOptions = cfg.needs === 'person' ? people : cfg.needs === 'location' ? locations : [];
   const targetReady = !needsTarget || !!targetId;
 
-  /** Přepošle celý seznam kódů na pre-flight validaci (stale-safe). */
-  const revalidate = useCallback(
-    async (nextCodes: string[]) => {
-      if (nextCodes.length === 0) {
-        setValidation(null);
-        return;
-      }
-      const id = ++reqIdRef.current;
-      const body = {
-        type: action,
-        ...(cfg.needs === 'person' && targetId ? { toType: 'person', toId: targetId } : {}),
-        ...(cfg.needs === 'location' && targetId ? { toType: 'location', toId: targetId } : {}),
-        ...(action === 'loan' && dueAt ? { dueAt } : {}),
-        codes: nextCodes,
-      };
-      try {
-        const res = await fetch('/api/workflow/validate', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(body),
-          cache: 'no-store',
-        });
-        if (!res.ok) throw new Error('Validace selhala');
-        const data = (await res.json()) as WorkflowValidation;
-        if (id === reqIdRef.current) setValidation(data);
-      } catch (e) {
-        if (id === reqIdRef.current) setError(e instanceof Error ? e.message : 'Chyba validace');
-      }
-    },
-    [action, cfg.needs, targetId, dueAt],
-  );
+  /** Pošle aktuální kódy + vybrané věci na pre-flight validaci (stale-safe). */
+  const revalidate = useCallback(async () => {
+    const nextCodes = codesRef.current;
+    const nextPicked = [...pickedRef.current];
+    if (nextCodes.length === 0 && nextPicked.length === 0) {
+      setValidation(null);
+      return;
+    }
+    const id = ++reqIdRef.current;
+    const body = {
+      type: action,
+      ...(cfg.needs === 'person' && targetId ? { toType: 'person', toId: targetId } : {}),
+      ...(cfg.needs === 'location' && targetId ? { toType: 'location', toId: targetId } : {}),
+      ...(action === 'loan' && dueAt ? { dueAt } : {}),
+      codes: nextCodes,
+      assetIds: nextPicked,
+    };
+    try {
+      const res = await fetch('/api/workflow/validate', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+        cache: 'no-store',
+      });
+      if (!res.ok) throw new Error('Validace selhala');
+      const data = (await res.json()) as WorkflowValidation;
+      if (id === reqIdRef.current) setValidation(data);
+    } catch (e) {
+      if (id === reqIdRef.current) setError(e instanceof Error ? e.message : 'Chyba validace');
+    }
+  }, [action, cfg.needs, targetId, dueAt]);
 
   const addCode = useCallback(
     (raw: string) => {
@@ -90,29 +109,43 @@ export function WorkflowClient({ people, locations }: { people: Opt[]; locations
       if (!c) return;
       setResult(null);
       setError(null);
-      setCodes((prev) => {
-        const next = [...prev, c];
-        void revalidate(next);
-        return next;
-      });
+      codesRef.current = [...codesRef.current, c];
+      setCodes(codesRef.current);
+      void revalidate();
     },
     [revalidate],
   );
 
   const removeCode = useCallback(
     (code: string) => {
-      setCodes((prev) => {
-        const idx = prev.indexOf(code);
-        const next = idx >= 0 ? [...prev.slice(0, idx), ...prev.slice(idx + 1)] : prev;
-        void revalidate(next);
-        return next;
-      });
+      const idx = codesRef.current.indexOf(code);
+      if (idx >= 0) {
+        codesRef.current = [...codesRef.current.slice(0, idx), ...codesRef.current.slice(idx + 1)];
+        setCodes(codesRef.current);
+        void revalidate();
+      }
+    },
+    [revalidate],
+  );
+
+  const togglePick = useCallback(
+    (id: string) => {
+      const next = new Set(pickedRef.current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      pickedRef.current = next;
+      setPicked(next);
+      setResult(null);
+      void revalidate();
     },
     [revalidate],
   );
 
   const reset = useCallback(() => {
+    codesRef.current = [];
+    pickedRef.current = new Set();
     setCodes([]);
+    setPicked(new Set());
     setValidation(null);
     setResult(null);
     setError(null);
@@ -220,11 +253,11 @@ export function WorkflowClient({ people, locations }: { people: Opt[]; locations
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {camOn ? (
             <button
               onClick={stop}
-              className="inline-flex items-center gap-2 rounded-lg bg-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-300"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-300 sm:w-auto sm:justify-start"
             >
               <CameraOff size={16} /> Stop
             </button>
@@ -232,14 +265,14 @@ export function WorkflowClient({ people, locations }: { people: Opt[]; locations
             <button
               onClick={start}
               disabled={!targetReady}
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700 disabled:opacity-50 sm:w-auto sm:justify-start"
               title={targetReady ? '' : 'Nejdřív vyber cíl'}
             >
               <Camera size={16} /> Skenovat kamerou
             </button>
           )}
           {codes.length > 0 && (
-            <span className="ml-auto text-xs text-slate-500">Naskenováno: {codes.length}</span>
+            <span className="text-xs text-slate-500 sm:ml-auto">Naskenováno: {codes.length}</span>
           )}
         </div>
         {!camSupported && (
@@ -277,6 +310,49 @@ export function WorkflowClient({ people, locations }: { people: Opt[]; locations
         {!targetReady && (
           <p className="mt-2 text-xs text-slate-400">Nejdřív vyber {cfg.needs === 'person' ? 'příjemce' : 'cílové místo'}.</p>
         )}
+
+        {/* Nebo vyber ze seznamu (sjednocený výdej – web) */}
+        <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60">
+          <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-slate-600">
+            Nebo vyber ze seznamu ({picked.size})
+          </summary>
+          <div className="border-t border-slate-200 p-3">
+            <div className="relative mb-2">
+              <Search size={14} className="absolute left-2.5 top-2.5 text-slate-400" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Hledat věc…"
+                className={`${inputCls} pl-8`}
+                disabled={!targetReady}
+              />
+            </div>
+            <div className="max-h-52 overflow-y-auto rounded-lg border border-slate-200 bg-white">
+              {assets
+                .filter((a) => a.name.toLowerCase().includes(query.toLowerCase()))
+                .slice(0, 60)
+                .map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => togglePick(a.id)}
+                    disabled={!targetReady}
+                    className="flex w-full items-center gap-2 border-b border-slate-100 px-3 py-2 text-left text-sm last:border-0 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    <span
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                        picked.has(a.id) ? 'border-brand-500 bg-brand-500 text-white' : 'border-slate-300'
+                      }`}
+                    >
+                      {picked.has(a.id) && <Check size={11} />}
+                    </span>
+                    <span className="flex-1 truncate text-slate-700">{a.name}</span>
+                    <StatusBadge status={a.status} />
+                  </button>
+                ))}
+            </div>
+          </div>
+        </details>
       </div>
 
       {/* 3) Seznam + blockers */}
@@ -310,7 +386,7 @@ export function WorkflowClient({ people, locations }: { people: Opt[]; locations
                 </div>
                 {it.status && <StatusBadge status={it.status} />}
                 <button
-                  onClick={() => removeCode(it.code)}
+                  onClick={() => (picked.has(it.code) ? togglePick(it.code) : removeCode(it.code))}
                   className="text-slate-300 hover:text-red-500"
                   title="Odebrat"
                 >

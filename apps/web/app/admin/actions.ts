@@ -248,32 +248,7 @@ export async function importAssetsCsv(_p: ActionState, fd: FormData): Promise<Ac
   }
 }
 
-export async function bulkDispatch(_p: ActionState, fd: FormData): Promise<ActionState> {
-  const assetIds = fd.getAll('assetIds').map(String).filter(Boolean);
-  if (assetIds.length === 0) return { error: 'Vyber alespoň jednu věc.' };
-  const target = str(fd, 'target');
-  const [toType, toId] = target.includes(':') ? target.split(':') : [undefined, undefined];
-  try {
-    const res = await apiFetch<{ ok: number; failed: unknown[] }>('/assets/movements/bulk', {
-      method: 'POST',
-      body: JSON.stringify({
-        assetIds,
-        type: str(fd, 'type') || 'loan',
-        toType,
-        toId,
-        dueAt: str(fd, 'dueAt') || undefined,
-        note: str(fd, 'note') || undefined,
-        requireConfirmation: str(fd, 'requireConfirmation') === 'true',
-      }),
-    });
-    revalidatePath('/admin/dispatch');
-    revalidatePath('/admin/assets');
-    const failMsg = res.failed.length ? ` (${res.failed.length} selhalo)` : '';
-    return { ok: true, message: `Vydáno ${res.ok} věcí${failMsg}.` };
-  } catch (e) {
-    return { error: e instanceof ApiError ? e.message : 'Výdej selhal' };
-  }
-}
+// Pozn.: hromadný výdej sjednocen do workflow scanneru (/admin/workflow → BFF /api/workflow/*).
 
 // --- Nálezy + webhooky (🔵) ---
 export async function handleFoundReport(_p: ActionState, fd: FormData): Promise<ActionState> {

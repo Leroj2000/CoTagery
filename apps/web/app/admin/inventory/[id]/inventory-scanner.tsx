@@ -169,18 +169,18 @@ export function InventoryScanner({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {camOn ? (
             <button
               onClick={stop}
-              className="inline-flex items-center gap-2 rounded-lg bg-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-300"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-300 sm:w-auto sm:justify-start"
             >
               <CameraOff size={16} /> Stop
             </button>
           ) : (
             <button
               onClick={start}
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700 sm:w-auto sm:justify-start"
             >
               <Camera size={16} /> Skenovat kamerou
             </button>
@@ -299,7 +299,7 @@ export function InventoryScanner({
       <button
         onClick={finish}
         disabled={busy}
-        className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
       >
         {busy && <Loader2 size={16} className="animate-spin" />}
         Dokončit inventuru

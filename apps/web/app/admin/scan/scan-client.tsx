@@ -125,14 +125,14 @@ export function ScanClient() {
           {camOn ? (
             <button
               onClick={stopCamera}
-              className="inline-flex items-center gap-2 rounded-lg bg-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-300"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-300 sm:w-auto sm:justify-start"
             >
               <CameraOff size={16} /> Vypnout kameru
             </button>
           ) : (
             <button
               onClick={startCamera}
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700 sm:w-auto sm:justify-start"
             >
               <Camera size={16} /> Skenovat kamerou
             </button>
@@ -287,12 +287,12 @@ function ResultCard({
       )}
 
       {/* Kontextová akce */}
-      <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 p-5">
+      <div className="flex flex-col flex-wrap items-stretch gap-2 border-t border-slate-100 p-5 sm:flex-row sm:items-center">
         {canQuickReturn ? (
           <button
             onClick={() => onQuickReturn(asset.id)}
             disabled={acting}
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50 sm:w-auto"
           >
             {acting ? <Loader2 size={16} className="animate-spin" /> : <Undo2 size={16} />}
             Vrátit domů{context?.homeName ? ` (${context.homeName})` : ''}
@@ -301,7 +301,7 @@ function ResultCard({
           primaryLabel && (
             <Link
               href={`/admin/assets/${asset.id}`}
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 sm:w-auto"
             >
               {primaryLabel} <ArrowRight size={16} />
             </Link>
@@ -309,12 +309,12 @@ function ResultCard({
         )}
         <Link
           href={`/admin/assets/${asset.id}`}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:w-auto"
         >
           Detail věci
         </Link>
         {returnBlockedByPhoto && (
-          <span className="text-xs text-amber-600">Vrácení vyžaduje foto → otevři detail</span>
+          <span className="text-center text-xs text-amber-600 sm:text-left">Vrácení vyžaduje foto → otevři detail</span>
         )}
       </div>
     </div>
