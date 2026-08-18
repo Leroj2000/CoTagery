@@ -15,6 +15,8 @@ import {
   CalendarClock,
   QrCode,
   ArrowRight,
+  Check,
+  Undo2,
 } from 'lucide-react';
 import type { ScanResult } from '../../lib/types';
 import { StatusBadge, Badge, Mono } from '../ui';
@@ -43,6 +45,8 @@ export function ScanClient() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
+  const [acting, setActing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const lookup = useCallback(async (raw: string) => {
@@ -61,6 +65,31 @@ export function ScanClient() {
       setLoading(false);
     }
   }, []);
+
+  /** One-tap „Vrátit domů" přímo ze skenu → pohyb + obnova karty. */
+  const quickReturn = useCallback(
+    async (assetId: string, scannedCode: string) => {
+      setActing(true);
+      setError(null);
+      setFlash(null);
+      try {
+        const res = await fetch(`/api/asset-movement/${assetId}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ type: 'return' }),
+          cache: 'no-store',
+        });
+        if (!res.ok) throw new Error('Vrácení se nepodařilo');
+        setFlash('Vráceno domů ✓');
+        await lookup(scannedCode);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Neočekávaná chyba');
+      } finally {
+        setActing(false);
+      }
+    },
+    [lookup],
+  );
 
   const {
     videoRef,
@@ -149,13 +178,32 @@ export function ScanClient() {
           <AlertCircle size={15} /> {error ?? camError}
         </p>
       )}
+      {flash && (
+        <p className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2.5 text-sm text-emerald-700">
+          <Check size={15} /> {flash}
+        </p>
+      )}
 
-      {result && <ResultCard result={result} />}
+      {result && (
+        <ResultCard
+          result={result}
+          acting={acting}
+          onQuickReturn={(assetId) => quickReturn(assetId, result.code)}
+        />
+      )}
     </div>
   );
 }
 
-function ResultCard({ result }: { result: ScanResult }) {
+function ResultCard({
+  result,
+  acting,
+  onQuickReturn,
+}: {
+  result: ScanResult;
+  acting: boolean;
+  onQuickReturn: (assetId: string) => void;
+}) {
   if (!result.found) {
     return (
       <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800 shadow-card">
@@ -191,6 +239,11 @@ function ResultCard({ result }: { result: ScanResult }) {
   }
 
   const primaryLabel = primaryAction ? ACTION_LABEL[primaryAction] ?? primaryAction : null;
+  // One-tap „Vrátit domů": jen když je věc vratná, má domov a politika nevyžaduje foto.
+  const canQuickReturn =
+    primaryAction === 'return' && !!asset.homeLocationId && !result.requireReturnPhoto;
+  const returnBlockedByPhoto =
+    primaryAction === 'return' && !!result.requireReturnPhoto;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
@@ -235,13 +288,24 @@ function ResultCard({ result }: { result: ScanResult }) {
 
       {/* Kontextová akce */}
       <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 p-5">
-        {primaryLabel && (
-          <Link
-            href={`/admin/assets/${asset.id}`}
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
+        {canQuickReturn ? (
+          <button
+            onClick={() => onQuickReturn(asset.id)}
+            disabled={acting}
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
           >
-            {primaryLabel} <ArrowRight size={16} />
-          </Link>
+            {acting ? <Loader2 size={16} className="animate-spin" /> : <Undo2 size={16} />}
+            Vrátit domů{context?.homeName ? ` (${context.homeName})` : ''}
+          </button>
+        ) : (
+          primaryLabel && (
+            <Link
+              href={`/admin/assets/${asset.id}`}
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
+            >
+              {primaryLabel} <ArrowRight size={16} />
+            </Link>
+          )
         )}
         <Link
           href={`/admin/assets/${asset.id}`}
@@ -249,6 +313,9 @@ function ResultCard({ result }: { result: ScanResult }) {
         >
           Detail věci
         </Link>
+        {returnBlockedByPhoto && (
+          <span className="text-xs text-amber-600">Vrácení vyžaduje foto → otevři detail</span>
+        )}
       </div>
     </div>
   );

@@ -209,6 +209,7 @@ export interface ScanResult {
     holderName: string | null;
     responsibleName: string | null;
   } | null;
+  requireReturnPhoto?: boolean;
 }
 
 export interface WorkflowItem {

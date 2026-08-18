@@ -72,6 +72,8 @@ export interface ScanResult {
     holderName: string | null;
     responsibleName: string | null;
   } | null;
+  /** Politika tenanta pro foto při vrácení (gating one-tap „Vrátit domů"). */
+  requireReturnPhoto?: boolean;
 }
 
 @Injectable()
@@ -252,6 +254,7 @@ export class AssetService {
       object: object ? { id: object.id, moduleType: object.moduleType, slug: object.slug } : null,
       primaryAction: this.primaryActionFor(asset, actions),
       context: await this.resolveContext(asset),
+      requireReturnPhoto: await this.requireReturnPhoto(),
     };
   }
 
