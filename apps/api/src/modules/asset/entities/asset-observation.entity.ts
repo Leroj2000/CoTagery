@@ -1,14 +1,19 @@
-import { Column, Entity, Index } from 'typeorm';
-import { BaseTenantEntity } from '../../../core/database/base-tenant.entity';
+import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
 /**
  * Pozorování věci (Last Observation) – „kde/kdy byla naposledy VIDĚNA
- * (naskenována)". Samostatná vrstva, NEMÍCHAT s evidencí (current_holder).
- * Zapisuje se při Global Scanu a inventuře; nemění stav věci.
+ * (naskenována)". Samostatná, append-only vrstva (bez updated_at), NEMÍCHAT
+ * s evidencí (current_holder). Zapisuje se při Global Scanu a inventuře.
  */
 @Entity('asset_observations')
 @Index(['assetId', 'observedAt'])
-export class AssetObservation extends BaseTenantEntity {
+export class AssetObservation {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
+
+  @Column({ type: 'uuid', name: 'tenant_id' })
+  tenantId!: string;
+
   @Column({ type: 'uuid', name: 'asset_id' })
   assetId!: string;
 
@@ -29,4 +34,7 @@ export class AssetObservation extends BaseTenantEntity {
 
   @Column({ type: 'timestamptz', name: 'observed_at' })
   observedAt!: Date;
+
+  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
+  createdAt!: Date;
 }
