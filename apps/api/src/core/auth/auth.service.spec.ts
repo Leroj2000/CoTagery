@@ -1,7 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { JwtService } from '@nestjs/jwt';
-import type { Repository } from 'typeorm';
+import type { DataSource, Repository } from 'typeorm';
 import { AuthService } from './auth.service';
 import type { User } from './entities/user.entity';
 import type { RefreshToken } from './entities/refresh-token.entity';
@@ -14,6 +14,8 @@ function build() {
     update: jest.fn(),
     create: jest.fn((x: unknown) => x),
   } as unknown as Repository<RefreshToken>;
+  // my_memberships() → prázdné = fallback na domovskou org uživatele.
+  const dataSource = { query: jest.fn().mockResolvedValue([]) } as unknown as DataSource;
   const exp = Math.floor(Date.now() / 1000) + 900;
   const jwt = {
     signAsync: jest.fn().mockResolvedValue('signed.jwt.token'),
@@ -21,7 +23,12 @@ function build() {
     verifyAsync: jest.fn(),
   } as unknown as JwtService;
   const config = { get: jest.fn().mockReturnValue('15m') } as unknown as ConfigService;
-  return { svc: new AuthService(users, refreshTokens, jwt, config), users, refreshTokens, jwt };
+  return {
+    svc: new AuthService(users, refreshTokens, dataSource, jwt, config),
+    users,
+    refreshTokens,
+    jwt,
+  };
 }
 
 describe('AuthService', () => {

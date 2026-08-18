@@ -1,9 +1,10 @@
 import { Body, Controller, Get, HttpCode, NotFoundException, Post, UseGuards } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { AuthService, type TokenPair } from './auth.service';
+import { AuthService, type MembershipView, type TokenPair } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { SwitchOrgDto } from './dto/switch-org.dto';
 import { JwtAuthGuard, type RequestUser } from './jwt-auth.guard';
 import { CurrentUser } from './decorators';
 import { User } from './entities/user.entity';
@@ -45,5 +46,22 @@ export class AuthController {
       tenantId: current.tenantId,
       tenantRole: current.tenantRole,
     };
+  }
+
+  /** Přehled všech organizací, kde je identita registrovaná (Fáze 0.2). */
+  @Get('memberships')
+  @UseGuards(JwtAuthGuard)
+  memberships(@CurrentUser() current: RequestUser): Promise<MembershipView[]> {
+    return this.auth.listMemberships(current.userId);
+  }
+
+  /** Přepnutí aktivní organizace – vydá nové tokeny pro zvolené členství. */
+  @Post('switch-org')
+  @UseGuards(JwtAuthGuard)
+  switchOrg(
+    @CurrentUser() current: RequestUser,
+    @Body() dto: SwitchOrgDto,
+  ): Promise<TokenPair> {
+    return this.auth.switchOrg(current.userId, dto.organizationId);
   }
 }

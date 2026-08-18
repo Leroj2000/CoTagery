@@ -8,6 +8,8 @@ import { BaseTenantEntity } from '../../database/base-tenant.entity';
  */
 @Entity('users')
 @Index(['tenantId', 'email'], { unique: true })
+// EPIC-18: globální identita – email unikátní napříč organizacemi.
+@Index('ux_users_email', ['email'], { unique: true })
 export class User extends BaseTenantEntity {
   @Column({ type: 'text' })
   email!: string;

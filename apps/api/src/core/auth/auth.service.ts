@@ -1,9 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, IsNull, Repository } from 'typeorm';
 import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2';
 import type { TenantRole } from '@tagery/shared';
 import { User } from './entities/user.entity';
@@ -11,8 +11,10 @@ import { RefreshToken } from './entities/refresh-token.entity';
 
 export interface AccessPayload {
   sub: string;
+  /** Aktivní organizace (= tenant pro RLS). */
   tenantId: string;
   tenantRole: TenantRole;
+  membershipId?: string | null;
 }
 
 export interface TokenPair {
@@ -21,21 +23,71 @@ export interface TokenPair {
   expiresIn: number;
 }
 
+/** Řádek z my_memberships() – identity-layer přehled napříč organizacemi. */
+interface MembershipRow {
+  membership_id: string;
+  organization_id: string;
+  organization_name: string;
+  role: TenantRole;
+  status: string;
+  created_at: string;
+}
+
+export interface MembershipView {
+  membershipId: string;
+  organizationId: string;
+  organizationName: string;
+  role: TenantRole;
+  status: string;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(RefreshToken) private readonly refreshTokens: Repository<RefreshToken>,
+    @InjectDataSource() private readonly dataSource: DataSource,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
   ) {}
+
+  /** Členství identity napříč organizacemi (obchází per-tenant RLS, filtr dle user_id). */
+  private myMemberships(userId: string): Promise<MembershipRow[]> {
+    return this.dataSource.query('SELECT * FROM my_memberships($1)', [userId]);
+  }
+
+  /** Přehled „moje organizace" pro přihlášenou identitu (Fáze 0.2). */
+  async listMemberships(userId: string): Promise<MembershipView[]> {
+    const rows = await this.myMemberships(userId);
+    return rows.map((m) => ({
+      membershipId: m.membership_id,
+      organizationId: m.organization_id,
+      organizationName: m.organization_name,
+      role: m.role,
+      status: m.status,
+    }));
+  }
 
   async login(email: string, password: string): Promise<TokenPair> {
     const user = await this.users.findOne({ where: { email, status: 'active' } });
     if (!user || !(await argonVerify(user.passwordHash, password))) {
       throw new UnauthorizedException('Neplatné přihlašovací údaje');
     }
-    return this.issueTokens(user);
+    // Výchozí aktivní org = domovská (user.tenantId), jinak první členství.
+    const ms = await this.myMemberships(user.id);
+    const chosen = ms.find((m) => m.organization_id === user.tenantId) ?? ms[0] ?? null;
+    return this.issueTokens(user, chosen);
+  }
+
+  /** Přepnutí aktivní organizace – jen do org, kde má identita členství. */
+  async switchOrg(userId: string, organizationId: string): Promise<TokenPair> {
+    const user = await this.users.findOne({ where: { id: userId, status: 'active' } });
+    if (!user) throw new UnauthorizedException('Uživatel neexistuje nebo je neaktivní');
+    const chosen = (await this.myMemberships(userId)).find(
+      (m) => m.organization_id === organizationId,
+    );
+    if (!chosen) throw new ForbiddenException('Nemáš členství v této organizaci');
+    return this.issueTokens(user, chosen);
   }
 
   async refresh(refreshToken: string): Promise<TokenPair> {
@@ -60,7 +112,15 @@ export class AuthService {
 
     stored.revokedAt = new Date();
     await this.refreshTokens.save(stored);
-    return this.issueTokens(user);
+
+    // Zachovej aktivní org z refresh tokenu, pokud tam identita stále má členství.
+    const ms = await this.myMemberships(user.id);
+    const chosen =
+      ms.find((m) => m.organization_id === stored.tenantId) ??
+      ms.find((m) => m.organization_id === user.tenantId) ??
+      ms[0] ??
+      null;
+    return this.issueTokens(user, chosen);
   }
 
   async logout(refreshToken: string): Promise<void> {
@@ -76,11 +136,20 @@ export class AuthService {
     return argonHash(password); // @node-rs/argon2 default = Argon2id
   }
 
-  private async issueTokens(user: User): Promise<TokenPair> {
+  /**
+   * Vydá tokeny pro danou aktivní organizaci (z membershipu). Fallback na
+   * domovskou org uživatele, pokud membership chybí (defenzivně před 0.3).
+   */
+  private async issueTokens(user: User, membership: MembershipRow | null): Promise<TokenPair> {
+    const orgId = membership?.organization_id ?? user.tenantId;
+    const role = membership?.role ?? user.tenantRole;
+    const membershipId = membership?.membership_id ?? null;
+
     const accessPayload: AccessPayload = {
       sub: user.id,
-      tenantId: user.tenantId,
-      tenantRole: user.tenantRole,
+      tenantId: orgId,
+      tenantRole: role,
+      membershipId,
     };
     const accessToken = await this.jwt.signAsync(accessPayload, {
       expiresIn: (this.config.get<string>('JWT_ACCESS_TTL') ?? '15m') as JwtSignOptions['expiresIn'],
@@ -88,7 +157,7 @@ export class AuthService {
 
     const jti = randomUUID();
     const refreshToken = await this.jwt.signAsync(
-      { sub: user.id, tenantId: user.tenantId, jti },
+      { sub: user.id, tenantId: orgId, jti },
       {
         expiresIn: (this.config.get<string>('JWT_REFRESH_TTL') ??
           '30d') as JwtSignOptions['expiresIn'],
@@ -100,7 +169,7 @@ export class AuthService {
       this.refreshTokens.create({
         jti,
         userId: user.id,
-        tenantId: user.tenantId,
+        tenantId: orgId,
         tokenHash: this.hashToken(refreshToken),
         expiresAt: new Date(refreshDecoded.exp * 1000),
         revokedAt: null,

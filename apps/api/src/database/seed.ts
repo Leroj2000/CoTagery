@@ -24,12 +24,14 @@ async function seed(): Promise<void> {
 
     // Demo OWNER uživatel
     const email = 'owner@demo.tagery';
+    let userId: string;
     const existingUser = await dataSource.query(
       `SELECT id FROM users WHERE tenant_id = $1 AND email = $2`,
       [tenantId, email],
     );
     if (existingUser.length > 0) {
-      console.log('Demo uživatel už existuje:', existingUser[0].id);
+      userId = existingUser[0].id;
+      console.log('Demo uživatel už existuje:', userId);
     } else {
       const passwordHash = await AuthService.hashPassword('demo1234');
       const inserted = await dataSource.query(
@@ -37,8 +39,24 @@ async function seed(): Promise<void> {
          VALUES ($1, $2, $3, $4, $5) RETURNING id`,
         [tenantId, email, 'Demo Owner', passwordHash, 'OWNER'],
       );
-      console.log('Vytvořen demo uživatel:', inserted[0].id, `(${email} / demo1234)`);
+      userId = inserted[0].id;
+      console.log('Vytvořen demo uživatel:', userId, `(${email} / demo1234)`);
     }
+
+    // EPIC-18: členství identity v organizaci + role_assignment (idempotentně).
+    const m = await dataSource.query(
+      `INSERT INTO memberships (tenant_id, user_id, role, status)
+       VALUES ($1, $2, 'OWNER', 'active')
+       ON CONFLICT (tenant_id, user_id) DO UPDATE SET role = EXCLUDED.role
+       RETURNING id`,
+      [tenantId, userId],
+    );
+    await dataSource.query(
+      `INSERT INTO role_assignments (tenant_id, membership_id, role_key, scope_type)
+       SELECT $1, $2, 'OWNER', 'ORGANIZATION'
+       WHERE NOT EXISTS (SELECT 1 FROM role_assignments WHERE membership_id = $2)`,
+      [tenantId, m[0].id],
+    );
   } finally {
     await dataSource.destroy();
   }

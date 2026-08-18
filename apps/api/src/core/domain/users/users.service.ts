@@ -5,6 +5,8 @@ import type { TenantRole } from '@tagery/shared';
 import { TenantContextService } from '../../tenancy/tenant-context.service';
 import { AuthService } from '../../auth/auth.service';
 import { User } from '../../auth/entities/user.entity';
+import { Membership } from '../../auth/entities/membership.entity';
+import { RoleAssignment } from '../../auth/entities/role-assignment.entity';
 import type { InviteUserDto, UpdateRoleDto } from './dto/users.dto';
 
 /** Veřejný pohled na uživatele (bez password_hash). */
@@ -62,13 +64,48 @@ export class UsersService {
         status: 'active',
       }),
     );
+    // EPIC-18: členství + role_assignment v aktuální organizaci.
+    await this.ensureMembership(user.id, dto.tenantRole);
     return { user: toView(user), tempPassword };
+  }
+
+  /** Založí (nebo srovná roli) membershipu identity v aktuální organizaci. */
+  private async ensureMembership(userId: string, role: TenantRole): Promise<void> {
+    const mRepo = this.context.manager.getRepository(Membership);
+    const raRepo = this.context.manager.getRepository(RoleAssignment);
+    let m = await mRepo.findOne({ where: { tenantId: this.context.tenantId, userId } });
+    if (!m) {
+      m = await mRepo.save(
+        mRepo.create({ tenantId: this.context.tenantId, userId, role, status: 'active' }),
+      );
+    } else if (m.role !== role) {
+      m.role = role;
+      await mRepo.save(m);
+    }
+    const ra = await raRepo.findOne({ where: { membershipId: m.id } });
+    if (!ra) {
+      await raRepo.save(
+        raRepo.create({
+          tenantId: this.context.tenantId,
+          membershipId: m.id,
+          roleKey: role,
+          scopeType: 'ORGANIZATION',
+          validFrom: new Date(),
+        }),
+      );
+    } else if (ra.roleKey !== role) {
+      ra.roleKey = role;
+      await raRepo.save(ra);
+    }
   }
 
   async updateRole(id: string, dto: UpdateRoleDto): Promise<UserView> {
     const user = await this.get(id);
     user.tenantRole = dto.tenantRole;
-    return toView(await this.repo().save(user));
+    const saved = await this.repo().save(user);
+    // Srovnej roli v membershipu/role_assignmentu (JWT čte roli z membershipu).
+    await this.ensureMembership(user.id, dto.tenantRole);
+    return toView(saved);
   }
 
   async setStatus(id: string, status: 'active' | 'suspended'): Promise<UserView> {
