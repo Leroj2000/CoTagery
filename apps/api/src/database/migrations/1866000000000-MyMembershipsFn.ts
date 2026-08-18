@@ -22,7 +22,7 @@ export class MyMembershipsFn1866000000000 implements MigrationInterface {
       )
       LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
         SELECT m.id, m.tenant_id, t.name, m.role, m.status, m.created_at
-        FROM memberships m
+        FROM org_memberships m
         JOIN tenants t ON t.id = m.tenant_id
         WHERE m.user_id = p_user_id AND m.status = 'active'
         ORDER BY t.name

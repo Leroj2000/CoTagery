@@ -45,7 +45,7 @@ async function seed(): Promise<void> {
 
     // EPIC-18: členství identity v organizaci + role_assignment (idempotentně).
     const m = await dataSource.query(
-      `INSERT INTO memberships (tenant_id, user_id, role, status)
+      `INSERT INTO org_memberships (tenant_id, user_id, role, status)
        VALUES ($1, $2, 'OWNER', 'active')
        ON CONFLICT (tenant_id, user_id) DO UPDATE SET role = EXCLUDED.role
        RETURNING id`,

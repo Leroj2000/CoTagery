@@ -5,7 +5,7 @@ import type { TenantRole } from '@tagery/shared';
 import { TenantContextService } from '../../tenancy/tenant-context.service';
 import { AuthService } from '../../auth/auth.service';
 import { User } from '../../auth/entities/user.entity';
-import { Membership } from '../../auth/entities/membership.entity';
+import { OrgMembership } from '../../auth/entities/membership.entity';
 import { RoleAssignment } from '../../auth/entities/role-assignment.entity';
 import type { InviteUserDto, UpdateRoleDto } from './dto/users.dto';
 
@@ -71,7 +71,7 @@ export class UsersService {
 
   /** Založí (nebo srovná roli) membershipu identity v aktuální organizaci. */
   private async ensureMembership(userId: string, role: TenantRole): Promise<void> {
-    const mRepo = this.context.manager.getRepository(Membership);
+    const mRepo = this.context.manager.getRepository(OrgMembership);
     const raRepo = this.context.manager.getRepository(RoleAssignment);
     let m = await mRepo.findOne({ where: { tenantId: this.context.tenantId, userId } });
     if (!m) {

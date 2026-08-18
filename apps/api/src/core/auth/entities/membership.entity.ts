@@ -3,13 +3,14 @@ import type { TenantRole } from '@tagery/shared';
 
 /**
  * Členství identity v organizaci (EPIC-18 Fáze 0). Jeden `user` může mít víc
- * memberships (různé organizace, různé role). `tenant_id` = organization_id
+ * členství (různé organizace, různé role). `tenant_id` = organization_id
  * (držíme název kvůli jednotné RLS). Role zde je efektivní role v dané org
- * (primární); jemnější granty řeší `role_assignments`.
+ * (primární); jemnější granty řeší `role_assignments`. Tabulka `org_memberships`
+ * (název `memberships` patří klubovému členství, EPIC-16).
  */
-@Entity('memberships')
+@Entity('org_memberships')
 @Index(['tenantId', 'userId'], { unique: true })
-export class Membership {
+export class OrgMembership {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

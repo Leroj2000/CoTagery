@@ -19,7 +19,7 @@ export class IdentityMemberships1865000000000 implements MigrationInterface {
 
     // --- memberships (user × organizace) ---
     await queryRunner.query(`
-      CREATE TABLE IF NOT EXISTS "memberships" (
+      CREATE TABLE IF NOT EXISTS "org_memberships" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         "tenant_id" uuid NOT NULL REFERENCES "tenants"("id") ON DELETE CASCADE,
         "user_id" uuid NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
@@ -29,20 +29,20 @@ export class IdentityMemberships1865000000000 implements MigrationInterface {
       )
     `);
     await queryRunner.query(
-      `CREATE UNIQUE INDEX IF NOT EXISTS "ux_memberships_tenant_user" ON "memberships" ("tenant_id", "user_id")`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS "ux_org_memberships_tenant_user" ON "org_memberships" ("tenant_id", "user_id")`,
     );
     await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS "ix_memberships_user" ON "memberships" ("user_id")`,
+      `CREATE INDEX IF NOT EXISTS "ix_org_memberships_user" ON "org_memberships" ("user_id")`,
     );
-    await queryRunner.query(`ALTER TABLE "memberships" ENABLE ROW LEVEL SECURITY`);
-    await queryRunner.query(`ALTER TABLE "memberships" FORCE ROW LEVEL SECURITY`);
+    await queryRunner.query(`ALTER TABLE "org_memberships" ENABLE ROW LEVEL SECURITY`);
+    await queryRunner.query(`ALTER TABLE "org_memberships" FORCE ROW LEVEL SECURITY`);
     await queryRunner.query(`
-      CREATE POLICY "tenant_isolation" ON "memberships"
+      CREATE POLICY "tenant_isolation" ON "org_memberships"
       USING ("tenant_id" = current_setting('app.tenant_id', true)::uuid)
       WITH CHECK ("tenant_id" = current_setting('app.tenant_id', true)::uuid)
     `);
     await queryRunner.query(
-      `GRANT SELECT, INSERT, UPDATE, DELETE ON "memberships" TO "tagery_app"`,
+      `GRANT SELECT, INSERT, UPDATE, DELETE ON "org_memberships" TO "tagery_app"`,
     );
 
     // --- role_assignments (role + scope + časová platnost) ---
@@ -50,7 +50,7 @@ export class IdentityMemberships1865000000000 implements MigrationInterface {
       CREATE TABLE IF NOT EXISTS "role_assignments" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         "tenant_id" uuid NOT NULL REFERENCES "tenants"("id") ON DELETE CASCADE,
-        "membership_id" uuid NOT NULL REFERENCES "memberships"("id") ON DELETE CASCADE,
+        "membership_id" uuid NOT NULL REFERENCES "org_memberships"("id") ON DELETE CASCADE,
         "role_key" text NOT NULL,
         "scope_type" text NOT NULL DEFAULT 'ORGANIZATION',
         "scope_ref" uuid,
@@ -75,13 +75,13 @@ export class IdentityMemberships1865000000000 implements MigrationInterface {
 
     // --- Backfill (migrace běží jako superuser → obchází RLS) ---
     await queryRunner.query(`
-      INSERT INTO "memberships" ("tenant_id", "user_id", "role", "status")
+      INSERT INTO "org_memberships" ("tenant_id", "user_id", "role", "status")
       SELECT u."tenant_id", u."id", u."tenant_role", u."status" FROM "users" u
       ON CONFLICT ("tenant_id", "user_id") DO NOTHING
     `);
     await queryRunner.query(`
       INSERT INTO "role_assignments" ("tenant_id", "membership_id", "role_key", "scope_type")
-      SELECT m."tenant_id", m."id", m."role", 'ORGANIZATION' FROM "memberships" m
+      SELECT m."tenant_id", m."id", m."role", 'ORGANIZATION' FROM "org_memberships" m
       WHERE NOT EXISTS (
         SELECT 1 FROM "role_assignments" ra WHERE ra."membership_id" = m."id"
       )
@@ -91,8 +91,8 @@ export class IdentityMemberships1865000000000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP POLICY IF EXISTS "tenant_isolation" ON "role_assignments"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "role_assignments"`);
-    await queryRunner.query(`DROP POLICY IF EXISTS "tenant_isolation" ON "memberships"`);
-    await queryRunner.query(`DROP TABLE IF EXISTS "memberships"`);
+    await queryRunner.query(`DROP POLICY IF EXISTS "tenant_isolation" ON "org_memberships"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "org_memberships"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "ux_users_email"`);
   }
 }
