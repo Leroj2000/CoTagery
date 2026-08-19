@@ -41,11 +41,10 @@ export class AuthzService {
     const hit = this.cache.get(roleKey);
     if (hit && hit.exp > Date.now()) return hit.perms;
 
+    // SECURITY DEFINER funkce – čte permissions systémové role bez závislosti
+    // na RLS (AuthzService běží ve fázi guardu, bez app.tenant_id).
     const rows: { key: string }[] = await this.dataSource.query(
-      `SELECT p.key FROM roles r
-         JOIN role_permissions rp ON rp.role_id = r.id
-         JOIN permissions p ON p.id = rp.permission_id
-        WHERE r.tenant_id IS NULL AND r.key = $1`,
+      `SELECT key FROM role_permission_keys($1)`,
       [roleKey],
     );
     const perms = new Set(rows.map((r) => r.key));
