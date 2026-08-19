@@ -1,9 +1,18 @@
 import type { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
-import { getMe } from '../lib/server-api';
+import { getMe, apiFetch } from '../lib/server-api';
 import { Logo } from '../ui/logo';
 import { AdminNav } from './nav';
 import { LogoutButton } from './logout-button';
+import { OrgSwitcher } from './org-switcher';
+
+interface Membership {
+  membershipId: string;
+  organizationId: string;
+  organizationName: string;
+  role: string;
+  status: string;
+}
 
 /** Iniciály pro avatar. */
 function initials(name: string): string {
@@ -27,6 +36,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   } catch {
     redirect('/login');
   }
+  const memberships = await apiFetch<Membership[]>('/auth/memberships').catch(() => []);
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[264px_1fr]">
@@ -59,6 +69,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           </div>
           <div className="hidden lg:block" />
           <div className="flex items-center gap-3">
+            <OrgSwitcher current={me.tenantId} memberships={memberships} />
             <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-200">
               {me.tenantRole}
             </span>
