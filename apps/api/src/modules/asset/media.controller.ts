@@ -17,7 +17,8 @@ import {
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { JwtAuthGuard, type RequestUser } from '../../core/auth/jwt-auth.guard';
-import { RolesGuard, RequireRole } from '../../core/rbac/roles.guard';
+import { PermissionsGuard } from '../../core/rbac/permissions.guard';
+import { RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { CurrentUser } from '../../core/auth/decorators';
 import { MediaService } from './media.service';
 import { AssetService } from './asset.service';
@@ -57,7 +58,7 @@ class AddMediaFieldsDto {
 
 /** Časová galerie věci: upload/list (asset-scoped) + soubor/skrytí (media-scoped). */
 @Controller()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class MediaController {
   constructor(
     private readonly media: MediaService,
@@ -70,7 +71,7 @@ export class MediaController {
    * na něj fotky s fází `at_return`.
    */
   @Post('assets/:id/return')
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.movement.perform')
   @UseInterceptors(FilesInterceptor('files', 10))
   async returnWithPhotos(
     @Param('id', ParseUUIDPipe) id: string,
@@ -101,12 +102,13 @@ export class MediaController {
   }
 
   @Get('assets/:id/media')
+  @RequirePermission('asset.item.view')
   list(@Param('id', ParseUUIDPipe) id: string): Promise<AssetMedia[]> {
     return this.media.list(id);
   }
 
   @Post('assets/:id/media')
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.media.manage')
   @UseInterceptors(FileInterceptor('file'))
   async upload(
     @Param('id', ParseUUIDPipe) id: string,
@@ -126,13 +128,14 @@ export class MediaController {
   }
 
   @Get('media/:mediaId/file')
+  @RequirePermission('asset.item.view')
   async file(@Param('mediaId', ParseUUIDPipe) mediaId: string): Promise<StreamableFile> {
     const { buffer, mime } = await this.media.file(mediaId);
     return new StreamableFile(buffer, { type: mime });
   }
 
   @Delete('media/:mediaId')
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.media.manage')
   @HttpCode(204)
   hide(@Param('mediaId', ParseUUIDPipe) mediaId: string): Promise<void> {
     return this.media.hide(mediaId);

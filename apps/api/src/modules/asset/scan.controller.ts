@@ -1,7 +1,8 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, type RequestUser } from '../../core/auth/jwt-auth.guard';
 import { CurrentUser } from '../../core/auth/decorators';
-import { RolesGuard } from '../../core/rbac/roles.guard';
+import { PermissionsGuard } from '../../core/rbac/permissions.guard';
+import { RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { AssetService, type ScanResult } from './asset.service';
 
 /**
@@ -10,11 +11,12 @@ import { AssetService, type ScanResult } from './asset.service';
  * od veřejného resolveru `/r/{code}`, který jede jen přes public_code.
  */
 @Controller('scan')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ScanController {
   constructor(private readonly assets: AssetService) {}
 
   @Get()
+  @RequirePermission('asset.scan.use')
   lookup(
     @Query('code') code: string,
     @CurrentUser() user: RequestUser | undefined,

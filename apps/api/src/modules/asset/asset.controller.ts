@@ -16,7 +16,8 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
-import { RolesGuard, RequireRole } from '../../core/rbac/roles.guard';
+import { PermissionsGuard } from '../../core/rbac/permissions.guard';
+import { RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { AssetService, type WorkflowValidation } from './asset.service';
 import {
   AddServiceDto,
@@ -41,23 +42,25 @@ interface UploadedFileLike {
 }
 
 @Controller('assets')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class AssetController {
   constructor(private readonly assets: AssetService) {}
 
   @Get()
+  @RequirePermission('asset.item.view')
   list(): Promise<Asset[]> {
     return this.assets.list();
   }
 
   @Post()
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.item.create')
   create(@Body() dto: CreateAssetDto): Promise<Asset> {
     return this.assets.create(dto);
   }
 
   // --- CSV export / import (musí být před :id kvůli route matchingu) ---
   @Get('export')
+  @RequirePermission('asset.item.view')
   @Header('content-type', 'text/csv; charset=utf-8')
   @Header('content-disposition', 'attachment; filename="veci.csv"')
   async exportCsv(): Promise<string> {
@@ -65,7 +68,7 @@ export class AssetController {
   }
 
   @Post('import')
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.item.create')
   importCsv(
     @Body() dto: ImportCsvDto,
   ): Promise<{ created: number; failed: { row: number; error: string }[] }> {
@@ -74,7 +77,7 @@ export class AssetController {
 
   // --- Hromadný výdej ---
   @Post('movements/bulk')
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.dispatch.bulk')
   bulk(
     @Body() dto: BulkMovementDto,
   ): Promise<{ ok: number; failed: { assetId: string; error: string }[] }> {
@@ -84,13 +87,14 @@ export class AssetController {
 
   // --- Workflow Scanner: pre-flight validace (musí být před :id) ---
   @Post('workflow/validate')
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.movement.perform')
   validateWorkflow(@Body() dto: WorkflowValidateDto): Promise<WorkflowValidation> {
     return this.assets.validateWorkflow(dto);
   }
 
   // --- „Vyžaduje pozornost" (musí být před :id) ---
   @Get('attention')
+  @RequirePermission('asset.item.view')
   attention(): Promise<{
     overdue: Asset[];
     pendingConfirmations: Movement[];
@@ -101,18 +105,21 @@ export class AssetController {
   }
 
   @Get(':id')
+  @RequirePermission('asset.item.view')
   async get(@Param('id', ParseUUIDPipe) id: string): Promise<Asset & { actions: MovementType[] }> {
     const asset = await this.assets.get(id);
     return { ...asset, actions: this.assets.actionsFor(asset) };
   }
 
   @Get(':id/movements')
+  @RequirePermission('asset.item.view')
   movements(@Param('id', ParseUUIDPipe) id: string): Promise<Movement[]> {
     return this.assets.listMovements(id);
   }
 
   /** Last Observation: kde/kdy byla věc naposledy VIDĚNA (samostatná vrstva). */
   @Get(':id/observations')
+  @RequirePermission('asset.item.view')
   observations(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<
@@ -122,7 +129,7 @@ export class AssetController {
   }
 
   @Post(':id/movements')
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.movement.perform')
   perform(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: PerformMovementDto,
@@ -132,12 +139,13 @@ export class AssetController {
 
   // --- Asset nesting (§14) ---
   @Get(':id/contents')
+  @RequirePermission('asset.item.view')
   contents(@Param('id', ParseUUIDPipe) id: string): Promise<Asset[]> {
     return this.assets.listContents(id);
   }
 
   @Post(':id/contents')
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.item.update')
   putInto(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: PutIntoContainerDto,
@@ -146,7 +154,7 @@ export class AssetController {
   }
 
   @Delete('contents/:childId')
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.item.update')
   @HttpCode(200)
   removeFromContainer(@Param('childId', ParseUUIDPipe) childId: string): Promise<Asset> {
     return this.assets.removeFromContainer(childId);
@@ -154,29 +162,32 @@ export class AssetController {
 
   // --- Potvrzení převzetí (§8) ---
   @Get('movements/pending')
+  @RequirePermission('asset.item.view')
   pendingConfirmations(): Promise<Movement[]> {
     return this.assets.pendingConfirmations();
   }
 
   @Post('movements/:movementId/confirm')
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.movement.perform')
   confirmMovement(@Param('movementId', ParseUUIDPipe) movementId: string): Promise<Movement> {
     return this.assets.confirmMovement(movementId);
   }
 
   // --- Servis / revize (§17) ---
   @Get('services/due')
+  @RequirePermission('asset.item.view')
   dueServices(): Promise<ServiceRecord[]> {
     return this.assets.dueServices(30);
   }
 
   @Get(':id/services')
+  @RequirePermission('asset.item.view')
   services(@Param('id', ParseUUIDPipe) id: string): Promise<ServiceRecord[]> {
     return this.assets.listServices(id);
   }
 
   @Post(':id/services')
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.item.update')
   addService(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AddServiceDto,
@@ -186,7 +197,7 @@ export class AssetController {
 
   // --- Fotografie věci ---
   @Post(':id/photo')
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.media.manage')
   @UseInterceptors(FileInterceptor('file'))
   async uploadPhoto(
     @Param('id', ParseUUIDPipe) id: string,
@@ -197,6 +208,7 @@ export class AssetController {
   }
 
   @Get(':id/photo')
+  @RequirePermission('asset.item.view')
   async photo(@Param('id', ParseUUIDPipe) id: string): Promise<StreamableFile> {
     const { buffer, mime } = await this.assets.getPhoto(id);
     return new StreamableFile(buffer, { type: mime });
@@ -204,12 +216,13 @@ export class AssetController {
 
   // --- Nahlášení problému / poškození ---
   @Get(':id/issues')
+  @RequirePermission('asset.item.view')
   issues(@Param('id', ParseUUIDPipe) id: string): Promise<Issue[]> {
     return this.assets.listIssues(id);
   }
 
   @Post(':id/issues')
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.issue.manage')
   reportIssue(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ReportIssueDto,
@@ -218,7 +231,7 @@ export class AssetController {
   }
 
   @Post('issues/:issueId/resolve')
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.issue.manage')
   resolveIssue(@Param('issueId', ParseUUIDPipe) issueId: string): Promise<Issue> {
     return this.assets.resolveIssue(issueId);
   }
