@@ -28,7 +28,7 @@
 | EPIC-15 | ACCESS-CONTROL | Sdílená schopnost řízení vstupu (ADR-0006) – používá Ticketing i Membership | 🟡 |
 | EPIC-16 | MEMBERSHIP | Klubové/nákupní členství: tiery, platnost, benefity, karty | ⬜ |
 | EPIC-17 | BILLING | Sdílené předplatné (recurring přes PSP) – řídí platnost členství (ADR-0007) | ⬜ |
-| EPIC-18 | AUTHZ-V2 | Autorizační model dle zadání: multi-org identita (User/Membership), permissions+scope+entitlement+policy, centrální authorize() (schvalování krok po kroku) | ⬜ plán |
+| EPIC-18 | AUTHZ-V2 | Multi-org identita + permissions/authorize() (Fáze 0+1 hotové, e2e) | 🟡 |
 
 ---
 
