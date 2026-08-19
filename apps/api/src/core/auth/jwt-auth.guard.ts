@@ -11,6 +11,7 @@ export interface RequestUser {
   userId: string;
   tenantId: string;
   tenantRole: TenantRole;
+  membershipId?: string | null;
 }
 
 interface AuthedRequest {
@@ -40,6 +41,7 @@ export class JwtAuthGuard implements CanActivate {
         userId: payload.sub as string,
         tenantId: payload.tenantId as string,
         tenantRole: payload.tenantRole as TenantRole,
+        membershipId: (payload.membershipId as string | undefined) ?? null,
       };
       return true;
     } catch (err) {

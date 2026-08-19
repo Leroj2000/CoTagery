@@ -3,9 +3,16 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager } from 'typeorm';
 
+/** Efektivní datový rozsah identity v aktivní org (EPIC-18 Fáze 2). */
+export interface EffectiveScope {
+  type: 'ORGANIZATION' | 'LOCATION_TREE' | 'LOCATION_SET' | 'OWN';
+  ref: string | null;
+}
+
 interface TenantStore {
   tenantId: string;
   manager: EntityManager;
+  scope?: EffectiveScope;
 }
 
 /**
@@ -46,6 +53,17 @@ export class TenantContextService {
 
   get tenantId(): string | undefined {
     return this.als.getStore()?.tenantId;
+  }
+
+  /** Efektivní scope aktivní identity (default ORGANIZATION). */
+  get scope(): EffectiveScope {
+    return this.als.getStore()?.scope ?? { type: 'ORGANIZATION', ref: null };
+  }
+
+  /** Nastaví scope do aktuálního request kontextu (volá interceptor). */
+  setScope(scope: EffectiveScope): void {
+    const store = this.als.getStore();
+    if (store) store.scope = scope;
   }
 
   /** Manager s aktivním tenant kontextem; mimo request fallback na výchozí. */

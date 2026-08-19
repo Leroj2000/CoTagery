@@ -91,8 +91,32 @@ export class AssetService {
     return this.context.manager.getRepository(entity);
   }
 
-  list(): Promise<Asset[]> {
+  async list(): Promise<Asset[]> {
+    // EPIC-18 Fáze 2: LOCATION_TREE scope → jen věci s domovem v subtree.
+    const scope = this.context.scope;
+    if (scope.type === 'LOCATION_TREE' && scope.ref) {
+      const ids = await this.locationSubtree(scope.ref);
+      if (ids.length === 0) return [];
+      return this.repo(Asset).find({
+        where: { homeLocationId: In(ids) },
+        order: { createdAt: 'DESC' },
+        take: 500,
+      });
+    }
     return this.repo(Asset).find({ order: { createdAt: 'DESC' }, take: 500 });
+  }
+
+  /** ID lokace + všech jejích potomků (location strom, ADR – Location.parentId). */
+  private async locationSubtree(rootId: string): Promise<string[]> {
+    const rows: { id: string }[] = await this.context.manager.query(
+      `WITH RECURSIVE sub AS (
+         SELECT id FROM locations WHERE id = $1
+         UNION ALL
+         SELECT l.id FROM locations l JOIN sub ON l.parent_id = sub.id
+       ) SELECT id FROM sub`,
+      [rootId],
+    );
+    return rows.map((r) => r.id);
   }
 
   async get(id: string): Promise<Asset> {
