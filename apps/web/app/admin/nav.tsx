@@ -10,13 +10,20 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + '/');
 }
 
-export function AdminNav({ orientation = 'vertical' }: { orientation?: 'vertical' | 'horizontal' }) {
+export function AdminNav({
+  orientation = 'vertical',
+  hidden = [],
+}: {
+  orientation?: 'vertical' | 'horizontal';
+  hidden?: string[];
+}) {
   const pathname = usePathname();
+  const items = NAV_ITEMS.filter((i) => !hidden.includes(i.href));
 
   if (orientation === 'horizontal') {
     return (
       <nav className="flex gap-1 overflow-x-auto">
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const active = isActive(pathname, item.href);
           return (
             <Link
@@ -37,7 +44,7 @@ export function AdminNav({ orientation = 'vertical' }: { orientation?: 'vertical
 
   return (
     <nav className="flex flex-col gap-0.5">
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const active = isActive(pathname, item.href);
         return (
           <Link
