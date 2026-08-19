@@ -1,13 +1,13 @@
 # EPIC-18-AUTHZ-V2 – Autorizační architektura + multi-org identita
 
-## Stav: 🟡 Fáze 0 kompletní; Fáze 1.1+1.2 hotové (2026-08-19); 1.3+1.4 ke schválení
+## Stav: 🟡 Fáze 0 kompletní; Fáze 1.1–1.3 hotové (2026-08-19); 1.4 ke schválení
 
-### Hotovo (1.1 + 1.2) – aditivní, zatím se NEVYNUcuje
+### Hotovo (1.1–1.3) – aditivní, enforcement se přepne až v 1.4
 - [x] Tabulky `permissions` (34, globální katalog core+asset), `roles` (6 systémových šablon, RLS null-or-tenant), `role_permissions`
 - [x] Mapování rank rolí → balíčky: owner/admin=34 (vše), manager=19 (asset.* + approve + vybrané core.view), editor=17 (asset.* bez approve), viewer=4, scan_only=2 (item.view+scan.use)
 - [x] Entity Permission/Role/RolePermission; ověřeno DB (editor bez approve, manager s approve)
-- [ ] **1.3** centrální `authorize()` (default deny, priorita, reason) — ke schválení
-- [ ] **1.4** `@RequireRole` → `@RequirePermission` napříč + gating čtení — ke schválení
+- [x] **1.3** `AuthzService.can/assert` (default deny, reasonCode, cache role→perms) + `@RequirePermission`/`PermissionsGuard` (připraveno, NEaplikováno) + `GET /authz/my-permissions`, `POST /authz/check`. E2e: OWNER=34/vše ALLOWED; MANAGER=19 (approve ALLOWED, core.role.manage & member.invite MISSING_PERMISSION); neznámá permission = deny; táž identita má jinou sadu dle aktivní org.
+- [ ] **1.4** `@RequireRole` → `@RequirePermission` napříč + gating čtení — ke schválení (invazivní, po modulech)
 
 ### Hotovo (0.3 + 0.4)
 - [x] 0.3: tenant-context interceptor vynucuje AKTIVNÍ členství v aktivní org (COUNT pod RLS) – odebrané členství = deny i s platným tokenem (e2e: suspend → 403, org1 dál 200)
