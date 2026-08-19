@@ -1,6 +1,10 @@
 # EPIC-18-AUTHZ-V2 – Autorizační architektura + multi-org identita
 
-## Stav: 🟡 Fáze 0.1 + 0.2 hotové a e2e ověřené (2026-08-18); 0.3/0.4 + Fáze 1+ ke schválení
+## Stav: 🟡 FÁZE 0 KOMPLETNÍ a e2e ověřená (2026-08-19); Fáze 1+ ke schválení
+
+### Hotovo (0.3 + 0.4)
+- [x] 0.3: tenant-context interceptor vynucuje AKTIVNÍ členství v aktivní org (COUNT pod RLS) – odebrané členství = deny i s platným tokenem (e2e: suspend → 403, org1 dál 200)
+- [x] 0.4: web přepínač organizace v admin headeru (OrgSwitcher) + BFF `/api/switch-org` (přepíše cookies); e2e: přepnutí Demo Tenant→Druhá Firma změní header na MANAGER a dashboard na prázdnou org
 
 ### Hotovo (0.1 + 0.2)
 - [x] `org_memberships` (název `memberships` patří EPIC-16) + `role_assignments` (RLS) + backfill (3 users → 3 členství)
