@@ -1,6 +1,13 @@
 # EPIC-18-AUTHZ-V2 – Autorizační architektura + multi-org identita
 
-## Stav: 🟡 FÁZE 0 KOMPLETNÍ a e2e ověřená (2026-08-19); Fáze 1+ ke schválení
+## Stav: 🟡 Fáze 0 kompletní; Fáze 1.1+1.2 hotové (2026-08-19); 1.3+1.4 ke schválení
+
+### Hotovo (1.1 + 1.2) – aditivní, zatím se NEVYNUcuje
+- [x] Tabulky `permissions` (34, globální katalog core+asset), `roles` (6 systémových šablon, RLS null-or-tenant), `role_permissions`
+- [x] Mapování rank rolí → balíčky: owner/admin=34 (vše), manager=19 (asset.* + approve + vybrané core.view), editor=17 (asset.* bez approve), viewer=4, scan_only=2 (item.view+scan.use)
+- [x] Entity Permission/Role/RolePermission; ověřeno DB (editor bez approve, manager s approve)
+- [ ] **1.3** centrální `authorize()` (default deny, priorita, reason) — ke schválení
+- [ ] **1.4** `@RequireRole` → `@RequirePermission` napříč + gating čtení — ke schválení
 
 ### Hotovo (0.3 + 0.4)
 - [x] 0.3: tenant-context interceptor vynucuje AKTIVNÍ členství v aktivní org (COUNT pod RLS) – odebrané členství = deny i s platným tokenem (e2e: suspend → 403, org1 dál 200)
