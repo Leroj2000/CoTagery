@@ -1,6 +1,13 @@
 # EPIC-18-AUTHZ-V2 – Autorizační architektura + multi-org identita
 
-## Stav: 🟢 FÁZE 0 + 1 KOMPLETNÍ a e2e ověřené (2026-08-19); Fáze 2–4 (scope/entitlement/policy) do budoucna
+## Stav: 🟢 FÁZE 0 + 1 + 2 hotové a e2e ověřené (2026-08-19); Fáze 3–4 (entitlement/policy) do budoucna
+
+### Hotovo (Fáze 2 – scope / location-tree)
+- [x] Efektivní scope se resolvuje z `role_assignments` v interceptoru (jedním dotazem s kontrolou členství) a ukládá do tenant kontextu (ALS `EffectiveScope`)
+- [x] `AssetService.list` filtruje při `LOCATION_TREE` scope na věci s domovem v subtree (rekurzivní CTE přes `Location.parentId`) – SCOPE-002 (filtr v DB)
+- [x] MVP scope: ORGANIZATION (plný přes RLS) + LOCATION_TREE (subtree); OWN/LOCATION_SET zatím jako org
+- [x] E2e: ORGANIZATION=46 → LOCATION_TREE(Sklad Brno)=4 → věc v potomkovi Regál A → 5 (dědičnost stromu) → obnova ORGANIZATION
+- [ ] Rozšířit scope na další list endpointy (locations/inventory/…) – zatím jen asset list (primární scénář 17.1)
 
 ### Hotovo (1.1–1.3) – aditivní, enforcement se přepne až v 1.4
 - [x] Tabulky `permissions` (34, globální katalog core+asset), `roles` (6 systémových šablon, RLS null-or-tenant), `role_permissions`
