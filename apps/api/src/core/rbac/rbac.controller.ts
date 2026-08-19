@@ -14,12 +14,13 @@ import type { ObjectPermissionLevel } from '@tagery/shared';
 import { JwtAuthGuard, type RequestUser } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators';
 import { AclService } from './acl.service';
-import { RolesGuard, RequireRole } from './roles.guard';
+import { PermissionsGuard } from './permissions.guard';
+import { RequirePermission } from './require-permission.decorator';
 import { GrantPermissionDto } from './dto/grant-permission.dto';
 import type { ObjectPermission } from './entities/object-permission.entity';
 
 @Controller()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class RbacController {
   constructor(private readonly acl: AclService) {}
 
@@ -29,7 +30,7 @@ export class RbacController {
   }
 
   @Post('objects/:id/permissions')
-  @RequireRole('ADMIN')
+  @RequirePermission('core.role.manage')
   grant(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: GrantPermissionDto,
@@ -38,7 +39,7 @@ export class RbacController {
   }
 
   @Delete('permissions/:permId')
-  @RequireRole('ADMIN')
+  @RequirePermission('core.role.manage')
   @HttpCode(204)
   revoke(@Param('permId', ParseUUIDPipe) permId: string): Promise<void> {
     return this.acl.revoke(permId);

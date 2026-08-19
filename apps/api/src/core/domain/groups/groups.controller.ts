@@ -10,7 +10,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
-import { RolesGuard, RequireRole } from '../../rbac/roles.guard';
+import { PermissionsGuard } from '../../rbac/permissions.guard';
+import { RequirePermission } from '../../rbac/require-permission.decorator';
 import { GroupsService } from './groups.service';
 import { CreateGroupDto, AddGroupMemberDto } from './dto/groups.dto';
 import type { Group } from '../entities/group.entity';
@@ -18,7 +19,7 @@ import type { GroupMember } from '../entities/group-member.entity';
 
 /** Skupiny uživatelů (EPIC-03) – správa ADMIN+, čtení VIEWER+. */
 @Controller('groups')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class GroupsController {
   constructor(private readonly groups: GroupsService) {}
 
@@ -28,13 +29,13 @@ export class GroupsController {
   }
 
   @Post()
-  @RequireRole('ADMIN')
+  @RequirePermission('core.group.manage')
   create(@Body() dto: CreateGroupDto): Promise<Group> {
     return this.groups.create(dto);
   }
 
   @Delete(':id')
-  @RequireRole('ADMIN')
+  @RequirePermission('core.group.manage')
   @HttpCode(204)
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.groups.remove(id);
@@ -46,7 +47,7 @@ export class GroupsController {
   }
 
   @Post(':id/members')
-  @RequireRole('ADMIN')
+  @RequirePermission('core.group.manage')
   addMember(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AddGroupMemberDto,
@@ -55,7 +56,7 @@ export class GroupsController {
   }
 
   @Delete(':id/members/:userId')
-  @RequireRole('ADMIN')
+  @RequirePermission('core.group.manage')
   @HttpCode(204)
   removeMember(
     @Param('id', ParseUUIDPipe) id: string,

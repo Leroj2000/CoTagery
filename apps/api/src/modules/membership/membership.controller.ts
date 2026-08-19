@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
-import { RolesGuard, RequireRole } from '../../core/rbac/roles.guard';
+import { PermissionsGuard } from '../../core/rbac/permissions.guard';
+import { RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { MembershipService, type CardView } from './membership.service';
 import {
   CreateBenefitDto,
@@ -16,7 +17,7 @@ import type { MembershipCard } from './entities/membership-card.entity';
 import type { MembershipBenefit } from './entities/membership-benefit.entity';
 
 @Controller('memberships')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class MembershipController {
   constructor(private readonly memberships: MembershipService) {}
 
@@ -26,13 +27,13 @@ export class MembershipController {
   }
 
   @Post('members')
-  @RequireRole('EDITOR')
+  @RequirePermission('membership.card.manage')
   createMember(@Body() dto: CreateMemberDto): Promise<Member> {
     return this.memberships.createMember(dto);
   }
 
   @Post('tiers')
-  @RequireRole('EDITOR')
+  @RequirePermission('membership.card.manage')
   createTier(@Body() dto: CreateTierDto): Promise<MembershipTier> {
     return this.memberships.createTier(dto);
   }
@@ -43,7 +44,7 @@ export class MembershipController {
   }
 
   @Post('tiers/:tierId/benefits')
-  @RequireRole('EDITOR')
+  @RequirePermission('membership.card.manage')
   addBenefit(
     @Param('tierId', ParseUUIDPipe) tierId: string,
     @Body() dto: CreateBenefitDto,
@@ -62,7 +63,7 @@ export class MembershipController {
   }
 
   @Post()
-  @RequireRole('EDITOR')
+  @RequirePermission('membership.card.manage')
   issue(@Body() dto: IssueMembershipDto): Promise<Membership> {
     return this.memberships.issueMembership(dto);
   }
@@ -73,19 +74,19 @@ export class MembershipController {
   }
 
   @Post(':membershipId/suspend')
-  @RequireRole('EDITOR')
+  @RequirePermission('membership.card.manage')
   suspend(@Param('membershipId', ParseUUIDPipe) membershipId: string): Promise<Membership> {
     return this.memberships.setStatus(membershipId, 'suspended');
   }
 
   @Post(':membershipId/resume')
-  @RequireRole('EDITOR')
+  @RequirePermission('membership.card.manage')
   resume(@Param('membershipId', ParseUUIDPipe) membershipId: string): Promise<Membership> {
     return this.memberships.setStatus(membershipId, 'active');
   }
 
   @Post(':membershipId/cards')
-  @RequireRole('EDITOR')
+  @RequirePermission('membership.card.manage')
   issueCard(
     @Param('membershipId', ParseUUIDPipe) membershipId: string,
     @Body() dto: IssueCardDto,

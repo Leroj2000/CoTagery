@@ -1,7 +1,8 @@
 import { Body, Controller, Get, Ip, Param, Post, UseGuards } from '@nestjs/common';
 import { IsOptional, IsString, Length, MaxLength } from 'class-validator';
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
-import { RolesGuard, RequireRole } from '../../core/rbac/roles.guard';
+import { PermissionsGuard } from '../../core/rbac/permissions.guard';
+import { RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { FoundService } from './found.service';
 import type { FoundReport } from './entities/found-report.entity';
 
@@ -34,7 +35,7 @@ export class FoundPublicController {
 
 /** Přehled nahlášených nálezů pro majitele (autentizovaně). */
 @Controller('found-reports')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class FoundReportsController {
   constructor(private readonly found: FoundService) {}
 
@@ -44,7 +45,7 @@ export class FoundReportsController {
   }
 
   @Post(':id/handle')
-  @RequireRole('EDITOR')
+  @RequirePermission('found.report.handle')
   handle(@Param('id') id: string): Promise<FoundReport> {
     return this.found.handle(id);
   }

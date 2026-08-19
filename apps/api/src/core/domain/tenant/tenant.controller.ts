@@ -1,13 +1,14 @@
 import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
-import { RolesGuard, RequireRole } from '../../rbac/roles.guard';
+import { PermissionsGuard } from '../../rbac/permissions.guard';
+import { RequirePermission } from '../../rbac/require-permission.decorator';
 import { TenantService } from './tenant.service';
 import { UpdateTenantDto } from './dto/tenant.dto';
 import type { Tenant } from '../entities/tenant.entity';
 
 /** Nastavení aktuálního tenanta (EPIC-03). Změny jen ADMIN+. */
 @Controller('tenant')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class TenantController {
   constructor(private readonly tenant: TenantService) {}
 
@@ -17,7 +18,7 @@ export class TenantController {
   }
 
   @Patch()
-  @RequireRole('ADMIN')
+  @RequirePermission('core.organization.configure')
   update(@Body() dto: UpdateTenantDto): Promise<Tenant> {
     return this.tenant.update(dto);
   }

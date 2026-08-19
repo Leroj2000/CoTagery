@@ -1,14 +1,15 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, type RequestUser } from '../../core/auth/jwt-auth.guard';
 import { CurrentUser } from '../../core/auth/decorators';
-import { RolesGuard, RequireRole } from '../../core/rbac/roles.guard';
+import { PermissionsGuard } from '../../core/rbac/permissions.guard';
+import { RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { InventoryService, type InventoryDetail } from './inventory.service';
 import { ReconcileDto, ScanInventoryDto, StartInventoryDto } from './dto/inventory.dto';
 import type { InventoryCheck } from './entities/inventory-check.entity';
 import type { InventoryScan } from './entities/inventory-scan.entity';
 
 @Controller('inventory')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class InventoryController {
   constructor(private readonly inventory: InventoryService) {}
 
@@ -18,7 +19,7 @@ export class InventoryController {
   }
 
   @Post()
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.inventory.manage')
   start(@Body() dto: StartInventoryDto): Promise<InventoryCheck> {
     return this.inventory.start(dto);
   }
@@ -29,7 +30,7 @@ export class InventoryController {
   }
 
   @Post(':id/scan')
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.inventory.manage')
   scan(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ScanInventoryDto,
@@ -39,7 +40,7 @@ export class InventoryController {
   }
 
   @Post(':id/reconcile')
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.inventory.manage')
   reconcile(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ReconcileDto,
@@ -48,7 +49,7 @@ export class InventoryController {
   }
 
   @Post(':id/close')
-  @RequireRole('EDITOR')
+  @RequirePermission('asset.inventory.manage')
   close(@Param('id', ParseUUIDPipe) id: string): Promise<InventoryDetail> {
     return this.inventory.close(id);
   }

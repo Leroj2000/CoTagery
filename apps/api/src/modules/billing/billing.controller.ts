@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
-import { RolesGuard, RequireRole } from '../../core/rbac/roles.guard';
+import { PermissionsGuard } from '../../core/rbac/permissions.guard';
+import { RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { BillingService, type CheckoutResult } from './billing.service';
 import { CancelSubscriptionDto, CheckoutDto } from './dto/billing.dto';
 import type { Subscription } from './entities/subscription.entity';
@@ -9,12 +10,12 @@ import type { PlatformUsageMeter } from './entities/platform-usage-meter.entity'
 
 /** Authed billing endpointy (EPIC-17). Webhook je zvlášť (public, bez JWT). */
 @Controller('billing')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class BillingController {
   constructor(private readonly billing: BillingService) {}
 
   @Post('checkout')
-  @RequireRole('MANAGER')
+  @RequirePermission('billing.subscription.manage')
   checkout(@Body() dto: CheckoutDto): Promise<CheckoutResult> {
     return this.billing.checkout(dto);
   }
@@ -40,7 +41,7 @@ export class BillingController {
   }
 
   @Post('subscriptions/:id/cancel')
-  @RequireRole('MANAGER')
+  @RequirePermission('billing.subscription.manage')
   cancel(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CancelSubscriptionDto,

@@ -12,19 +12,20 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
-import { RolesGuard, RequireRole } from '../../core/rbac/roles.guard';
+import { PermissionsGuard } from '../../core/rbac/permissions.guard';
+import { RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { GalleryService, type UploadedFileLike } from './gallery.service';
 import { CreateGalleryDto } from './dto/create-gallery.dto';
 import type { GalleryEvent } from './entities/gallery-event.entity';
 import type { UploadItem } from './entities/upload-item.entity';
 
 @Controller('galleries')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class GalleryController {
   constructor(private readonly gallery: GalleryService) {}
 
   @Post()
-  @RequireRole('EDITOR')
+  @RequirePermission('gallery.item.manage')
   create(@Body() dto: CreateGalleryDto): Promise<GalleryEvent> {
     return this.gallery.createGallery(dto);
   }
@@ -40,7 +41,7 @@ export class GalleryController {
   }
 
   @Post(':id/uploads')
-  @RequireRole('EDITOR')
+  @RequirePermission('gallery.item.manage')
   @UseInterceptors(FileInterceptor('file'))
   upload(
     @Param('id', ParseUUIDPipe) id: string,

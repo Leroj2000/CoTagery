@@ -52,13 +52,28 @@ export class AuthzService {
     return perms;
   }
 
+  /** OWNER/ADMIN mají implicitně všechna oprávnění (jako object-ACL). */
+  private isSuperRole(tenantRole: string): boolean {
+    const k = tenantRole.toLowerCase();
+    return k === 'owner' || k === 'admin';
+  }
+
   /** Seznam efektivních permissions přihlášené identity (pro UI / verifikaci). */
   async listPermissions(user: RequestUser): Promise<string[]> {
+    if (this.isSuperRole(user.tenantRole)) {
+      const rows: { key: string }[] = await this.dataSource.query(
+        `SELECT key FROM permissions ORDER BY key`,
+      );
+      return rows.map((r) => r.key);
+    }
     return [...(await this.permissionsForRole(user.tenantRole))].sort();
   }
 
   /** Rozhodnutí allow/deny + reason pro daný permission key. */
   async can(user: RequestUser, permission: string): Promise<AuthzDecision> {
+    if (this.isSuperRole(user.tenantRole)) {
+      return { allowed: true, reasonCode: 'ALLOWED', permission };
+    }
     const perms = await this.permissionsForRole(user.tenantRole);
     if (!perms.has(permission)) {
       return { allowed: false, reasonCode: 'MISSING_PERMISSION', permission };

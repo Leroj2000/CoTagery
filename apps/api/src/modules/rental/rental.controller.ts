@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
-import { RolesGuard, RequireRole } from '../../core/rbac/roles.guard';
+import { PermissionsGuard } from '../../core/rbac/permissions.guard';
+import { RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { RentersService } from './renters.service';
 import { RentalService } from './rental.service';
 import {
@@ -16,7 +17,7 @@ import type { Loan } from './entities/loan.entity';
 import type { RentalReview } from './entities/rental-review.entity';
 
 @Controller()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class RentalController {
   constructor(
     private readonly renters: RentersService,
@@ -25,7 +26,7 @@ export class RentalController {
 
   // --- Platformoví nájemci (sdílená reputace) ---
   @Post('renters')
-  @RequireRole('EDITOR')
+  @RequirePermission('rental.item.manage')
   createRenter(@Body() dto: CreateRenterDto): Promise<RenterProfile> {
     return this.renters.create(dto);
   }
@@ -36,7 +37,7 @@ export class RentalController {
   }
 
   @Post('renters/:id/verify')
-  @RequireRole('MANAGER')
+  @RequirePermission('rental.renter.verify')
   verifyRenter(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: VerifyRenterDto,
@@ -51,13 +52,13 @@ export class RentalController {
   }
 
   @Post('rental/items')
-  @RequireRole('EDITOR')
+  @RequirePermission('rental.item.manage')
   createItem(@Body() dto: CreateItemDto): Promise<Item> {
     return this.rental.createItem(dto);
   }
 
   @Post('rental/items/:itemId/loans')
-  @RequireRole('EDITOR')
+  @RequirePermission('rental.item.manage')
   createLoan(
     @Param('itemId', ParseUUIDPipe) itemId: string,
     @Body() dto: CreateLoanDto,
@@ -66,19 +67,19 @@ export class RentalController {
   }
 
   @Post('rental/loans/:loanId/return')
-  @RequireRole('EDITOR')
+  @RequirePermission('rental.item.manage')
   returnLoan(@Param('loanId', ParseUUIDPipe) loanId: string): Promise<Loan> {
     return this.rental.returnLoan(loanId);
   }
 
   @Post('rental/loans/:loanId/cancel')
-  @RequireRole('EDITOR')
+  @RequirePermission('rental.item.manage')
   cancelLoan(@Param('loanId', ParseUUIDPipe) loanId: string): Promise<Loan> {
     return this.rental.cancelLoan(loanId);
   }
 
   @Post('rental/loans/:loanId/reviews')
-  @RequireRole('EDITOR')
+  @RequirePermission('rental.item.manage')
   submitReview(
     @Param('loanId', ParseUUIDPipe) loanId: string,
     @Body() dto: CreateReviewDto,
