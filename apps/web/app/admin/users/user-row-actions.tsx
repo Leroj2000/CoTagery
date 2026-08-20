@@ -26,7 +26,7 @@ export function UserRowActions({
   const nextStatus = status === 'active' ? 'suspended' : 'active';
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <form action={roleAction} className="flex items-center gap-1">
         <input type="hidden" name="userId" value={userId} />
         <select

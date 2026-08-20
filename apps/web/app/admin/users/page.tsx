@@ -1,7 +1,7 @@
 import { apiFetch, ApiError } from '../../lib/server-api';
 import type { AdminUser } from '../../lib/types';
 import { ROLE_OPTIONS } from '../options';
-import { Section, Table, Badge } from '../ui';
+import { Section, Badge, EmptyState } from '../ui';
 import { ActionForm } from '../action-form';
 import { inviteUser } from '../actions';
 import { UserRowActions } from './user-row-actions';
@@ -49,16 +49,30 @@ export default async function UsersPage() {
       </Section>
 
       <Section title={`Uživatelé (${users.length})`}>
-        <Table
-          head={['Jméno', 'E-mail', 'Role', 'Stav', 'Akce']}
-          rows={users.map((u) => [
-            u.name,
-            u.email,
-            <Badge key="r">{u.tenantRole}</Badge>,
-            u.status,
-            <UserRowActions key="a" userId={u.id} role={u.tenantRole} status={u.status} />,
-          ])}
-        />
+        {users.length === 0 ? (
+          <EmptyState>Zatím žádní uživatelé.</EmptyState>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {users.map((u) => (
+              <li
+                key={u.id}
+                className="flex flex-col gap-2 rounded-xl border border-slate-200 p-3 sm:flex-row sm:items-center"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-800">{u.name}</p>
+                  <p className="truncate text-xs text-slate-500">{u.email}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge>{u.tenantRole}</Badge>
+                  <span className="text-xs text-slate-400">{u.status}</span>
+                </div>
+                <div className="shrink-0">
+                  <UserRowActions userId={u.id} role={u.tenantRole} status={u.status} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </Section>
     </div>
   );
