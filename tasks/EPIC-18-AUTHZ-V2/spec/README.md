@@ -1,6 +1,13 @@
 # EPIC-18-AUTHZ-V2 – Autorizační architektura + multi-org identita
 
-## Stav: 🟢 FÁZE 0 + 1 + 2 hotové a e2e ověřené (2026-08-19); Fáze 3–4 (entitlement/policy) do budoucna
+## Stav: 🟢 FÁZE 0 + 1 + 2 + 3 hotové a e2e ověřené (2026-08-20); Fáze 4 (policy + audit) do budoucna
+
+### Hotovo (Fáze 3 – entitlementy modulů)
+- [x] `organization_modules` (RLS) + `org_inactive_modules()` SECURITY DEFINER; opt-out (chybí řádek = aktivní)
+- [x] `authorize()` kontroluje modul PŘED rolí → i owner je u vypnutého modulu deny (reasonCode INACTIVE_MODULE)
+- [x] `ModulesController`: `GET /modules` (stav, čte kdokoli – pro nav), `PATCH /modules/:key` (core.module.configure)
+- [x] web: layout načítá `/modules`, `AdminNav` skryje vypnuté (membership/billing/access)
+- [x] E2e: OWNER + product ON → allowed; vypnout product → OWNER check INACTIVE_MODULE + POST /products 403; nav skryl „Členství" po vypnutí membership; obnoveno
 
 ### Hotovo (Fáze 2 – scope / location-tree)
 - [x] Efektivní scope se resolvuje z `role_assignments` v interceptoru (jedním dotazem s kontrolou členství) a ukládá do tenant kontextu (ALS `EffectiveScope`)
