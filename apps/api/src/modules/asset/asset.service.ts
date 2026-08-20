@@ -33,6 +33,7 @@ import type {
   CreateAssetDto,
   CreateReservationDto,
   PerformMovementDto,
+  UpdateAssetDto,
   WorkflowValidateDto,
 } from './dto/asset.dto';
 
@@ -127,6 +128,20 @@ export class AssetService {
 
   getByObject(objectId: string): Promise<Asset | null> {
     return this.repo(Asset).findOne({ where: { digitalObjectId: objectId } });
+  }
+
+  /** Úprava základních polí věci (stav/holder se needitují – jsou z pohybů). */
+  async update(id: string, dto: UpdateAssetDto): Promise<Asset> {
+    const asset = await this.get(id);
+    if (dto.name !== undefined) asset.name = dto.name;
+    if (dto.category !== undefined) asset.category = dto.category || null;
+    if (dto.manufacturer !== undefined) asset.manufacturer = dto.manufacturer || null;
+    if (dto.model !== undefined) asset.model = dto.model || null;
+    if (dto.serialNumber !== undefined) asset.serialNumber = dto.serialNumber || null;
+    if (dto.inventoryNumber !== undefined) asset.inventoryNumber = dto.inventoryNumber || null;
+    if (dto.homeLocationId !== undefined) asset.homeLocationId = dto.homeLocationId || null;
+    if (dto.canContainAssets !== undefined) asset.canContainAssets = dto.canContainAssets;
+    return this.repo(Asset).save(asset);
   }
 
   /** Založí asset + jeho DigitalObject (nosič se přidá zvlášť přes /objects). */

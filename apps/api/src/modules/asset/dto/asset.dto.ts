@@ -67,6 +67,48 @@ export class CreateAssetDto {
   canContainAssets?: boolean;
 }
 
+/** Úprava základních polí věci (ne stav/holder – ty se odvozují z pohybů). */
+export class UpdateAssetDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(300)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  category?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  manufacturer?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  model?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  serialNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  inventoryNumber?: string;
+
+  @IsOptional()
+  @IsUUID()
+  homeLocationId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  canContainAssets?: boolean;
+}
+
 export class PutIntoContainerDto {
   @IsUUID()
   childAssetId!: string;

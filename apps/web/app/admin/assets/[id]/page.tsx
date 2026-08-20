@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Package, Home, MapPin, User, CalendarClock, Box, Clock, QrCode, Eye } from 'lucide-react';
-import { apiFetch, ApiError } from '../../../lib/server-api';
+import { apiFetch, ApiError, getMyPermissions } from '../../../lib/server-api';
 import type { Asset, Movement, Person, Location, DataCarrier, ServiceRecord } from '../../../lib/types';
 import { Section, StatusBadge, Badge, Mono, PageHeader, Table, EmptyState } from '../../ui';
 import { ActionForm } from '../../action-form';
@@ -21,6 +21,7 @@ import {
   confirmMovement,
   reportIssue,
   resolveIssue,
+  updateAsset,
 } from '../../actions';
 import type { Issue } from '../../../lib/types';
 
@@ -86,6 +87,8 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
   const media = await apiFetch<AssetMedia[]>(`/assets/${id}/media`);
   const observations = await apiFetch<Observation[]>(`/assets/${id}/observations`).catch(() => []);
   const tenant = await apiFetch<Tenant>('/tenant');
+  const perms = await getMyPermissions();
+  const canEdit = perms.has('asset.item.update');
   const requireReturnPhoto = tenant.settings?.requireReturnPhoto === true;
   const actions = asset.actions ?? [];
   const canReturn = actions.includes('return');
@@ -151,6 +154,33 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
         />
         <StateTile icon={<CalendarClock size={16} />} label="Vrátit do" value={fmtDate(asset.dueAt)} />
       </div>
+
+      {canEdit && (
+        <Section title="Upravit věc" description="Základní údaje (stav a držení se mění pohyby, ne zde)">
+          <ActionForm
+            action={updateAsset}
+            hidden={{ id: asset.id }}
+            submitLabel="Uložit změny"
+            fields={[
+              { name: 'name', label: 'Název', required: true, defaultValue: asset.name },
+              { name: 'category', label: 'Kategorie', defaultValue: asset.category ?? '' },
+              { name: 'manufacturer', label: 'Výrobce', defaultValue: asset.manufacturer ?? '' },
+              { name: 'model', label: 'Model', defaultValue: asset.model ?? '' },
+              { name: 'serialNumber', label: 'Sériové číslo', defaultValue: asset.serialNumber ?? '' },
+              { name: 'inventoryNumber', label: 'Inventární číslo', defaultValue: asset.inventoryNumber ?? '' },
+              {
+                name: 'homeLocationId',
+                label: 'Patří do (domov)',
+                defaultValue: asset.homeLocationId ?? '',
+                options: [
+                  { value: '', label: '— beze změny —' },
+                  ...locations.map((l) => ({ value: l.id, label: l.name })),
+                ],
+              },
+            ]}
+          />
+        </Section>
+      )}
 
       {/* Last Observation – kde byla naposledy VIDĚNA (≠ evidence výše) */}
       <Section

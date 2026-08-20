@@ -483,6 +483,56 @@ export async function createLocation(_p: ActionState, fd: FormData): Promise<Act
   );
 }
 
+// --- Editace položek (permission-gated) ---
+export async function updatePerson(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(
+    `/people/${str(fd, 'id')}`,
+    {
+      name: str(fd, 'name'),
+      email: str(fd, 'email') || '',
+      phone: str(fd, 'phone') || '',
+      company: str(fd, 'company') || '',
+    },
+    '/admin/people',
+    'Osoba upravena.',
+    'PATCH',
+  );
+}
+
+export async function updateLocation(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(
+    `/locations/${str(fd, 'id')}`,
+    {
+      name: str(fd, 'name'),
+      type: str(fd, 'type') || undefined,
+      address: str(fd, 'address') || '',
+      parentId: str(fd, 'parentId') || undefined,
+    },
+    '/admin/locations',
+    'Místo upraveno.',
+    'PATCH',
+  );
+}
+
+export async function updateAsset(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const id = str(fd, 'id');
+  return run(
+    `/assets/${id}`,
+    {
+      name: str(fd, 'name'),
+      category: str(fd, 'category') || '',
+      manufacturer: str(fd, 'manufacturer') || '',
+      model: str(fd, 'model') || '',
+      serialNumber: str(fd, 'serialNumber') || '',
+      inventoryNumber: str(fd, 'inventoryNumber') || '',
+      homeLocationId: str(fd, 'homeLocationId') || undefined,
+    },
+    `/admin/assets/${id}`,
+    'Věc upravena.',
+    'PATCH',
+  );
+}
+
 // --- Inventura (Fáze C) ---
 export async function startInventory(_p: ActionState, fd: FormData): Promise<ActionState> {
   return run('/inventory', { locationId: str(fd, 'locationId') }, '/admin/inventory', 'Inventura spuštěna.');

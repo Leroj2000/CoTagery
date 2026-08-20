@@ -42,3 +42,9 @@ export interface Me {
 export function getMe(): Promise<Me> {
   return apiFetch<Me>('/auth/me');
 }
+
+/** Efektivní permissions přihlášené identity (pro podmíněné zobrazení edit UI). */
+export async function getMyPermissions(): Promise<Set<string>> {
+  const perms = await apiFetch<string[]>('/authz/my-permissions').catch(() => []);
+  return new Set(perms);
+}

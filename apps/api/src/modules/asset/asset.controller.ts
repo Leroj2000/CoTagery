@@ -7,6 +7,7 @@ import {
   HttpCode,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   StreamableFile,
   UploadedFile,
@@ -27,6 +28,7 @@ import {
   PerformMovementDto,
   PutIntoContainerDto,
   ReportIssueDto,
+  UpdateAssetDto,
   WorkflowValidateDto,
 } from './dto/asset.dto';
 import type { Asset } from './entities/asset.entity';
@@ -109,6 +111,15 @@ export class AssetController {
   async get(@Param('id', ParseUUIDPipe) id: string): Promise<Asset & { actions: MovementType[] }> {
     const asset = await this.assets.get(id);
     return { ...asset, actions: this.assets.actionsFor(asset) };
+  }
+
+  @Patch(':id')
+  @RequirePermission('asset.item.update')
+  updateAsset(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateAssetDto,
+  ): Promise<Asset> {
+    return this.assets.update(id, dto);
   }
 
   @Get(':id/movements')
