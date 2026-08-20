@@ -13,6 +13,7 @@ interface TenantStore {
   tenantId: string;
   manager: EntityManager;
   scope?: EffectiveScope;
+  userId?: string;
 }
 
 /**
@@ -64,6 +65,16 @@ export class TenantContextService {
   setScope(scope: EffectiveScope): void {
     const store = this.als.getStore();
     if (store) store.scope = scope;
+  }
+
+  /** Actor (přihlášená identita) pro audit. */
+  get userId(): string | undefined {
+    return this.als.getStore()?.userId;
+  }
+
+  setActor(userId: string): void {
+    const store = this.als.getStore();
+    if (store) store.userId = userId;
   }
 
   /** Manager s aktivním tenant kontextem; mimo request fallback na výchozí. */

@@ -3,6 +3,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Repository } from 'typeorm';
 import type { TenantRole } from '@tagery/shared';
 import { TenantContextService } from '../../tenancy/tenant-context.service';
+import { AuditService } from '../../rbac/audit.service';
 import { AuthService } from '../../auth/auth.service';
 import { User } from '../../auth/entities/user.entity';
 import { OrgMembership } from '../../auth/entities/membership.entity';
@@ -37,7 +38,10 @@ function toView(u: User): UserView {
  */
 @Injectable()
 export class UsersService {
-  constructor(private readonly context: TenantContextService) {}
+  constructor(
+    private readonly context: TenantContextService,
+    private readonly audit: AuditService,
+  ) {}
 
   private repo(): Repository<User> {
     return this.context.manager.getRepository(User);
@@ -66,6 +70,12 @@ export class UsersService {
     );
     // EPIC-18: členství + role_assignment v aktuální organizaci.
     await this.ensureMembership(user.id, dto.tenantRole);
+    await this.audit.record({
+      action: 'member.invited',
+      targetType: 'user',
+      targetId: user.id,
+      after: { email: user.email, role: dto.tenantRole },
+    });
     return { user: toView(user), tempPassword };
   }
 
@@ -101,10 +111,18 @@ export class UsersService {
 
   async updateRole(id: string, dto: UpdateRoleDto): Promise<UserView> {
     const user = await this.get(id);
+    const prevRole = user.tenantRole;
     user.tenantRole = dto.tenantRole;
     const saved = await this.repo().save(user);
     // Srovnej roli v membershipu/role_assignmentu (JWT čte roli z membershipu).
     await this.ensureMembership(user.id, dto.tenantRole);
+    await this.audit.record({
+      action: 'member.role_changed',
+      targetType: 'user',
+      targetId: user.id,
+      before: { role: prevRole },
+      after: { role: dto.tenantRole },
+    });
     return toView(saved);
   }
 

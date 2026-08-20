@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { from, lastValueFrom, Observable } from 'rxjs';
 import type { RequestUser } from '../auth/jwt-auth.guard';
+import { PolicyService } from '../rbac/policy.service';
 import { TenantContextService, type EffectiveScope } from './tenant-context.service';
 
 /**
@@ -18,7 +19,10 @@ import { TenantContextService, type EffectiveScope } from './tenant-context.serv
  */
 @Injectable()
 export class TenantTransactionInterceptor implements NestInterceptor {
-  constructor(private readonly context: TenantContextService) {}
+  constructor(
+    private readonly context: TenantContextService,
+    private readonly policy: PolicyService,
+  ) {}
 
   intercept(executionContext: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = executionContext.switchToHttp().getRequest<{ user?: RequestUser }>();
@@ -43,6 +47,13 @@ export class TenantTransactionInterceptor implements NestInterceptor {
           throw new ForbiddenException('Členství v této organizaci není aktivní');
         }
         this.context.setScope({ type: rows[0].scope_type, ref: rows[0].scope_ref });
+        this.context.setActor(user.userId);
+
+        // Fáze 4: policy (časové okno) na membershipu – request-level deny.
+        if (user.membershipId) {
+          const blocked = await this.policy.blockedReason(user.membershipId);
+          if (blocked) throw new ForbiddenException(blocked);
+        }
         return lastValueFrom(next.handle());
       }),
     );

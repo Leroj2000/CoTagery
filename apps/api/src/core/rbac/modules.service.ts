@@ -3,6 +3,7 @@ import { Repository } from 'typeorm';
 import { TenantContextService } from '../tenancy/tenant-context.service';
 import { OrganizationModule } from './entities/organization-module.entity';
 import { AuthzService, CONTROLLED_MODULES } from './authz.service';
+import { AuditService } from './audit.service';
 
 export interface ModuleState {
   moduleKey: string;
@@ -15,6 +16,7 @@ export class ModulesService {
   constructor(
     private readonly context: TenantContextService,
     private readonly authz: AuthzService,
+    private readonly audit: AuditService,
   ) {}
 
   private repo(): Repository<OrganizationModule> {
@@ -38,6 +40,7 @@ export class ModulesService {
     }
     const repo = this.repo();
     let row = await repo.findOne({ where: { moduleKey } });
+    const prev = row?.state ?? 'active'; // chybí řádek = byl aktivní
     if (!row) {
       row = repo.create({ tenantId: this.context.tenantId, moduleKey, state });
     } else {
@@ -45,6 +48,13 @@ export class ModulesService {
     }
     await repo.save(row);
     this.authz.invalidateModules(this.context.tenantId!);
+    await this.audit.record({
+      action: 'module.entitlement_changed',
+      targetType: 'module',
+      targetId: moduleKey,
+      before: { state: prev },
+      after: { state },
+    });
     return { moduleKey, state };
   }
 }
