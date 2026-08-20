@@ -1,6 +1,13 @@
 # EPIC-18-AUTHZ-V2 – Autorizační architektura + multi-org identita
 
-## Stav: 🟢 FÁZE 0 + 1 + 2 + 3 hotové a e2e ověřené (2026-08-20); Fáze 4 (policy + audit) do budoucna
+## Stav: ✅ KOMPLETNÍ – všechny fáze 0–4 hotové a e2e ověřené (2026-08-20)
+
+### Hotovo (Fáze 4 – policy engine + audit)
+- [x] `policies` + `policy_assignments` + `audit_events` (RLS); tenant-context nese `userId` (actor)
+- [x] `PolicyService`: time_window na membershipu, vyhodnocení v interceptoru (request-level deny mimo okno → 403 POLICY_DENIED)
+- [x] `AuditService`: append-only before/after; hooky member.invited / member.role_changed / module.entitlement_changed
+- [x] endpointy: `GET /audit-events` (core.audit.view); `POST /policies/time-window` + `/policies/:id/assign` (core.organization.configure)
+- [x] E2e: modul toggle → audit záznamy s before/after+actor; time_window mimo teď → 403 na všech requestech; po odebrání → 200
 
 ### Hotovo (Fáze 3 – entitlementy modulů)
 - [x] `organization_modules` (RLS) + `org_inactive_modules()` SECURITY DEFINER; opt-out (chybí řádek = aktivní)
