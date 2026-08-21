@@ -9,11 +9,12 @@ import { User } from './entities/user.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { OrgMembership } from './entities/membership.entity';
 import { RoleAssignment } from './entities/role-assignment.entity';
+import { PasswordResetToken } from './entities/password-reset-token.entity';
 
 @Global()
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, RefreshToken, OrgMembership, RoleAssignment]),
+    TypeOrmModule.forFeature([User, RefreshToken, OrgMembership, RoleAssignment, PasswordResetToken]),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

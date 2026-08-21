@@ -5,6 +5,7 @@ import { DatabaseModule } from './core/database/database.module';
 import { RedisModule } from './core/redis/redis.module';
 import { StorageModule } from './core/storage/storage.module';
 import { AuthModule } from './core/auth/auth.module';
+import { MailModule } from './core/mail/mail.module';
 import { TenancyModule } from './core/tenancy/tenancy.module';
 import { DomainModule } from './core/domain/domain.module';
 import { ResolverModule } from './core/resolver/resolver.module';
@@ -36,6 +37,7 @@ import { HealthModule } from './health/health.module';
     RedisModule,
     StorageModule,
     AuthModule,
+    MailModule,
     TenancyModule,
     DomainModule,
     ResolverModule,

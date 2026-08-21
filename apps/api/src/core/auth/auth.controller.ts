@@ -5,6 +5,7 @@ import { AuthService, type MembershipView, type TokenPair } from './auth.service
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { SwitchOrgDto } from './dto/switch-org.dto';
+import { ConfirmResetDto, RequestResetDto } from './dto/password-reset.dto';
 import { JwtAuthGuard, type RequestUser } from './jwt-auth.guard';
 import { CurrentUser } from './decorators';
 import { User } from './entities/user.entity';
@@ -30,6 +31,22 @@ export class AuthController {
   @HttpCode(204)
   async logout(@Body() dto: RefreshDto): Promise<void> {
     await this.auth.logout(dto.refreshToken);
+  }
+
+  /** Zapomenuté heslo: pošle odkaz (vždy 200, nezveřejňuje existenci účtu). */
+  @Post('password-reset/request')
+  @HttpCode(200)
+  async requestReset(@Body() dto: RequestResetDto): Promise<{ ok: true }> {
+    await this.auth.requestPasswordReset(dto.email);
+    return { ok: true };
+  }
+
+  /** Nastaví nové heslo dle jednorázového tokenu z odkazu. */
+  @Post('password-reset/confirm')
+  @HttpCode(200)
+  async confirmReset(@Body() dto: ConfirmResetDto): Promise<{ ok: true }> {
+    await this.auth.confirmPasswordReset(dto.token, dto.newPassword);
+    return { ok: true };
   }
 
   @Get('me')

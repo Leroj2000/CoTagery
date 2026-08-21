@@ -1,13 +1,15 @@
-import { createHash, randomUUID } from 'node:crypto';
-import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { BadRequestException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, IsNull, Repository } from 'typeorm';
+import { DataSource, IsNull, MoreThan, Repository } from 'typeorm';
 import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2';
 import type { TenantRole } from '@tagery/shared';
 import { User } from './entities/user.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
+import { PasswordResetToken } from './entities/password-reset-token.entity';
+import { MailService } from '../mail/mail.service';
 
 export interface AccessPayload {
   sub: string;
@@ -46,10 +48,55 @@ export class AuthService {
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(RefreshToken) private readonly refreshTokens: Repository<RefreshToken>,
+    @InjectRepository(PasswordResetToken)
+    private readonly resetTokens: Repository<PasswordResetToken>,
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly mail: MailService,
   ) {}
+
+  /**
+   * Požádá o reset hesla: pokud e-mail patří účtu, vytvoří jednorázový token
+   * (hash v DB) a pošle odkaz. Vždy vrací bez chyby (nezveřejňuje existenci účtu).
+   */
+  async requestPasswordReset(email: string): Promise<void> {
+    const user = await this.users.findOne({ where: { email, status: 'active' } });
+    if (!user) return; // no user enumeration
+    const raw = randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
+    await this.resetTokens.save(
+      this.resetTokens.create({ userId: user.id, tokenHash: this.hashToken(raw), expiresAt, usedAt: null }),
+    );
+    const base = this.config.get<string>('PUBLIC_WEB_URL') ?? 'http://localhost:3000';
+    await this.mail.sendPasswordReset({
+      to: user.email,
+      name: user.name,
+      url: `${base}/reset-password?token=${raw}`,
+    });
+  }
+
+  /** Nastaví nové heslo dle jednorázového tokenu a revokuje všechny relace. */
+  async confirmPasswordReset(token: string, newPassword: string): Promise<void> {
+    if (!newPassword || newPassword.length < 8) {
+      throw new BadRequestException('Heslo musí mít alespoň 8 znaků');
+    }
+    const stored = await this.resetTokens.findOne({
+      where: { tokenHash: this.hashToken(token), usedAt: IsNull(), expiresAt: MoreThan(new Date()) },
+    });
+    if (!stored) throw new BadRequestException('Neplatný nebo expirovaný odkaz');
+
+    const user = await this.users.findOne({ where: { id: stored.userId } });
+    if (!user) throw new BadRequestException('Uživatel neexistuje');
+
+    user.passwordHash = await AuthService.hashPassword(newPassword);
+    await this.users.save(user);
+    stored.usedAt = new Date();
+    await this.resetTokens.save(stored);
+    // Bezpečnost: zneplatni existující session a další nepoužité reset tokeny.
+    await this.revokeAllForUser(user.id);
+    await this.resetTokens.update({ userId: user.id, usedAt: IsNull() }, { usedAt: new Date() });
+  }
 
   /** Členství identity napříč organizacemi (obchází per-tenant RLS, filtr dle user_id). */
   private myMemberships(userId: string): Promise<MembershipRow[]> {

@@ -16,6 +16,8 @@ x-api-env: &api-env
   JWT_SECRET: ${JWT_SECRET:-demo-secret-change-me-min-16-chars}
   BILLING_WEBHOOK_SECRET: ${BILLING_WEBHOOK_SECRET:-whsec_demo}
   PUBLIC_BASE_URL: http://${PUBLIC_HOST:-localhost}:3001
+  PUBLIC_WEB_URL: http://${PUBLIC_HOST:-localhost}:3000
+  PASSWORD_RESET_WEBHOOK_URL: ${PASSWORD_RESET_WEBHOOK_URL:-}
 
 services:
   postgres:

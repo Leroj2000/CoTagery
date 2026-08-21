@@ -14,6 +14,8 @@ function build() {
     update: jest.fn(),
     create: jest.fn((x: unknown) => x),
   } as unknown as Repository<RefreshToken>;
+  const resetTokens = { findOne: jest.fn(), save: jest.fn(), update: jest.fn(), create: jest.fn((x: unknown) => x) };
+  const mail = { sendPasswordReset: jest.fn() };
   // my_memberships() → prázdné = fallback na domovskou org uživatele.
   const dataSource = { query: jest.fn().mockResolvedValue([]) } as unknown as DataSource;
   const exp = Math.floor(Date.now() / 1000) + 900;
@@ -24,7 +26,7 @@ function build() {
   } as unknown as JwtService;
   const config = { get: jest.fn().mockReturnValue('15m') } as unknown as ConfigService;
   return {
-    svc: new AuthService(users, refreshTokens, dataSource, jwt, config),
+    svc: new AuthService(users, refreshTokens, resetTokens as never, dataSource, jwt, config, mail as never),
     users,
     refreshTokens,
     jwt,
