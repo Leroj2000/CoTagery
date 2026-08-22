@@ -15,7 +15,8 @@ x-api-env: &api-env
   STORAGE_LOCAL_PATH: /app/.storage
   JWT_SECRET: ${JWT_SECRET:-demo-secret-change-me-min-16-chars}
   BILLING_WEBHOOK_SECRET: ${BILLING_WEBHOOK_SECRET:-whsec_demo}
-  PUBLIC_BASE_URL: http://${PUBLIC_HOST:-localhost}:3001
+  # Veřejná URL resolveru (do QR/NFC). Za HTTPS proxy: https://app.tagery.tech (→ /r/CODE).
+  PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://${PUBLIC_HOST:-localhost}:3001}
   PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-http://localhost:3000}
   PASSWORD_RESET_WEBHOOK_URL: ${PASSWORD_RESET_WEBHOOK_URL:-}
   SMTP_HOST: ${SMTP_HOST:-}
@@ -81,8 +82,9 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        # Bakuje se do buildu → veřejná URL API (prohlížeč volá /s, /activate).
-        NEXT_PUBLIC_API_URL: http://${PUBLIC_HOST:-localhost}:3001
+        # Bakuje se do buildu → veřejná URL API (prohlížeč volá /r/CODE, aktivace, nález).
+        # Za HTTPS proxy nastav NEXT_PUBLIC_API_URL=https://app.tagery.tech (same-origin přes nginx /r/, žádný mixed-content).
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://${PUBLIC_HOST:-localhost}:3001}
     restart: unless-stopped
     environment:
       NODE_ENV: production
