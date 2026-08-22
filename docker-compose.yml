@@ -73,6 +73,9 @@ services:
     environment: *api-env
     ports:
       - "3001:3001"
+    volumes:
+      # Perzistentní lokální úložiště médií (fotky věcí) – přežije rebuild/recreate.
+      - storage:/app/.storage
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -99,3 +102,4 @@ services:
 
 volumes:
   pgdata:
+  storage:
