@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { In, LessThanOrEqual, Repository } from 'typeorm';
+import sharp from 'sharp';
 import { TenantContextService } from '../../core/tenancy/tenant-context.service';
 import { STORAGE, type StoragePort } from '../../core/storage/storage.port';
 import { WebhookService } from '../../core/webhooks/webhook.service';
@@ -753,11 +754,30 @@ export class AssetService {
   // --- Fotografie věci ---
   async setPhoto(assetId: string, buffer: Buffer, mime: string): Promise<Asset> {
     const asset = await this.get(assetId);
-    const key = `assets/${this.context.tenantId}/${assetId}/${randomUUID()}`;
-    await this.storage.put(key, buffer, mime);
+    if (!mime.startsWith('image/')) throw new BadRequestException('Soubor není obrázek');
+    // Serverové zpracování: EXIF rotace, zmenšení na max 2000px, převod na JPEG
+    // (i z HEIC), strip metadat. Šetří úložiště i data a sjednocuje zobrazení.
+    const processed = await this.processPhoto(buffer);
+    const key = `assets/${this.context.tenantId}/${assetId}/${randomUUID()}.jpg`;
+    await this.storage.put(key, processed, 'image/jpeg');
     asset.photoKey = key;
-    asset.photoMime = mime;
+    asset.photoMime = 'image/jpeg';
     return this.repo(Asset).save(asset);
+  }
+
+  /** Normalizuje nahranou fotku na web-friendly JPEG (viz setPhoto). */
+  private async processPhoto(buffer: Buffer): Promise<Buffer> {
+    try {
+      return await sharp(buffer, { failOn: 'none' })
+        .rotate() // aplikuje EXIF orientaci (jinak by fotka z mobilu byla otočená)
+        .resize(2000, 2000, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 82, mozjpeg: true })
+        .toBuffer();
+    } catch {
+      throw new BadRequestException(
+        'Obrázek se nepodařilo zpracovat (nepodporovaný formát nebo poškozený soubor).',
+      );
+    }
   }
 
   async getPhoto(assetId: string): Promise<{ buffer: Buffer; mime: string }> {
