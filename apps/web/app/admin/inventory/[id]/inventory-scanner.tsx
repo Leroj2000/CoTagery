@@ -159,9 +159,14 @@ export function InventoryScanner({
       {/* Scanner */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
         <div className="mb-4 overflow-hidden rounded-xl bg-slate-900">
-          {camOn ? (
-            <video ref={videoRef} className="h-44 w-full object-cover" muted playsInline />
-          ) : (
+          {/* Video je vždy v DOM (jen skryté), aby videoRef existoval při startu kamery. */}
+          <video
+            ref={videoRef}
+            className={`h-44 w-full object-cover ${camOn ? '' : 'hidden'}`}
+            muted
+            playsInline
+          />
+          {!camOn && (
             <div className="flex h-44 w-full flex-col items-center justify-center gap-2 text-slate-400">
               <ScanLine size={34} />
               <p className="text-xs">Continuous scan – skenuj věci jednu po druhé</p>
@@ -200,7 +205,7 @@ export function InventoryScanner({
           )}
         </div>
         {!camSupported && (
-          <p className="mt-2 text-xs text-amber-600">Kamera není podporovaná – použij ruční zadání / HW čtečku.</p>
+          <p className="mt-2 text-xs text-amber-600">Kamera není dostupná (chybí HTTPS nebo přístup ke kameře) – použij ruční zadání / HW čtečku.</p>
         )}
 
         <form

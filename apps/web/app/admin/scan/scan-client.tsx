@@ -47,6 +47,8 @@ export function ScanClient() {
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
+  // Kód právě načtený kamerou – zobrazí potvrzení v náhledovém poli (kamera se vypne).
+  const [camFlash, setCamFlash] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const lookup = useCallback(async (raw: string) => {
@@ -100,20 +102,41 @@ export function ScanClient() {
     stop: stopCamera,
   } = useBarcodeScanner(
     (found) => {
+      setCamFlash(found);
       setCode(found);
       void lookup(found);
     },
     { continuous: false },
   );
 
+  /** Spuštění kamery – vyčistí předchozí potvrzení/výsledek. */
+  const beginScan = useCallback(() => {
+    setCamFlash(null);
+    startCamera();
+  }, [startCamera]);
+
   return (
     <div className="flex flex-col gap-5">
       {/* Vstup: kamera + ruční / HW čtečka */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
         <div className="mb-4 overflow-hidden rounded-xl bg-slate-900">
-          {camOn ? (
-            <video ref={videoRef} className="h-56 w-full object-cover" muted playsInline />
-          ) : (
+          {/* Video je vždy v DOM (jen skryté), aby videoRef existoval při startu kamery. */}
+          <video
+            ref={videoRef}
+            className={`h-56 w-full object-cover ${camOn ? '' : 'hidden'}`}
+            muted
+            playsInline
+          />
+          {!camOn && camFlash && (
+            <div className="flex h-56 w-full flex-col items-center justify-center gap-2 bg-emerald-950/40 text-emerald-300">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/20">
+                <Check size={26} className="text-emerald-400" />
+              </span>
+              <p className="text-sm font-medium">Kód načten</p>
+              <p className="max-w-[80%] truncate font-mono text-xs text-emerald-400/80">{camFlash}</p>
+            </div>
+          )}
+          {!camOn && !camFlash && (
             <div className="flex h-56 w-full flex-col items-center justify-center gap-2 text-slate-400">
               <ScanLine size={40} />
               <p className="text-xs">Namiř kameru na QR / čárový kód nebo zadej kód ručně</p>
@@ -131,16 +154,16 @@ export function ScanClient() {
             </button>
           ) : (
             <button
-              onClick={startCamera}
+              onClick={beginScan}
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700 sm:w-auto sm:justify-start"
             >
-              <Camera size={16} /> Skenovat kamerou
+              <Camera size={16} /> {camFlash ? 'Skenovat další' : 'Skenovat kamerou'}
             </button>
           )}
         </div>
         {!camSupported && (
           <p className="mt-2 text-xs text-amber-600">
-            Tento prohlížeč nepodporuje skenování kamerou. Použij ruční zadání nebo HW čtečku níže.
+            Kamera není v tomto prohlížeči dostupná (chybí HTTPS nebo přístup ke kameře). Použij ruční zadání nebo HW čtečku níže.
           </p>
         )}
 

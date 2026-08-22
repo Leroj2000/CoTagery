@@ -122,8 +122,18 @@ export class DataCarriersService {
    */
   findByCode(code: string): Promise<DataCarrier | null> {
     const trimmed = code.trim();
+    // Naskenovaný QR obsahuje celou resolver URL (…/r/CODE). Vytáhneme public_code,
+    // ale zkusíme i původní hodnotu – kvůli ručně zadanému kódu i externím
+    // adoptovaným kódům, které samy mohou být URL/text.
+    const candidates = new Set<string>([trimmed]);
+    const m = trimmed.match(/^https?:\/\/[^/]+\/r\/([A-Za-z0-9_-]+)\/?(?:[?#].*)?$/i);
+    if (m) candidates.add(m[1]);
+    const list = [...candidates];
     return this.carriers().findOne({
-      where: [{ publicCode: trimmed }, { externalCode: trimmed }],
+      where: [
+        ...list.map((c) => ({ publicCode: c })),
+        ...list.map((c) => ({ externalCode: c })),
+      ],
     });
   }
 
