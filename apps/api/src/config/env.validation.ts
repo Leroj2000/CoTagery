@@ -24,6 +24,13 @@ export const envSchema = z.object({
     (v) => (v === '' ? undefined : v),
     z.string().url().optional(),
   ),
+  // SMTP pro odchozí e-maily (reset hesla). Když nevyplněno, e-mail se neposílá
+  // (odkaz se jen loguje / jde na webhook).
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.string().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_FROM: z.string().optional(),
   // Sdílené tajemství pro ověření podpisu PSP webhooků (EPIC-17, stub PSP).
   BILLING_WEBHOOK_SECRET: z.string().min(8).default('whsec_stub'),
 });
