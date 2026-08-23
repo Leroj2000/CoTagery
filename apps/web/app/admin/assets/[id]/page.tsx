@@ -8,7 +8,7 @@ import { Section, StatusBadge, Badge, Mono, PageHeader, Table, EmptyState } from
 import { ActionForm } from '../../action-form';
 import { ActionButton } from '../../action-button';
 import { MovementForm } from '../movement-form';
-import { PhotoUpload } from '../photo-upload';
+import { PhotoGallery } from '../photo-gallery';
 import { MediaTimeline } from '../media-timeline';
 import { ReturnForm } from '../return-form';
 import type { AssetMedia, Tenant, Observation } from '../../../lib/types';
@@ -89,6 +89,11 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
   const tenant = await apiFetch<Tenant>('/tenant');
   const perms = await getMyPermissions();
   const canEdit = perms.has('asset.item.update');
+  const canManagePhotos = perms.has('asset.media.manage');
+  const photos = await apiFetch<{
+    items: { id: string; mime: string; position: number }[];
+    max: number;
+  }>(`/assets/${id}/photos`).catch(() => ({ items: [], max: 5 }));
   const requireReturnPhoto = tenant.settings?.requireReturnPhoto === true;
   const actions = asset.actions ?? [];
   const canReturn = actions.includes('return');
@@ -125,24 +130,13 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
-      {/* Fotka věci */}
-      <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-        {asset.photoKey ? (
-          <Image
-            src={`/api/asset-photo/${asset.id}`}
-            alt={asset.name}
-            width={96}
-            height={96}
-            unoptimized
-            className="h-24 w-24 rounded-xl border border-slate-200 object-cover"
-          />
-        ) : (
-          <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-slate-100 text-xs text-slate-400">
-            bez fotky
-          </div>
-        )}
-        <PhotoUpload assetId={asset.id} hasPhoto={!!asset.photoKey} />
-      </div>
+      {/* Galerie fotek věci (první = hlavní, zobrazuje se v seznamu) */}
+      <PhotoGallery
+        assetId={asset.id}
+        photos={photos.items}
+        max={photos.max}
+        canManage={canManagePhotos}
+      />
 
       {/* Stav: patří do ≠ kde je ≠ kdo má */}
       <div className="grid gap-3 sm:grid-cols-3">

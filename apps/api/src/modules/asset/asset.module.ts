@@ -8,6 +8,7 @@ import { Reservation } from './entities/reservation.entity';
 import { Category } from './entities/category.entity';
 import { Issue } from './entities/issue.entity';
 import { AssetMedia } from './entities/asset-media.entity';
+import { AssetPhoto } from './entities/asset-photo.entity';
 import { AssetObservation } from './entities/asset-observation.entity';
 import { Tenant } from '../../core/domain/entities/tenant.entity';
 import { AssetService } from './asset.service';
@@ -35,6 +36,7 @@ import { AssetHandler } from './asset.handler';
       Category,
       Issue,
       AssetMedia,
+      AssetPhoto,
       AssetObservation,
       Tenant,
     ]),

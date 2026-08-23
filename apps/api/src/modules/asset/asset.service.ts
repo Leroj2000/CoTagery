@@ -11,6 +11,7 @@ import { DigitalObject } from '../../core/domain/entities/digital-object.entity'
 import { DataCarriersService } from '../../core/domain/carriers/data-carriers.service';
 import { User } from '../../core/auth/entities/user.entity';
 import { Asset } from './entities/asset.entity';
+import { AssetPhoto } from './entities/asset-photo.entity';
 import { Movement } from './entities/movement.entity';
 import { ServiceRecord } from './entities/service-record.entity';
 import { Reservation } from './entities/reservation.entity';
@@ -752,17 +753,88 @@ export class AssetService {
   }
 
   // --- Fotografie věci ---
-  async setPhoto(assetId: string, buffer: Buffer, mime: string): Promise<Asset> {
-    const asset = await this.get(assetId);
+  /** Max počet fotek v galerii věci – sdílené nastavení tenanta (maxMediaPerEvent). */
+  async photoLimit(): Promise<number> {
+    const tenant = await this.repo(Tenant).findOne({ where: { id: this.context.tenantId } });
+    const v = Number(tenant?.settings?.maxMediaPerEvent);
+    return Number.isFinite(v) && v > 0 ? Math.floor(v) : 5;
+  }
+
+  /** Galerie fotek věci, seřazená (pozice 0 = hlavní). */
+  listPhotos(assetId: string): Promise<AssetPhoto[]> {
+    return this.repo(AssetPhoto).find({ where: { assetId }, order: { position: 'ASC' } });
+  }
+
+  /** Přidá fotku do galerie (sharp zpracování + limit). První fotka = hlavní. */
+  async addPhoto(assetId: string, buffer: Buffer, mime: string): Promise<AssetPhoto> {
+    await this.get(assetId);
     if (!mime.startsWith('image/')) throw new BadRequestException('Soubor není obrázek');
+    const existing = await this.listPhotos(assetId);
+    const max = await this.photoLimit();
+    if (existing.length >= max) {
+      throw new BadRequestException(`Limit ${max} fotek na věc byl dosažen`);
+    }
     // Serverové zpracování: EXIF rotace, zmenšení na max 2000px, převod na JPEG
     // (i z HEIC), strip metadat. Šetří úložiště i data a sjednocuje zobrazení.
     const processed = await this.processPhoto(buffer);
     const key = `assets/${this.context.tenantId}/${assetId}/${randomUUID()}.jpg`;
     await this.storage.put(key, processed, 'image/jpeg');
-    asset.photoKey = key;
-    asset.photoMime = 'image/jpeg';
-    return this.repo(Asset).save(asset);
+    const photo = await this.repo(AssetPhoto).save(
+      this.repo(AssetPhoto).create({
+        tenantId: this.context.tenantId,
+        assetId,
+        fileKey: key,
+        mime: 'image/jpeg',
+        position: existing.length, // append na konec
+      }),
+    );
+    await this.syncMainPhoto(assetId);
+    return photo;
+  }
+
+  /** Soubor konkrétní fotky z galerie. */
+  async getPhotoFile(assetId: string, photoId: string): Promise<{ buffer: Buffer; mime: string }> {
+    const photo = await this.repo(AssetPhoto).findOne({ where: { id: photoId, assetId } });
+    if (!photo) throw new NotFoundException('Fotka neexistuje');
+    return { buffer: await this.storage.get(photo.fileKey), mime: photo.mime };
+  }
+
+  /** Nastaví fotku jako hlavní (posun na pozici 0, přečíslování zbytku). */
+  async setMainPhoto(assetId: string, photoId: string): Promise<void> {
+    const photos = await this.listPhotos(assetId);
+    const chosen = photos.find((p) => p.id === photoId);
+    if (!chosen) throw new NotFoundException('Fotka neexistuje');
+    await this.renumber([chosen, ...photos.filter((p) => p.id !== photoId)]);
+    await this.syncMainPhoto(assetId);
+  }
+
+  /** Smaže fotku z galerie (řádek + soubor), přečísluje a přesynchronizuje hlavní. */
+  async deletePhoto(assetId: string, photoId: string): Promise<void> {
+    const photo = await this.repo(AssetPhoto).findOne({ where: { id: photoId, assetId } });
+    if (!photo) throw new NotFoundException('Fotka neexistuje');
+    await this.repo(AssetPhoto).remove(photo);
+    await this.storage.del(photo.fileKey);
+    await this.renumber(await this.listPhotos(assetId));
+    await this.syncMainPhoto(assetId);
+  }
+
+  /** Přiřadí pozice 0..n dle pořadí v poli. */
+  private async renumber(ordered: AssetPhoto[]): Promise<void> {
+    for (let i = 0; i < ordered.length; i += 1) {
+      if (ordered[i].position !== i) {
+        ordered[i].position = i;
+        await this.repo(AssetPhoto).save(ordered[i]);
+      }
+    }
+  }
+
+  /** Promítne hlavní fotku (pozice 0) do assets.photo_key (rychlý náhled v seznamu). */
+  private async syncMainPhoto(assetId: string): Promise<void> {
+    const asset = await this.get(assetId);
+    const main = (await this.listPhotos(assetId))[0] ?? null;
+    asset.photoKey = main?.fileKey ?? null;
+    asset.photoMime = main?.mime ?? null;
+    await this.repo(Asset).save(asset);
   }
 
   /** Normalizuje nahranou fotku na web-friendly JPEG (viz setPhoto). */

@@ -10,12 +10,12 @@ import {
   Patch,
   Post,
   StreamableFile,
-  UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
   BadRequestException,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../core/rbac/permissions.guard';
 import { RequirePermission } from '../../core/rbac/require-permission.decorator';
@@ -206,23 +206,70 @@ export class AssetController {
     return this.assets.addService(id, dto);
   }
 
-  // --- Fotografie věci ---
-  @Post(':id/photo')
-  @RequirePermission('asset.media.manage')
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadPhoto(
-    @Param('id', ParseUUIDPipe) id: string,
-    @UploadedFile() file?: UploadedFileLike,
-  ): Promise<Asset> {
-    if (!file) throw new BadRequestException('Chybí soubor (pole "file")');
-    return this.assets.setPhoto(id, file.buffer, file.mimetype);
-  }
-
+  // --- Fotografie věci (hlavní náhled) ---
   @Get(':id/photo')
   @RequirePermission('asset.item.view')
   async photo(@Param('id', ParseUUIDPipe) id: string): Promise<StreamableFile> {
     const { buffer, mime } = await this.assets.getPhoto(id);
     return new StreamableFile(buffer, { type: mime });
+  }
+
+  // --- Galerie fotek věci (více fotek, hlavní = pozice 0) ---
+  @Get(':id/photos')
+  @RequirePermission('asset.item.view')
+  async photos(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<{ items: { id: string; mime: string; position: number }[]; max: number }> {
+    const [list, max] = await Promise.all([this.assets.listPhotos(id), this.assets.photoLimit()]);
+    return {
+      items: list.map((p) => ({ id: p.id, mime: p.mime, position: p.position })),
+      max,
+    };
+  }
+
+  @Post(':id/photos')
+  @RequirePermission('asset.media.manage')
+  @UseInterceptors(FilesInterceptor('files', 10))
+  async addPhotos(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFiles() files?: UploadedFileLike[],
+  ): Promise<Asset> {
+    const list = files ?? [];
+    if (list.length === 0) throw new BadRequestException('Chybí soubor (pole "files")');
+    for (const f of list) {
+      await this.assets.addPhoto(id, f.buffer, f.mimetype);
+    }
+    return this.assets.get(id);
+  }
+
+  @Get(':id/photos/:photoId/file')
+  @RequirePermission('asset.item.view')
+  async photoFile(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('photoId', ParseUUIDPipe) photoId: string,
+  ): Promise<StreamableFile> {
+    const { buffer, mime } = await this.assets.getPhotoFile(id, photoId);
+    return new StreamableFile(buffer, { type: mime });
+  }
+
+  @Post(':id/photos/:photoId/main')
+  @RequirePermission('asset.media.manage')
+  @HttpCode(204)
+  setMainPhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('photoId', ParseUUIDPipe) photoId: string,
+  ): Promise<void> {
+    return this.assets.setMainPhoto(id, photoId);
+  }
+
+  @Delete(':id/photos/:photoId')
+  @RequirePermission('asset.media.manage')
+  @HttpCode(204)
+  deletePhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('photoId', ParseUUIDPipe) photoId: string,
+  ): Promise<void> {
+    return this.assets.deletePhoto(id, photoId);
   }
 
   // --- Nahlášení problému / poškození ---

@@ -8,5 +8,6 @@ export const STORAGE = Symbol('STORAGE');
 export interface StoragePort {
   put(key: string, data: Buffer, contentType?: string): Promise<{ key: string }>;
   get(key: string): Promise<Buffer>;
+  del(key: string): Promise<void>;
   url(key: string): string;
 }
