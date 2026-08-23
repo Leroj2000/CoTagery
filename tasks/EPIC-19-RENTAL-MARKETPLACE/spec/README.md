@@ -1,6 +1,10 @@
 # EPIC-19-RENTAL-MARKETPLACE – Veřejná půjčovna / marketplace
 
-## Stav: ⬜ NÁVRH (spec) – čeká na schválení fází a rozhodnutí A/B/C (2026-08-23)
+## Stav: ⬜ NÁVRH SCHVÁLEN – rozhodnutí A/B/C potvrzena (2026-08-23), čeká na start F1
+
+**Potvrzeno:** A = storefront **jedné firmy** s přípravou na budoucí marketplace ·
+B = **QR platby v MVP** s přípravou na Stripe · C = **povinný účet nájemce** (musí vidět
+svoje výpůjčky a mít přístup k nahlášení poškození/poruchy).
 
 ## Cíl
 Umožnit tenantovi (firmě) dát vlastní **Věci (assets)**, které zrovna nevyužije, veřejně
@@ -34,8 +38,8 @@ prodejní kanál** a **platby**.
   `currency`, `price_per_day`, `price_per_hour?`, `price_per_week?`, `deposit_amount`,
   `min_days`, `max_days`, `slug` (veřejný), `published_at`.
   - Ceník je na **inzerátu**, ne na věci (věc může být půjčovaná i evidenční).
-- **`rental_order`**: `listing_id`, `asset_id`, `renter` (kontakt: jméno/email/telefon,
-  volitelně `renter_user_id`/`renter_profile_id`), `period` (from/to), rozpad ceny
+- **`rental_order`**: `listing_id`, `asset_id`, **`renter_user_id` (povinný – účet, rozh. C)**
+  + `renter_profile_id` (platform reputace), `period` (from/to), rozpad ceny
   (`rent_amount`, `deposit_amount`, `total`), `status` (viz stavový automat),
   `payment_method`, `payment_ref`, `deposit_ref`.
 - **Dostupnost bez překryvu**: Postgres `EXCLUDE USING gist` na
@@ -70,7 +74,18 @@ interface PaymentAdapter {
   výplaty řídí Stripe; **kauce = předautorizace** karty (auth → capture/cancel při vrácení).
   Platforma zůstává **mimo licenci platební instituce**, protože regulovaný je PSP.
 
-### 4) Stavový automat objednávky
+### 4) Přístupový model nájemce (rozh. C – povinný účet)
+Nájemce je **platformová identita** ([[EPIC-18]] `User`, unikátní e-mail), **není členem
+org tenanta** – nedostává tenant membership ani role v cizí firmě. Jeho přístup je
+**self-scoped**: vidí jen `rental_order` kde `renter_user_id = já` (napříč firmami).
+- **Renter portál „Moje výpůjčky":** přehled aktivních/historických výpůjček, stav, pokyny
+  k platbě, doba, místo vyzvednutí/vrácení.
+- **Hlášení poškození/poruchy:** nájemce s aktivní (nebo nedávnou) výpůjčkou může na
+  půjčené věci založit **Issue** (znovupoužití `asset.reportIssue`) – gate „mám objednávku
+  na tuto věc", ne tenant membership. Majitel to vidí ve „Vyžaduje pozornost".
+- Přístup nájemce = nová „relace vlastníka objednávky", oddělená od admin RBAC firmy.
+
+### 5) Stavový automat objednávky
 `pending → awaiting_payment → paid → confirmed → picked_up → returned → completed`
 (+ `cancelled`, `expired`). `paid` potvrzuje platební adaptér (webhook/manuál). `picked_up`
 = vytvoří `loan` pohyb věci; `returned` = return pohyb (vrácení s fotkou) + vypořádání kauce.
@@ -89,15 +104,19 @@ interface PaymentAdapter {
 ### F2 – Dostupnost + rezervace + veřejná objednávka
 - ⬜ `rental_order` + `EXCLUDE` constraint (žádný překryv)
 - ⬜ Výpočet ceny (doba × sazba + kauce), kalendář dostupnosti
-- ⬜ Veřejný objednávkový flow (host: kontakt) → objednávka ve stavu `awaiting_payment`
+- ⬜ **Registrace/přihlášení nájemce** (rozh. C) – účet ([[EPIC-18]] identita) je podmínka
+  objednávky; objednávka ve stavu `awaiting_payment` má `renter_user_id`
 - ⬜ Napojení na verification level nájemce (EPIC-10) dle politiky inzerátu
-- ⬜ E2e: rezervace období, konflikt → odmítnuto, cena spočtena
+- ⬜ E2e: bez účtu nelze objednat; rezervace období, konflikt → odmítnuto, cena spočtena
 
 ### F3 – Objednávka → QR platba + předání/vrácení + kauce
 - ⬜ `PaymentAdapter` rozhraní + **Adapter A (SPAYD/QR + bankovní údaje majitele)**
 - ⬜ Potvrzení platby (manuál/účtenka) → `paid`; pokyny k platbě na stránce objednávky + e-mail
 - ⬜ `picked_up` → loan pohyb; `returned` → return + vypořádání kauce (manuálně)
-- ⬜ E2e: objednávka → QR/pokyny → potvrzení → předání → vrácení → completed
+- ⬜ **Renter portál „Moje výpůjčky"** (self-scoped) – přehled + stav + pokyny k platbě
+- ⬜ **Hlášení poškození/poruchy** nájemcem na půjčené věci (znovupoužití `asset.reportIssue`,
+  gate „mám objednávku na tuto věc") → majiteli do „Vyžaduje pozornost"
+- ⬜ E2e: objednávka → QR/pokyny → potvrzení → předání → nájemce nahlásí poškození → vrácení → completed
 
 ### F4 – Karty přes PSP + provize/výplaty + hodnocení (marketplace „jako Alza")
 - ⬜ **Adapter B – Stripe Connect** (Express účty, application_fee, payouty)
@@ -108,12 +127,12 @@ interface PaymentAdapter {
 
 ---
 
-## Klíčová rozhodnutí (k potvrzení)
-| # | Otázka | Možnosti | Doporučení |
-|---|---|---|---|
-| A | Rozsah v F1 | storefront jedné firmy vs. globální marketplace | **Storefront firmy** (jednodušší, navrženo pro pozdější agregaci) |
-| B | Platba MVP | QR/převod majiteli vs. hned PSP karty | **QR/převod** (F3), PSP až F4 |
-| C | Identita nájemce | host (kontakt) vs. povinný účet | **Host** (kontakt na objednávce), účet volitelně |
+## Klíčová rozhodnutí (POTVRZENO 2026-08-23)
+| # | Otázka | Rozhodnutí |
+|---|---|---|
+| A | Rozsah v F1 | ✅ **Storefront jedné firmy**, navržený s přípravou na budoucí globální marketplace |
+| B | Platba MVP | ✅ **QR/převod majiteli** (F3), příprava na **Stripe Connect** (F4) přes PaymentAdapter |
+| C | Identita nájemce | ✅ **Povinný účet** – nájemce se musí přihlásit; vidí svoje výpůjčky (renter portál) a hlásí poškození/poruchu |
 
 ---
 
