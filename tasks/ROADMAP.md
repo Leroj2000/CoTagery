@@ -29,6 +29,7 @@
 | EPIC-16 | MEMBERSHIP | Klubové/nákupní členství: tiery, platnost, benefity, karty | ⬜ |
 | EPIC-17 | BILLING | Sdílené předplatné (recurring přes PSP) – řídí platnost členství (ADR-0007) | ⬜ |
 | EPIC-18 | AUTHZ-V2 | Multi-org identita + permissions/scope/entitlement/policy/audit (fáze 0–4 hotové, e2e) | ✅ |
+| EPIC-19 | RENTAL-MARKETPLACE | Veřejná půjčovna: publikace Věcí + ceník + objednávka + platby (QR → Stripe Connect); rozšiřuje EPIC-10 | ⬜ |
 
 ---
 
