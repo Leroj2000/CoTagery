@@ -15,6 +15,10 @@ export class Tenant {
   @Column({ type: 'text' })
   name!: string;
 
+  /** Veřejný slug pro URL storefrontu půjčovny (EPIC-19). */
+  @Column({ type: 'text', nullable: true })
+  slug!: string | null;
+
   @Column({ type: 'text', default: 'mixed' })
   type!: 'retail' | 'event' | 'rental' | 'home' | 'mixed';
 

@@ -19,6 +19,7 @@ import {
   MapPinned,
   Webhook,
   ScanLine,
+  Store,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -51,6 +52,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: '/admin/categories', label: 'Kategorie', icon: Tags },
       { href: '/admin/inventory', label: 'Inventura', icon: ClipboardCheck },
       { href: '/admin/reservations', label: 'Požadavky', icon: CalendarClock },
+      { href: '/admin/rental', label: 'Půjčovna', icon: Store },
       { href: '/admin/objects', label: 'Objekty', icon: Boxes },
       { href: '/admin/carriers', label: 'Identifikátory', icon: QrCode },
       { href: '/admin/membership', label: 'Členství', icon: CreditCard },
