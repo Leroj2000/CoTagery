@@ -205,6 +205,21 @@ export async function updateTenant(_p: ActionState, fd: FormData): Promise<Actio
   );
 }
 
+/** Bankovní údaje firmy pro QR/převod platby v půjčovně (EPIC-19 F3). */
+export async function updateRentalPayment(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const rentalPayment = {
+    iban: str(fd, 'iban').replace(/\s+/g, '').toUpperCase(),
+    accountName: str(fd, 'accountName'),
+  };
+  return run(
+    '/tenant',
+    { settings: { rentalPayment } },
+    '/admin/settings',
+    'Bankovní údaje uloženy.',
+    'PATCH',
+  );
+}
+
 // --- NFC pairing ---
 export async function pairNfc(_p: ActionState, fd: FormData): Promise<ActionState> {
   const objectId = str(fd, 'objectId');

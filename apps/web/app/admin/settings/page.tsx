@@ -2,7 +2,7 @@ import { apiFetch } from '../../lib/server-api';
 import type { Tenant } from '../../lib/types';
 import { Section, Badge, Mono } from '../ui';
 import { ActionForm } from '../action-form';
-import { updateTenant } from '../actions';
+import { updateTenant, updateRentalPayment } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +10,10 @@ export default async function SettingsPage() {
   const tenant = await apiFetch<Tenant>('/tenant');
   const maxMedia = Number(tenant.settings?.maxMediaPerEvent) || 5;
   const requireReturnPhoto = tenant.settings?.requireReturnPhoto === true;
+  const rentalPayment = (tenant.settings?.rentalPayment ?? {}) as {
+    iban?: string;
+    accountName?: string;
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -46,6 +50,30 @@ export default async function SettingsPage() {
                 { value: 'true', label: 'Ano' },
               ],
               defaultValue: requireReturnPhoto ? 'true' : 'false',
+            },
+          ]}
+        />
+      </Section>
+
+      <Section title="Bankovní údaje pro půjčovnu">
+        <p className="mb-3 text-sm text-neutral-500">
+          Účet, na který nájemci platí (QR/převod). Bez IBAN nelze vygenerovat platbu objednávky.
+        </p>
+        <ActionForm
+          action={updateRentalPayment}
+          submitLabel="Uložit bankovní údaje"
+          fields={[
+            {
+              name: 'iban',
+              label: 'IBAN',
+              placeholder: 'CZ65 0800 0000 1920 0014 5399',
+              defaultValue: rentalPayment.iban ?? '',
+            },
+            {
+              name: 'accountName',
+              label: 'Název účtu (příjemce)',
+              placeholder: 'Firma s.r.o.',
+              defaultValue: rentalPayment.accountName ?? '',
             },
           ]}
         />

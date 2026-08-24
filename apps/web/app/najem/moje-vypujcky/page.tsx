@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { apiBase } from '../../lib/session';
 import { getRenter, getRenterToken } from '../../lib/renter-session';
 import { RenterLogoutButton } from '../logout-button';
+import { RenterOrderActions } from '../order-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -114,11 +115,7 @@ export default async function MyRentalsPage() {
                     <span className="text-xs text-slate-400">Objednáno {o.createdAt.slice(0, 10)}</span>
                     <span className="text-base font-semibold text-slate-900">{money(o.total, o.currency)}</span>
                   </div>
-                  {o.status === 'awaiting_payment' && (
-                    <p className="mt-2 text-xs text-amber-600">
-                      Pokyny k platbě (QR / převod) připravujeme – majitel tě bude kontaktovat.
-                    </p>
-                  )}
+                  <RenterOrderActions orderId={o.orderId} status={o.status} />
                 </div>
               );
             })}
