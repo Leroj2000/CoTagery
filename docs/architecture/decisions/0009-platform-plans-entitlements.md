@@ -121,8 +121,9 @@ neupgraduje). Modul mimo nový plán se přepne na `inactive` (data zůstávají
 ## Otevřené otázky (neblokují návrh, řeší se při implementaci)
 1. **Konkrétní katalog:** kolik úrovní (Free/Pro/Business?) a čísla limitů — samostatné
    produktové rozhodnutí.
-2. **Mechanismus platform-admina:** globální super-admin flag na uživateli vs. dedikovaná
-   „platform org" vs. out-of-band (CLI/seed). Musí být mimo tenant RBAC.
+2. ~~**Mechanismus platform-admina**~~ **VYŘEŠENO** (2026-08-24): flag `users.is_platform_admin`
+   (mimo tenant RBAC) + `PlatformAdminGuard` + sekce `/platform` (přehled/zakládání firem).
+   Sem patří i budoucí přiřazení plánu (`applyPlan`).
 3. **Kde přesně držet override limity:** `organization_modules.limits_json` (per modul) vs.
    nový `tenants.entitlement_overrides jsonb` (tenant-wide). Preferováno tenant-wide pro
    cross-modul limity (users).
