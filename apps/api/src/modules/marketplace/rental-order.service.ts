@@ -14,6 +14,11 @@ import type { RequestRenter } from './renter-jwt.guard';
 /** Chybové kódy z PostgreSQL, které mapujeme na HTTP odpovědi. */
 const PG_EXCLUSION_VIOLATION = '23P01';
 
+/** timestamptz z pg (Date | string) → stabilní ISO string pro API/klienta. */
+function iso(v: unknown): string {
+  return v instanceof Date ? v.toISOString() : new Date(String(v)).toISOString();
+}
+
 export interface AvailabilityPeriod {
   startsAt: string;
   endsAt: string;
@@ -82,9 +87,9 @@ export class RentalOrderService {
       `SELECT * FROM public_listing_availability($1)`,
       [listingId],
     );
-    return (rows as { starts_at: string; ends_at: string }[]).map((r) => ({
-      startsAt: r.starts_at,
-      endsAt: r.ends_at,
+    return (rows as { starts_at: unknown; ends_at: unknown }[]).map((r) => ({
+      startsAt: iso(r.starts_at),
+      endsAt: iso(r.ends_at),
     }));
   }
 
@@ -134,8 +139,8 @@ export class RentalOrderService {
     return (rows as Record<string, unknown>[]).map((r) => ({
       orderId: String(r.order_id),
       status: String(r.status),
-      startsAt: String(r.starts_at),
-      endsAt: String(r.ends_at),
+      startsAt: iso(r.starts_at),
+      endsAt: iso(r.ends_at),
       days: Number(r.days),
       rentAmount: String(r.rent_amount),
       depositAmount: String(r.deposit_amount),
@@ -147,7 +152,7 @@ export class RentalOrderService {
       tenantName: String(r.tenant_name),
       tenantSlug: String(r.tenant_slug),
       pickup: (r.pickup as string | null) ?? null,
-      createdAt: String(r.created_at),
+      createdAt: iso(r.created_at),
     }));
   }
 

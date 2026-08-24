@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { apiBase } from '../../../lib/session';
+import { getRenter } from '../../../lib/renter-session';
+import { OrderBox } from './order-box';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,8 +48,9 @@ export default async function ListingDetailPage({
   params: Promise<{ tenant: string; listing: string }>;
 }) {
   const { tenant, listing } = await params;
-  const l = await loadListing(tenant, listing);
+  const [l, renter] = await Promise.all([loadListing(tenant, listing), getRenter()]);
   if (!l) notFound();
+  const loginHref = `/najem/prihlaseni?next=${encodeURIComponent(`/pujcovna/${tenant}/${listing}`)}`;
 
   const c = l.currency;
   const rows: [string, string | null][] = [
@@ -116,12 +119,22 @@ export default async function ListingDetailPage({
             </table>
           </div>
 
-          <button
-            disabled
-            className="mt-4 w-full cursor-not-allowed rounded-xl bg-slate-200 px-4 py-3 text-sm font-semibold text-slate-500"
-          >
-            Rezervace a objednávka — připravujeme
-          </button>
+          <OrderBox
+            tenantSlug={tenant}
+            listingSlug={listing}
+            listingId={l.listingId}
+            currency={l.currency}
+            isLoggedIn={renter !== null}
+            loginHref={loginHref}
+          />
+          {renter && (
+            <p className="mt-2 text-center text-[11px] text-slate-400">
+              Přihlášen jako {renter.name} ·{' '}
+              <Link href="/najem/moje-vypujcky" className="underline hover:text-slate-600">
+                Moje výpůjčky
+              </Link>
+            </p>
+          )}
 
           {l.terms && (
             <div className="mt-6">

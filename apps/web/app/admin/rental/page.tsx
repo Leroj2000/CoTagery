@@ -2,14 +2,16 @@ import { apiFetch, getMyPermissions } from '../../lib/server-api';
 import type { Asset, Tenant } from '../../lib/types';
 import { PageHeader } from '../ui';
 import { RentalManager, type Listing } from './rental-manager';
+import { IncomingOrders, type OwnerOrder } from './incoming-orders';
 
 export const dynamic = 'force-dynamic';
 
 export default async function RentalAdminPage() {
-  const [listings, assets, tenant, perms] = await Promise.all([
+  const [listings, assets, tenant, orders, perms] = await Promise.all([
     apiFetch<Listing[]>('/rental-listings').catch(() => [] as Listing[]),
     apiFetch<Asset[]>('/assets').catch(() => [] as Asset[]),
     apiFetch<Tenant>('/tenant').catch(() => null),
+    apiFetch<OwnerOrder[]>('/rental-orders').catch(() => [] as OwnerOrder[]),
     getMyPermissions(),
   ]);
   const canManage = perms.has('rental.item.manage');
@@ -28,6 +30,7 @@ export default async function RentalAdminPage() {
           </a>
         </p>
       )}
+      <IncomingOrders orders={orders} />
       <RentalManager
         listings={listings}
         assets={assets.map((a) => ({ id: a.id, name: a.name }))}
