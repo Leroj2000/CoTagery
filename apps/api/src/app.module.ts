@@ -21,6 +21,7 @@ import { MembershipModule } from './modules/membership/membership.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { AssetModule } from './modules/asset/asset.module';
 import { MarketplaceModule } from './modules/marketplace/marketplace.module';
+import { PlatformModule } from './modules/platform/platform.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { FoundModule } from './modules/found/found.module';
 import { WebhooksModule } from './core/webhooks/webhooks.module';
@@ -55,6 +56,7 @@ import { HealthModule } from './health/health.module';
     WebhooksModule,
     AssetModule,
     MarketplaceModule,
+    PlatformModule,
     InventoryModule,
     FoundModule,
     HealthModule,

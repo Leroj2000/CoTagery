@@ -85,6 +85,14 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           </div>
           <div className="hidden lg:block" />
           <div className="flex items-center gap-3">
+            {me.isPlatformAdmin && (
+              <a
+                href="/platform"
+                className="rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-700"
+              >
+                Platforma
+              </a>
+            )}
             <OrgSwitcher current={me.tenantId} memberships={memberships} />
             <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-200">
               {me.tenantRole}

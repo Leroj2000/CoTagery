@@ -37,6 +37,7 @@ export interface Me {
   user: { id: string; email: string; name: string };
   tenantId: string;
   tenantRole: string;
+  isPlatformAdmin?: boolean;
 }
 
 export function getMe(): Promise<Me> {

@@ -55,6 +55,7 @@ export class AuthController {
     user: { id: string; email: string; name: string };
     tenantId: string;
     tenantRole: string;
+    isPlatformAdmin: boolean;
   }> {
     const user = await this.users.findOne({ where: { id: current.userId } });
     if (!user) throw new NotFoundException('Uživatel neexistuje');
@@ -62,6 +63,7 @@ export class AuthController {
       user: { id: user.id, email: user.email, name: user.name },
       tenantId: current.tenantId,
       tenantRole: current.tenantRole,
+      isPlatformAdmin: user.isPlatformAdmin,
     };
   }
 

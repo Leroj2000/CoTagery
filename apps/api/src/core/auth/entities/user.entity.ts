@@ -25,4 +25,8 @@ export class User extends BaseTenantEntity {
 
   @Column({ type: 'text', default: 'active' })
   status!: 'active' | 'suspended';
+
+  /** Globální provozovatel (Tagery) – smí zakládat/vidět všechny firmy (ADR-0009). */
+  @Column({ type: 'boolean', name: 'is_platform_admin', default: false })
+  isPlatformAdmin!: boolean;
 }
