@@ -46,9 +46,9 @@ export default function FoundPage({ params }: { params: Promise<{ code: string }
             <MapPin size={22} />
           </span>
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-900">Našli jste tuto věc?</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900">Našli jste tuto položku?</h1>
             <p className="mt-1 text-sm text-slate-500">
-              Věc je evidovaná v Tagery. Pošlete vlastníkovi zprávu — vaše ani jeho údaje nezveřejňujeme.
+              Položka je evidovaná v Tagery. Pošlete vlastníkovi zprávu — vaše ani jeho údaje nezveřejňujeme.
             </p>
           </div>
         </div>

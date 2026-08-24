@@ -32,11 +32,11 @@ export class RentalService {
   async createLoan(itemId: string, dto: CreateLoanDto): Promise<Loan> {
     const items = this.context.manager.getRepository(Item);
     const item = await items.findOne({ where: { id: itemId } });
-    if (!item) throw new NotFoundException('Věc neexistuje');
+    if (!item) throw new NotFoundException('Položka neexistuje');
 
     // Věc nelze půjčit, pokud je už vypůjčená (stav se odvozuje z workflow).
     if (item.status === 'loaned') {
-      throw new BadRequestException('Věc je již vypůjčená');
+      throw new BadRequestException('Položka je již vypůjčená');
     }
 
     const renter = await this.context.manager
@@ -47,7 +47,7 @@ export class RentalService {
     // Ověření identity musí splňovat požadovanou úroveň věci (ADR-0005).
     if (!meetsLevel(renter.verificationLevel, item.requiredVerificationLevel)) {
       throw new BadRequestException(
-        `Nájemce má úroveň ověření '${renter.verificationLevel}', věc vyžaduje '${item.requiredVerificationLevel}'`,
+        `Nájemce má úroveň ověření '${renter.verificationLevel}', položka vyžaduje '${item.requiredVerificationLevel}'`,
       );
     }
 

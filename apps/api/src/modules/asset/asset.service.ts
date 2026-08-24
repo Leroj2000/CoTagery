@@ -203,7 +203,7 @@ export class AssetService {
   async putInto(containerId: string, childId: string): Promise<Asset> {
     const container = await this.get(containerId);
     if (!container.canContainAssets) {
-      throw new BadRequestException('Cílová věc není kontejner');
+      throw new BadRequestException('Cílová položka není kontejner');
     }
     const child = await this.get(childId);
 
@@ -211,7 +211,7 @@ export class AssetService {
     const all = await this.repo(Asset).find();
     const parentOf = new Map(all.map((a) => [a.id, a.parentAssetId]));
     if (wouldCreateCycle(childId, containerId, parentOf)) {
-      throw new BadRequestException('Nelze vložit věc do sebe ani do svého potomka');
+      throw new BadRequestException('Nelze vložit položku do sebe ani do svého potomka');
     }
 
     child.parentAssetId = containerId;
@@ -594,7 +594,7 @@ export class AssetService {
       }
       seen.add(asset.id);
       if (blockReturnPhoto) {
-        return { code, assetId: asset.id, name: asset.name, status: asset.status, ok: false, reason: 'Vrácení vyžaduje foto (politika) – vrať přes kartu věci' };
+        return { code, assetId: asset.id, name: asset.name, status: asset.status, ok: false, reason: 'Vrácení vyžaduje foto (politika) – vrať přes kartu položky' };
       }
       try {
         applyMovement(
@@ -630,7 +630,7 @@ export class AssetService {
       }
       const asset = await this.getByObject(carrier.digitalObjectId);
       if (!asset) {
-        items.push({ code, assetId: null, name: null, status: null, ok: false, reason: 'Kód nevede na věc' });
+        items.push({ code, assetId: null, name: null, status: null, ok: false, reason: 'Kód nevede na položku' });
         continue;
       }
       items.push(evalAsset(asset, code));
@@ -640,7 +640,7 @@ export class AssetService {
     for (const id of dto.assetIds ?? []) {
       const asset = await this.repo(Asset).findOne({ where: { id } });
       if (!asset) {
-        items.push({ code: id, assetId: null, name: null, status: null, ok: false, reason: 'Věc neexistuje' });
+        items.push({ code: id, assetId: null, name: null, status: null, ok: false, reason: 'Položka neexistuje' });
         continue;
       }
       items.push(evalAsset(asset, id));
@@ -772,7 +772,7 @@ export class AssetService {
     const existing = await this.listPhotos(assetId);
     const max = await this.photoLimit();
     if (existing.length >= max) {
-      throw new BadRequestException(`Limit ${max} fotek na věc byl dosažen`);
+      throw new BadRequestException(`Limit ${max} fotek na položku byl dosažen`);
     }
     // Serverové zpracování: EXIF rotace, zmenšení na max 2000px, převod na JPEG
     // (i z HEIC), strip metadat. Šetří úložiště i data a sjednocuje zobrazení.
@@ -854,7 +854,7 @@ export class AssetService {
 
   async getPhoto(assetId: string): Promise<{ buffer: Buffer; mime: string }> {
     const asset = await this.get(assetId);
-    if (!asset.photoKey) throw new NotFoundException('Věc nemá fotografii');
+    if (!asset.photoKey) throw new NotFoundException('Položka nemá fotografii');
     return { buffer: await this.storage.get(asset.photoKey), mime: asset.photoMime ?? 'image/jpeg' };
   }
 

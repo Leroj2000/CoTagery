@@ -225,7 +225,7 @@ export class RentalOrderService {
         throw new NotFoundException('Objednávka neexistuje');
       }
       if (message.includes('issue_not_allowed')) {
-        throw new BadRequestException('Hlásit poškození lze až po vyzvednutí věci');
+        throw new BadRequestException('Hlásit poškození lze až po vyzvednutí položky');
       }
       throw err;
     }
@@ -352,8 +352,8 @@ export class RentalOrderService {
         { skipReturnPhotoCheck: skipReturnPhoto },
       );
     } catch (err) {
-      const msg = (err as Error).message ?? 'Pohyb věci selhal';
-      throw new BadRequestException(`Věc nelze ${mv.type === 'loan' ? 'předat' : 'vrátit'}: ${msg}`);
+      const msg = (err as Error).message ?? 'Pohyb položky selhal';
+      throw new BadRequestException(`Položku nelze ${mv.type === 'loan' ? 'předat' : 'vrátit'}: ${msg}`);
     }
   }
 

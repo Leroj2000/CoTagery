@@ -257,7 +257,7 @@ export async function importAssetsCsv(_p: ActionState, fd: FormData): Promise<Ac
     );
     revalidatePath('/admin/assets');
     const failMsg = res.failed.length ? ` (${res.failed.length} chyb)` : '';
-    return { ok: true, message: `Naimportováno ${res.created} věcí${failMsg}.` };
+    return { ok: true, message: `Naimportováno ${res.created} položek${failMsg}.` };
   } catch (e) {
     return { error: e instanceof ApiError ? e.message : 'Import selhal' };
   }
@@ -372,7 +372,7 @@ export async function createAsset(_p: ActionState, fd: FormData): Promise<Action
       canContainAssets: str(fd, 'canContainAssets') === 'true',
     },
     '/admin/assets',
-    'Věc vytvořena.',
+    'Položka vytvořena.',
   );
 }
 
@@ -543,7 +543,7 @@ export async function updateAsset(_p: ActionState, fd: FormData): Promise<Action
       homeLocationId: str(fd, 'homeLocationId') || undefined,
     },
     `/admin/assets/${id}`,
-    'Věc upravena.',
+    'Položka upravena.',
     'PATCH',
   );
 }

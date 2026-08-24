@@ -47,7 +47,7 @@ function actionsFor(status: string): Action[] {
     case 'paid':
     case 'confirmed':
       return [
-        { action: 'pickup', label: 'Předat věc', primary: true },
+        { action: 'pickup', label: 'Předat položku', primary: true },
         { action: 'cancel', label: 'Zrušit', danger: true },
       ];
     case 'picked_up':

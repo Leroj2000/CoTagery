@@ -113,6 +113,6 @@ export class MediaService {
 
   private async assertAsset(assetId: string): Promise<void> {
     const asset = await this.context.manager.getRepository(Asset).findOne({ where: { id: assetId } });
-    if (!asset) throw new NotFoundException('Věc neexistuje');
+    if (!asset) throw new NotFoundException('Položka neexistuje');
   }
 }

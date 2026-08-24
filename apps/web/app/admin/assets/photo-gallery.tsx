@@ -82,7 +82,7 @@ export function PhotoGallery({
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">Fotky věci</h3>
+        <h3 className="text-sm font-semibold text-slate-700">Fotky položky</h3>
         <span className="text-xs text-slate-400">
           {photos.length}/{max}
         </span>

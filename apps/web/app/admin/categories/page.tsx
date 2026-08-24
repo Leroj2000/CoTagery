@@ -16,7 +16,7 @@ export default async function CategoriesPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Kategorie"
-        description="Číselník kategorií věcí – používá se při zakládání věci."
+        description="Číselník kategorií položek – používá se při zakládání položky."
         icon={<Tags size={18} />}
       />
 
@@ -43,7 +43,7 @@ export default async function CategoriesPage() {
                 hidden={{ id: c.id }}
                 label="Smazat"
                 variant="danger"
-                confirm={`Smazat kategorii „${c.name}"? Věcem se kategorie odpojí.`}
+                confirm={`Smazat kategorii „${c.name}"? Položkám se kategorie odpojí.`}
               />,
             ])}
           />

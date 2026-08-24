@@ -74,7 +74,7 @@ export function AssetForm({
             ))}
           </select>
         </Field>
-        <Field label="Kontejner (může obsahovat věci)">
+        <Field label="Kontejner (může obsahovat položky)">
           <select name="canContainAssets" className={inputCls} defaultValue="false">
             <option value="false">Ne</option>
             <option value="true">Ano (dodávka, kufr…)</option>
@@ -100,7 +100,7 @@ export function AssetForm({
           className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-50"
         >
           {pending && <Loader2 size={15} className="animate-spin" />}
-          {pending ? 'Ukládám…' : 'Vytvořit věc'}
+          {pending ? 'Ukládám…' : 'Vytvořit položku'}
         </button>
       </div>
     </form>

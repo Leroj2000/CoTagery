@@ -83,13 +83,13 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
 
           <div className="grid gap-6 lg:grid-cols-3">
             <Section title={`Nalezeno (${detail.found.length})`}>
-              {detail.found.length === 0 ? <EmptyState>—</EmptyState> : <Table head={['Věc', 'Stav', 'Výrobce']} rows={assetRows(detail.found)} />}
+              {detail.found.length === 0 ? <EmptyState>—</EmptyState> : <Table head={['Položka', 'Stav', 'Výrobce']} rows={assetRows(detail.found)} />}
             </Section>
             <Section title={`Chybí (${detail.missing.length})`}>
-              {detail.missing.length === 0 ? <EmptyState>—</EmptyState> : <Table head={['Věc', 'Stav', 'Výrobce']} rows={assetRows(detail.missing)} />}
+              {detail.missing.length === 0 ? <EmptyState>—</EmptyState> : <Table head={['Položka', 'Stav', 'Výrobce']} rows={assetRows(detail.missing)} />}
             </Section>
             <Section title={`Navíc (${detail.unexpected.length})`}>
-              {detail.unexpected.length === 0 ? <EmptyState>—</EmptyState> : <Table head={['Věc', 'Stav', 'Výrobce']} rows={assetRows(detail.unexpected)} />}
+              {detail.unexpected.length === 0 ? <EmptyState>—</EmptyState> : <Table head={['Položka', 'Stav', 'Výrobce']} rows={assetRows(detail.unexpected)} />}
             </Section>
           </div>
         </>

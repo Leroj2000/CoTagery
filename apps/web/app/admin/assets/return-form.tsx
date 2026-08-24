@@ -77,7 +77,7 @@ export function ReturnForm({ assetId, requirePhoto }: { assetId: string; require
           className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-50"
         >
           {busy ? <Loader2 size={15} className="animate-spin" /> : <Undo2 size={15} />}
-          {busy ? 'Vracím…' : 'Vrátit věc'}
+          {busy ? 'Vracím…' : 'Vrátit položku'}
         </button>
       </div>
     </form>

@@ -97,7 +97,7 @@ export function applyMovement(state: AssetState, mv: MovementInput): AssetState 
       require_(
         ['available', 'assigned', 'reserved'].includes(s),
         'not_loanable',
-        `Věc ve stavu '${s}' nelze půjčit`,
+        `Položku ve stavu '${s}' nelze půjčit`,
       );
       return { ...person(state, mv.toId), status: 'loaned', dueAt: mv.dueAt ?? null };
 
@@ -105,7 +105,7 @@ export function applyMovement(state: AssetState, mv: MovementInput): AssetState 
       require_(
         !['service', 'in_transfer'].includes(s),
         'not_assignable',
-        `Věc ve stavu '${s}' nelze přidělit`,
+        `Položku ve stavu '${s}' nelze přidělit`,
       );
       return mv.toType === 'location'
         ? { ...location(state, mv.toId), status: 'assigned' }
@@ -118,7 +118,7 @@ export function applyMovement(state: AssetState, mv: MovementInput): AssetState 
       require_(
         ['loaned', 'assigned'].includes(s),
         'not_handoverable',
-        `Věc ve stavu '${s}' nelze předat dál`,
+        `Položku ve stavu '${s}' nelze předat dál`,
       );
       return { ...person(state, mv.toId), status: 'loaned', dueAt: mv.dueAt ?? state.dueAt };
 
@@ -126,7 +126,7 @@ export function applyMovement(state: AssetState, mv: MovementInput): AssetState 
       require_(
         ['loaned', 'assigned', 'in_transfer', 'reserved'].includes(s),
         'not_returnable',
-        `Věc ve stavu '${s}' nelze vrátit`,
+        `Položku ve stavu '${s}' nelze vrátit`,
       );
       return { ...location(state, mv.toId, mv.homeLocationId), status: 'available' };
 
@@ -134,7 +134,7 @@ export function applyMovement(state: AssetState, mv: MovementInput): AssetState 
       return { ...(mv.toType === 'person' ? person(state, mv.toId) : location(state, mv.toId, mv.homeLocationId)), status: 'service', responsiblePersonId: null, dueAt: null };
 
     case 'service_return':
-      require_(s === 'service', 'not_in_service', 'Věc není v servisu');
+      require_(s === 'service', 'not_in_service', 'Položka není v servisu');
       return { ...location(state, mv.toId, mv.homeLocationId), status: 'available' };
 
     case 'dispose':

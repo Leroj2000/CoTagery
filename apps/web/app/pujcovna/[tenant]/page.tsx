@@ -44,13 +44,13 @@ export default async function RentalCatalog({
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-6">
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Půjčovna</h1>
-          <p className="mt-1 text-sm text-slate-500">Věci k zapůjčení</p>
+          <p className="mt-1 text-sm text-slate-500">Položky k zapůjčení</p>
         </div>
       </header>
 
       <div className="mx-auto max-w-6xl px-4 py-8">
         {items.length === 0 ? (
-          <p className="text-slate-500">Zatím nejsou k dispozici žádné věci k zapůjčení.</p>
+          <p className="text-slate-500">Zatím nejsou k dispozici žádné položky k zapůjčení.</p>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((it) => (

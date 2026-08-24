@@ -109,7 +109,7 @@ export class InventoryService {
 
     const scan = await this.repo(InventoryScan).findOne({ where: { checkId, assetId } });
     if (!scan || scan.result !== 'unexpected') {
-      throw new BadRequestException("Věc není mezi 'navíc'");
+      throw new BadRequestException("Položka není mezi 'navíc'");
     }
 
     // Reálný pohyb (neměnný ledger + webhook) přes stejnou service jako běžný přesun.

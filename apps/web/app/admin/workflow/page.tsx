@@ -17,7 +17,7 @@ export default async function WorkflowPage() {
     <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
       <PageHeader
         title="Výdej / dávkový sken"
-        description="Zvol akci → naskenuj nebo vyber věci → vyřeš blockery → potvrď jednou."
+        description="Zvol akci → naskenuj nebo vyber položky → vyřeš blockery → potvrď jednou."
         icon={<ScanBarcode size={18} />}
       />
       <WorkflowClient

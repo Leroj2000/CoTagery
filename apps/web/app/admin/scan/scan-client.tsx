@@ -252,7 +252,7 @@ function ResultCard({
         <p className="mt-1 text-sm text-slate-500">
           {carrier && <>Identifikátor <Mono>{carrier.publicCode}</Mono>. </>}
           {object ? (
-            <>Vede na objekt typu <Badge tone="slate">{object.moduleType}</Badge>, není to evidovaná věc.</>
+            <>Vede na objekt typu <Badge tone="slate">{object.moduleType}</Badge>, není to evidovaná položka.</>
           ) : (
             <>Zatím nepřiřazený kód z poolu.</>
           )}
@@ -334,7 +334,7 @@ function ResultCard({
           href={`/admin/assets/${asset.id}`}
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:w-auto"
         >
-          Detail věci
+          Detail položky
         </Link>
         {returnBlockedByPhoto && (
           <span className="text-center text-xs text-amber-600 sm:text-left">Vrácení vyžaduje foto → otevři detail</span>

@@ -253,7 +253,7 @@ export function WorkflowClient({
           {!camOn && (
             <div className="flex h-48 w-full flex-col items-center justify-center gap-2 text-slate-400">
               <ScanLine size={36} />
-              <p className="text-xs">Continuous scan – skenuj věci jednu po druhé</p>
+              <p className="text-xs">Continuous scan – skenuj položky jednu po druhé</p>
             </div>
           )}
         </div>
@@ -327,7 +327,7 @@ export function WorkflowClient({
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Hledat věc…"
+                placeholder="Hledat položku…"
                 className={`${inputCls} pl-8`}
                 disabled={!targetReady}
               />
@@ -407,7 +407,7 @@ export function WorkflowClient({
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
           >
             {busy && <Loader2 size={16} className="animate-spin" />}
-            {cfg.confirm} {okCount} {okCount === 1 ? 'věc' : okCount >= 2 && okCount <= 4 ? 'věci' : 'věcí'}
+            {cfg.confirm} {okCount} {okCount === 1 ? 'položku' : okCount >= 2 && okCount <= 4 ? 'položky' : 'položek'}
           </button>
         </div>
       )}
@@ -422,7 +422,7 @@ export function WorkflowClient({
         <div className="flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-800 shadow-card">
           <CheckCircle2 size={18} className="mt-0.5 shrink-0" />
           <div>
-            <p className="font-medium">Hotovo – {result.ok} věcí zpracováno.</p>
+            <p className="font-medium">Hotovo – {result.ok} položek zpracováno.</p>
             {result.failed.length > 0 && (
               <p className="mt-0.5 text-amber-700">{result.failed.length} se nepodařilo (souběžná změna stavu).</p>
             )}

@@ -48,7 +48,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: '/admin/scan', label: 'Sken', icon: ScanLine },
       { href: '/admin/workflow', label: 'Výdej', icon: PackageCheck },
       { href: '/admin/attention', label: 'Vyžaduje pozornost', icon: Bell },
-      { href: '/admin/assets', label: 'Věci', icon: Package },
+      { href: '/admin/assets', label: 'Položky', icon: Package },
       { href: '/admin/categories', label: 'Kategorie', icon: Tags },
       { href: '/admin/inventory', label: 'Inventura', icon: ClipboardCheck },
       { href: '/admin/reservations', label: 'Požadavky', icon: CalendarClock },

@@ -169,7 +169,7 @@ export function InventoryScanner({
           {!camOn && (
             <div className="flex h-44 w-full flex-col items-center justify-center gap-2 text-slate-400">
               <ScanLine size={34} />
-              <p className="text-xs">Continuous scan – skenuj věci jednu po druhé</p>
+              <p className="text-xs">Continuous scan – skenuj položky jednu po druhé</p>
             </div>
           )}
         </div>

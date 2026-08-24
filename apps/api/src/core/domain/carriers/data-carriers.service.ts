@@ -105,7 +105,7 @@ export class DataCarriersService {
     // Per-tenant: kód nesmí být adoptovaný dvakrát (index je backstop na race).
     const existing = await this.carriers().findOne({ where: { externalCode } });
     if (existing) {
-      throw new BadRequestException('Tento kód je už adoptovaný u jiné věci');
+      throw new BadRequestException('Tento kód je už adoptovaný u jiné položky');
     }
 
     return this.createCarrier(objectId, dto.carrierType ?? 'qr', 'active', {

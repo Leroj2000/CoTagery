@@ -59,7 +59,7 @@ export class RentalListingService {
 
   private async assertAsset(assetId: string): Promise<Asset> {
     const asset = await this.context.manager.getRepository(Asset).findOne({ where: { id: assetId } });
-    if (!asset) throw new NotFoundException('Věc neexistuje');
+    if (!asset) throw new NotFoundException('Položka neexistuje');
     return asset;
   }
 

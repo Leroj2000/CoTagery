@@ -39,7 +39,7 @@ export default async function AssetsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Věci"
+        title="Položky"
         description="Assety s digitální identitou – stav, kde jsou a kdo je má."
         icon={<Package size={18} />}
       />
@@ -65,17 +65,17 @@ export default async function AssetsPage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <Section title="Nová věc">
+        <Section title="Nová položka">
           <AssetForm categories={categoryOptions} locations={locationOptions} />
         </Section>
-        <Section title="Import / export CSV" description="Hromadné nahrání a stažení věcí">
+        <Section title="Import / export CSV" description="Hromadné nahrání a stažení položek">
           <CsvTools />
         </Section>
       </div>
 
-      <Section title={`Věci (${assets.length})`}>
+      <Section title={`Položky (${assets.length})`}>
         {assets.length === 0 ? (
-          <EmptyState>Zatím žádné věci.</EmptyState>
+          <EmptyState>Zatím žádné položky.</EmptyState>
         ) : (
           <Table
             head={['', 'Název', 'Stav', 'Kde je / kdo má', 'Vrátit do']}

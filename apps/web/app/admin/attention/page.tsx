@@ -43,14 +43,14 @@ export default async function AttentionPage() {
 
       <Section
         title="Po termínu"
-        description="Věci, které měly být vrácené"
+        description="Položky, které měly být vrácené"
         action={<Badge tone="red">{att.overdue.length}</Badge>}
       >
         {att.overdue.length === 0 ? (
           <EmptyState>Nic po termínu.</EmptyState>
         ) : (
           <Table
-            head={['Věc', 'Má ji', 'Vrátit do']}
+            head={['Položka', 'Má ji', 'Vrátit do']}
             rows={att.overdue.map((a) => [
               <Link key="n" href={`/admin/assets/${a.id}`} className="font-medium text-brand-700 hover:underline">
                 {a.name}
@@ -97,7 +97,7 @@ export default async function AttentionPage() {
           <EmptyState>Žádné otevřené problémy.</EmptyState>
         ) : (
           <Table
-            head={['Věc', 'Typ', 'Popis', 'Akce']}
+            head={['Položka', 'Typ', 'Popis', 'Akce']}
             rows={att.openIssues.map((i) => [
               <Link key="n" href={`/admin/assets/${i.assetId}`} className="font-medium text-brand-700 hover:underline">
                 zobrazit

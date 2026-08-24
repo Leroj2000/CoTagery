@@ -118,7 +118,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
     <div className="flex flex-col gap-6">
       <div>
         <Link href="/admin/assets" className="text-xs text-slate-500 hover:underline">
-          ← Věci
+          ← Položky
         </Link>
         <div className="mt-1">
           <PageHeader
@@ -150,7 +150,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
       </div>
 
       {canEdit && (
-        <Section title="Upravit věc" description="Základní údaje (stav a držení se mění pohyby, ne zde)">
+        <Section title="Upravit položku" description="Základní údaje (stav a držení se mění pohyby, ne zde)">
           <ActionForm
             action={updateAsset}
             hidden={{ id: asset.id }}
@@ -179,7 +179,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
       {/* Last Observation – kde byla naposledy VIDĚNA (≠ evidence výše) */}
       <Section
         title="Naposledy viděno"
-        description="Poslední sken věci – kde byla fyzicky spatřena. Nemění evidenci (kde je vedená)."
+        description="Poslední sken položky – kde byla fyzicky spatřena. Nemění evidenci (kde je vedená)."
       >
         {observations.length === 0 ? (
           <EmptyState>Zatím nenaskenováno.</EmptyState>
@@ -227,7 +227,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
 
       {canReturn && (
         <Section
-          title="Vrátit věc"
+          title="Vrátit položku"
           description={requireReturnPhoto ? 'Politika tenanta vyžaduje foto stavu' : 'Vrácení do assetu (foto volitelné)'}
         >
           <ReturnForm assetId={asset.id} requirePhoto={requireReturnPhoto} />
@@ -235,7 +235,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
       )}
 
       {otherActions.length > 0 && (
-        <Section title="Akce" description="Kontextové akce podle aktuálního stavu věci">
+        <Section title="Akce" description="Kontextové akce podle aktuálního stavu položky">
           {carriers.length === 0 && (
             <a
               href="#identifikator"
@@ -243,7 +243,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
             >
               <QrCode size={15} className="mt-0.5 shrink-0" />
               <span>
-                <span className="font-medium">Věc nemá identifikátor.</span> Vydat ji můžeš i tak – nebo
+                <span className="font-medium">Položka nemá identifikátor.</span> Vydat ji můžeš i tak – nebo
                 nejdřív přidej QR/NFC identifikátor níže.
               </span>
             </a>
@@ -258,11 +258,11 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
       )}
 
       <div id="identifikator" className="scroll-mt-4">
-      <Section title="Identifikátor (QR)" description="Štítek na věci – stabilní identifikátor">
+      <Section title="Identifikátor (QR)" description="Štítek na položce – stabilní identifikátor">
         <div className="flex flex-col gap-4">
           {carriers.length === 0 ? (
             <div className="flex flex-col gap-3">
-              <EmptyState>Věc zatím nemá identifikátor.</EmptyState>
+              <EmptyState>Položka zatím nemá identifikátor.</EmptyState>
               <ActionForm
                 action={addCarrierToObject}
                 hidden={{ objectId: asset.digitalObjectId }}
@@ -362,13 +362,13 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
       )}
 
       {asset.canContainAssets && (
-        <Section title="Obsah kontejneru" description="Věci uložené v této věci (dodávka, kufr…)">
+        <Section title="Obsah kontejneru" description="Položky uložené v této položce (dodávka, kufr…)">
           <div className="flex flex-col gap-4">
             {contents.length === 0 ? (
               <EmptyState>Kontejner je prázdný.</EmptyState>
             ) : (
               <Table
-                head={['Věc', 'Stav', 'Akce']}
+                head={['Položka', 'Stav', 'Akce']}
                 rows={contents.map((c) => [
                   <Link key="n" href={`/admin/assets/${c.id}`} className="font-medium text-brand-700 hover:underline">
                     {c.name}
@@ -387,8 +387,8 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
               <ActionForm
                 action={putIntoContainer}
                 hidden={{ containerId: asset.id }}
-                submitLabel="Vložit věc"
-                fields={[{ name: 'childAssetId', label: 'Přidat věc do kontejneru', required: true, options: nestableOptions }]}
+                submitLabel="Vložit položku"
+                fields={[{ name: 'childAssetId', label: 'Přidat položku do kontejneru', required: true, options: nestableOptions }]}
               />
             )}
           </div>

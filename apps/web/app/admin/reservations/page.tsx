@@ -35,19 +35,19 @@ export default async function ReservationsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Požadavky / rezervace"
-        description="Žádosti o věci na termín – skladník schválí nebo zamítne."
+        description="Žádosti o položky na termín – skladník schválí nebo zamítne."
         icon={<CalendarClock size={18} />}
       />
 
       <Section title="Nový požadavek">
         {assets.length === 0 ? (
-          <EmptyState>Nejdřív vytvoř věci (Věci).</EmptyState>
+          <EmptyState>Nejdřív vytvoř položky (Položky).</EmptyState>
         ) : (
           <ActionForm
             action={createReservation}
             submitLabel="Vytvořit požadavek"
             fields={[
-              { name: 'assetId', label: 'Věc', required: true, options: assetOptions },
+              { name: 'assetId', label: 'Položka', required: true, options: assetOptions },
               { name: 'requestedById', label: 'Žadatel', options: personOptions },
               { name: 'fromAt', label: 'Od', type: 'text' },
               { name: 'toAt', label: 'Do', type: 'text' },
@@ -62,7 +62,7 @@ export default async function ReservationsPage() {
           <EmptyState>Zatím žádné požadavky.</EmptyState>
         ) : (
           <Table
-            head={['Věc', 'Žadatel', 'Termín', 'Účel', 'Stav', 'Akce']}
+            head={['Položka', 'Žadatel', 'Termín', 'Účel', 'Stav', 'Akce']}
             rows={reservations.map((r) => [
               assetName.get(r.assetId) ?? '—',
               r.requestedById ? (personName.get(r.requestedById) ?? '—') : '—',

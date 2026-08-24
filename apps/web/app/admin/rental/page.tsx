@@ -20,7 +20,7 @@ export default async function RentalAdminPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Půjčovna"
-        description="Publikuj své Věci k veřejnému zapůjčení s ceníkem. První fotka věci se zobrazí v katalogu."
+        description="Publikuj své Položky k veřejnému zapůjčení s ceníkem. První fotka položky se zobrazí v katalogu."
       />
       {tenant?.slug && (
         <p className="text-sm text-slate-500">

@@ -89,7 +89,7 @@ export function RentalManager({
   async function submit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     setError(null);
-    if (!editingId && !form.assetId) return setError('Vyber věc.');
+    if (!editingId && !form.assetId) return setError('Vyber položku.');
     if (!form.pricePerDay || Number.isNaN(Number(form.pricePerDay)))
       return setError('Zadej cenu za den.');
     setBusy('save');
@@ -145,9 +145,9 @@ export function RentalManager({
           <div className="grid gap-3 sm:grid-cols-2">
             {!editingId && (
               <label className="flex flex-col gap-1 sm:col-span-2">
-                <span className="text-xs font-medium text-slate-600">Věc</span>
+                <span className="text-xs font-medium text-slate-600">Položka</span>
                 <select className={input} value={form.assetId} onChange={(e) => set('assetId', e.target.value)}>
-                  <option value="">– vyber věc –</option>
+                  <option value="">– vyber položku –</option>
                   {assets.map((a) => (
                     <option key={a.id} value={a.id}>{a.name}</option>
                   ))}
@@ -155,7 +155,7 @@ export function RentalManager({
               </label>
             )}
             <label className="flex flex-col gap-1 sm:col-span-2">
-              <span className="text-xs font-medium text-slate-600">Název (nepovinné, default = název věci)</span>
+              <span className="text-xs font-medium text-slate-600">Název (nepovinné, default = název položky)</span>
               <input className={input} value={form.title} onChange={(e) => set('title', e.target.value)} />
             </label>
             <label className="flex flex-col gap-1">
