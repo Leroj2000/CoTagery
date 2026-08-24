@@ -11,6 +11,7 @@
 - [ADR-0006](decisions/0006-access-control-shared-capability.md) – Access Control jako průřezová sdílená schopnost
 - [ADR-0007](decisions/0007-billing-money-flow.md) – Billing: členské platby tenant-owns-PSP (Stripe); monetizace = fee za vydané karty
 - [ADR-0008](decisions/0008-deployment-topology-cloudflare-edge.md) – Deployment: Cloudflare na edge + kontejnerizovaný backend
+- [ADR-0009](decisions/0009-platform-plans-entitlements.md) – Platform plány & entitlementy: config katalog řídí `organization_modules` + vynucení limitů (Návrh)
 
 ## Multi-tenancy model
 Každý tenant (firma/organizace) má striktně izolovaná data. Izolace je zajištěna na třech úrovních:
