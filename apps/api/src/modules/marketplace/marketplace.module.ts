@@ -1,12 +1,17 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../../core/auth/entities/user.entity';
+import { Person } from '../../core/domain/entities/person.entity';
 import { RenterProfile } from '../rental/entities/renter-profile.entity';
+import { AssetModule } from '../asset/asset.module';
+import { QrService } from '../../core/domain/carriers/qr.service';
 import { RentalListing } from './entities/rental-listing.entity';
 import { RentalOrder } from './entities/rental-order.entity';
 import { RentalListingService } from './rental-listing.service';
 import { RentalOrderService } from './rental-order.service';
 import { RenterAuthService } from './renter-auth.service';
+import { PAYMENT_ADAPTER } from './payment/payment.port';
+import { SpaydPaymentAdapter } from './payment/spayd-payment.adapter';
 import { RentalListingController } from './rental-listing.controller';
 import { RentalOrderController } from './rental-order.controller';
 import { PublicRentalController } from './public-rental.controller';
@@ -20,7 +25,10 @@ import { RenterOrderController } from './renter-order.controller';
  * session, bez org tenant kontextu). Oddělené od interního EPIC-10 Rental.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([RentalListing, RentalOrder, User, RenterProfile])],
+  imports: [
+    TypeOrmModule.forFeature([RentalListing, RentalOrder, User, RenterProfile, Person]),
+    AssetModule,
+  ],
   controllers: [
     RentalListingController,
     RentalOrderController,
@@ -28,7 +36,13 @@ import { RenterOrderController } from './renter-order.controller';
     RenterAuthController,
     RenterOrderController,
   ],
-  providers: [RentalListingService, RentalOrderService, RenterAuthService],
+  providers: [
+    RentalListingService,
+    RentalOrderService,
+    RenterAuthService,
+    QrService,
+    { provide: PAYMENT_ADAPTER, useClass: SpaydPaymentAdapter },
+  ],
   exports: [RentalListingService, RentalOrderService],
 })
 export class MarketplaceModule {}

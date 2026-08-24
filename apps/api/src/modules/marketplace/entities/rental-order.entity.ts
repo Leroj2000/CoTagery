@@ -84,4 +84,34 @@ export class RentalOrder extends BaseTenantEntity {
 
   @Column({ type: 'text', name: 'renter_note', nullable: true })
   renterNote!: string | null;
+
+  /** Variabilní symbol platby (sekvence) – do SPAYD/QR. */
+  @Column({ type: 'bigint', name: 'payment_vs' })
+  paymentVs!: string;
+
+  /** Person v tenantu majitele = držitel věci po vyzvednutí (custody loan). */
+  @Column({ type: 'uuid', name: 'renter_person_id', nullable: true })
+  renterPersonId!: string | null;
+
+  /** Kolik z kauce bylo při vrácení vráceno nájemci (zbytek = sražená škoda). */
+  @Column({ type: 'numeric', name: 'deposit_returned', nullable: true })
+  depositReturned!: string | null;
+
+  @Column({ type: 'timestamptz', name: 'paid_at', nullable: true })
+  paidAt!: Date | null;
+
+  @Column({ type: 'timestamptz', name: 'picked_up_at', nullable: true })
+  pickedUpAt!: Date | null;
+
+  @Column({ type: 'timestamptz', name: 'returned_at', nullable: true })
+  returnedAt!: Date | null;
+
+  @Column({ type: 'timestamptz', name: 'completed_at', nullable: true })
+  completedAt!: Date | null;
+
+  @Column({ type: 'timestamptz', name: 'cancelled_at', nullable: true })
+  cancelledAt!: Date | null;
+
+  @Column({ type: 'timestamptz', name: 'settled_at', nullable: true })
+  settledAt!: Date | null;
 }

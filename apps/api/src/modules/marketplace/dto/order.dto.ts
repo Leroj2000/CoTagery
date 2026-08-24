@@ -1,4 +1,5 @@
-import { IsDateString, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsDateString, IsIn, IsNumberString, IsOptional, IsString, MaxLength } from 'class-validator';
+import { OWNER_ACTIONS, type OwnerAction } from '../order-status.logic';
 
 export class CreateOrderDto {
   @IsString()
@@ -31,4 +32,28 @@ export class QuoteDto {
 
   @IsDateString()
   endsAt!: string;
+}
+
+export class OwnerActionDto {
+  @IsIn(Object.keys(OWNER_ACTIONS))
+  action!: OwnerAction;
+
+  /** Jen pro `return`: kolik z kauce vrátit nájemci (default = celá). */
+  @IsOptional()
+  @IsNumberString()
+  depositReturned?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  note?: string;
+}
+
+export class RenterIssueDto {
+  @IsIn(['damage', 'malfunction', 'missing_part', 'other'])
+  kind!: 'damage' | 'malfunction' | 'missing_part' | 'other';
+
+  @IsString()
+  @MaxLength(2000)
+  description!: string;
 }
