@@ -1,6 +1,13 @@
 # EPIC-19-RENTAL-MARKETPLACE – Veřejná půjčovna / marketplace
 
-## Stav: ⬜ NÁVRH SCHVÁLEN – rozhodnutí A/B/C potvrzena (2026-08-23), čeká na start F1
+## Stav: 🟢 F1 + F2 HOTOVO (2026-08-24) · další: F3 (QR platba + předání/vrácení + hlášení poškození)
+
+**Hotovo:** F1 (publikace + veřejný storefront) a F2 (rezervace + objednávka + účet
+nájemce). Commity `0c21c7e` (F1), `1dad74b` (F2 backend), `6ae8385` (F2 web).
+Ověřeno: typecheck, 76 testů, migrace 1905/1906, DB e2e (RLS izolace, EXCLUDE proti
+dvojité rezervaci) + HTTP smoke test (renter token nemá přístup k datům firem → 401).
+Pozn.: běžící Docker kontejnery mají zatím starý build – reálný deploy přes
+`docker compose build` čeká na pokyn.
 
 **Potvrzeno:** A = storefront **jedné firmy** s přípravou na budoucí marketplace ·
 B = **QR platby v MVP** s přípravou na Stripe · C = **povinný účet nájemce** (musí vidět
@@ -95,19 +102,20 @@ org tenanta** – nedostává tenant membership ani role v cizí firmě. Jeho p�
 ## Fázování
 
 ### F1 – Publikace + veřejný storefront (read-only)
-- ⬜ `rental_listing` entita + migrace (RLS, GRANT, index)
-- ⬜ Admin UI: publikovat věc jako inzerát + ceník (den/hodina/týden, kauce, min/max, podmínky)
-- ⬜ `public_listings()` / `public_listing(slug)` SECURITY DEFINER (whitelist sloupců)
-- ⬜ Veřejné SSR routy: katalog + detail (fotky z galerie, cena, místo vyzvednutí), SEO
-- ⬜ E2e: publikace → viditelné veřejně; skrytí → zmizí; cross-tenant čtení bez úniku privátních dat
+- ✅ `rental_listing` entita + migrace (RLS, GRANT, index)
+- ✅ Admin UI: publikovat věc jako inzerát + ceník (den/hodina/týden, kauce, min/max, podmínky)
+- ✅ `public_listings()` / `public_listing(slug)` SECURITY DEFINER (whitelist sloupců)
+- ✅ Veřejné SSR routy: katalog + detail (fotky z galerie, cena, místo vyzvednutí), SEO
+- ✅ E2e: publikace → viditelné veřejně; skrytí → zmizí; cross-tenant čtení bez úniku privátních dat
 
 ### F2 – Dostupnost + rezervace + veřejná objednávka
-- ⬜ `rental_order` + `EXCLUDE` constraint (žádný překryv)
-- ⬜ Výpočet ceny (doba × sazba + kauce), kalendář dostupnosti
-- ⬜ **Registrace/přihlášení nájemce** (rozh. C) – účet ([[EPIC-18]] identita) je podmínka
+- ✅ `rental_order` + `EXCLUDE` constraint (žádný překryv)
+- ✅ Výpočet ceny (doba × sazba + kauce), kalendář dostupnosti
+- ✅ **Registrace/přihlášení nájemce** (rozh. C) – účet ([[EPIC-18]] identita) je podmínka
   objednávky; objednávka ve stavu `awaiting_payment` má `renter_user_id`
-- ⬜ Napojení na verification level nájemce (EPIC-10) dle politiky inzerátu
-- ⬜ E2e: bez účtu nelze objednat; rezervace období, konflikt → odmítnuto, cena spočtena
+- 🟡 Napojení na verification level nájemce (EPIC-10) dle politiky inzerátu – *renter_profile
+  se zakládá při registraci (reputace/ověření), ale per-listing policy gate zatím není (→ F3/F4)*
+- ✅ E2e: bez účtu nelze objednat; rezervace období, konflikt → odmítnuto, cena spočtena
 
 ### F3 – Objednávka → QR platba + předání/vrácení + kauce
 - ⬜ `PaymentAdapter` rozhraní + **Adapter A (SPAYD/QR + bankovní údaje majitele)**

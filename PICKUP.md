@@ -1,6 +1,31 @@
 # Tagery – Kontinuita sessions
 
 ## Poslední session
+- **Datum:** 2026-08-24
+- **Agent:** Claude (Opus 4.8)
+- **Dokončeno:** **EPIC-19 F1 + F2** (veřejná půjčovna / marketplace). Modul `marketplace`
+  (oddělený od interního EPIC-10 Rental). Commity `0c21c7e` (F1), `1dad74b` (F2 backend),
+  `6ae8385` (F2 web).
+  - **F1:** `rental_listing` (RLS) + veřejný katalog/detail přes SECURITY DEFINER
+    (`public_rental_catalog/listing/photo`, jen published); `tenants.slug`; admin `/admin/rental`;
+    veřejné SSR `/pujcovna/[tenant]/[listing]`.
+  - **F2:** `rental_order` (RLS na firmu majitele) + **EXCLUDE gist** proti dvojité rezervaci
+    (`btree_gist`, generated `period`); **účet nájemce** (rozh. C) = `users` (globální email, bez
+    RLS) + `renter_profiles`; **renter JWT scope='renter' + RenterJwtGuard** (NENASTAVUJE org
+    tenant kontext → nulový přístup k datům firem); SECURITY DEFINER `create_rental_order` /
+    `my_rental_orders` / `public_listing_availability`; **platformový tenant** (nil UUID) = domovská
+    org účtů nájemců; `order-pricing.ts` (den×sazba+kauce) + 6 testů. Web: OrderBox (termín + živá
+    cena + login-gate), `/najem/{prihlaseni,registrace,moje-vypujcky}`, admin „Příchozí objednávky".
+  - **Ověřeno:** typecheck api+web, **76 testů**, migrace 1905/1906 proti DB, DB e2e (RLS izolace,
+    overlap→23P01, self-scoped my_orders), HTTP smoke (renter token na admin endpoint→401, quote,
+    order, overlap→409, availability, owner list pod RLS).
+  - **POZOR – deploy:** běžící Docker kontejnery mají ještě **starý build**. Nasazení = `docker
+    compose build` (čeká na pokyn uživatele).
+  - **Další:** **F3** – `PaymentAdapter` + Adapter A (SPAYD/QR + bankovní údaje majitele), potvrzení
+    platby→`paid`, `picked_up`/`returned` (loan/return pohyby + kauce), hlášení poškození nájemcem
+    (`asset.reportIssue`, gate „mám objednávku"). Renter portál „Moje výpůjčky" už z F2 hotový.
+
+## Předchozí session
 - **Datum:** 2026-08-10
 - **Agent:** Claude (Opus 4.8)
 - **Dokončeno:** **EPIC-16 Membership** (naplno) + **EPIC-17 Billing** (stub PSP) + **RBAC role-guard** follow-up + **frontend** scan/aktivace. Vše na `main`.
