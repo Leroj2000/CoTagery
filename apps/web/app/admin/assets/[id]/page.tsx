@@ -11,6 +11,7 @@ import { MovementForm } from '../movement-form';
 import { PhotoGallery } from '../photo-gallery';
 import { MediaTimeline } from '../media-timeline';
 import { ReturnForm } from '../return-form';
+import { PrintLabelButton } from '../printing/print-label-button';
 import type { AssetMedia, Tenant, Observation } from '../../../lib/types';
 import {
   addCarrierToObject,
@@ -300,6 +301,18 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
                           alias{c.externalScheme ? ` (${c.externalScheme})` : ''}: {c.externalCode}
                         </Badge>
                       </p>
+                    )}
+                    {c.carrierType === 'qr' && (
+                      <div className="mt-2">
+                        <PrintLabelButton
+                          data={{
+                            qrValue: c.resolverUrl ?? c.publicCode,
+                            itemName: asset.name,
+                            assetCode: asset.inventoryNumber ?? c.publicCode,
+                            subtitle: asset.category ?? undefined,
+                          }}
+                        />
+                      </div>
                     )}
                   </div>
                 </div>
