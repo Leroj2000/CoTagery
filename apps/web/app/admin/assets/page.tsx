@@ -2,10 +2,10 @@ import Link from 'next/link';
 import { Package, AlertTriangle } from 'lucide-react';
 import { apiFetch } from '../../lib/server-api';
 import type { Asset, Person, Location, Category } from '../../lib/types';
-import Image from 'next/image';
-import { PageHeader, Section, Table, StatusBadge, EmptyState } from '../ui';
+import { PageHeader, Section } from '../ui';
 import { AssetForm } from './asset-form';
 import { CsvTools } from './csv-tools';
+import { AssetsExplorer } from './assets-explorer';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +35,14 @@ export default async function AssetsPage() {
   const overdue = assets.filter((a) => a.dueAt && new Date(a.dueAt).getTime() < now && a.status === 'loaned');
 
   const locationOptions = locations.map((l) => ({ value: l.id, label: l.name }));
+
+  // Názvy kategorií pro filtr = číselník + volnotextové hodnoty z položek.
+  const categoryNames = [
+    ...new Set([
+      ...categories.map((c) => c.name),
+      ...assets.map((a) => a.category).filter((c): c is string => !!c),
+    ]),
+  ].sort((a, b) => a.localeCompare(b, 'cs'));
 
   return (
     <div className="flex flex-col gap-6">
@@ -73,38 +81,11 @@ export default async function AssetsPage() {
         </Section>
       </div>
 
-      <Section title={`Položky (${assets.length})`}>
-        {assets.length === 0 ? (
-          <EmptyState>Zatím žádné položky.</EmptyState>
-        ) : (
-          <Table
-            head={['', 'Název', 'Stav', 'Kde je / kdo má', 'Vrátit do']}
-            rows={assets.map((a) => [
-              a.photoKey ? (
-                <Image
-                  key="p"
-                  src={`/api/asset-photo/${a.id}`}
-                  alt={a.name}
-                  width={36}
-                  height={36}
-                  unoptimized
-                  className="h-9 w-9 rounded-lg border border-slate-200 object-cover"
-                />
-              ) : (
-                <span key="p" className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-[10px] text-slate-400">
-                  —
-                </span>
-              ),
-              <Link key="n" href={`/admin/assets/${a.id}`} className="font-medium text-brand-700 hover:underline">
-                {a.name}
-              </Link>,
-              <StatusBadge key="s" status={a.status} />,
-              holder(a),
-              a.dueAt ? fmtDate(a.dueAt) : '—',
-            ])}
-          />
-        )}
-      </Section>
+      <AssetsExplorer
+        assets={assets}
+        categoryNames={categoryNames}
+        locations={locations.map((l) => ({ id: l.id, name: l.name }))}
+      />
     </div>
   );
 }
