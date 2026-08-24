@@ -1,11 +1,13 @@
 # EPIC-19-RENTAL-MARKETPLACE – Veřejná půjčovna / marketplace
 
-## Stav: 🟢 F1 + F2 HOTOVO (2026-08-24) · další: F3 (QR platba + předání/vrácení + hlášení poškození)
+## Stav: 🟢 F1 + F2 + F3 HOTOVO (2026-08-24) · další: F4 (Stripe Connect + provize/výplaty + hodnocení)
 
-**Hotovo:** F1 (publikace + veřejný storefront) a F2 (rezervace + objednávka + účet
-nájemce). Commity `0c21c7e` (F1), `1dad74b` (F2 backend), `6ae8385` (F2 web).
-Ověřeno: typecheck, 76 testů, migrace 1905/1906, DB e2e (RLS izolace, EXCLUDE proti
-dvojité rezervaci) + HTTP smoke test (renter token nemá přístup k datům firem → 401).
+**Hotovo:** F1 (storefront), F2 (rezervace + objednávka + účet nájemce), F3 (QR/SPAYD
+platba + lifecycle + předání/vrácení + kauce + hlášení poškození). Commity `0c21c7e` (F1),
+`1dad74b`+`6ae8385` (F2), `1ded8eb`+`6b03790` (F3).
+Ověřeno: typecheck, 87 testů, migrace 1905/1906/1907, DB e2e (RLS izolace, EXCLUDE proti
+dvojité rezervaci) + HTTP e2e celý lifecycle (renter token nemá přístup k datům firem → 401;
+SPAYD/QR; custody loan/return; kauce; hlášení poškození → attention).
 Pozn.: běžící Docker kontejnery mají zatím starý build – reálný deploy přes
 `docker compose build` čeká na pokyn.
 
@@ -118,13 +120,14 @@ org tenanta** – nedostává tenant membership ani role v cizí firmě. Jeho p�
 - ✅ E2e: bez účtu nelze objednat; rezervace období, konflikt → odmítnuto, cena spočtena
 
 ### F3 – Objednávka → QR platba + předání/vrácení + kauce
-- ⬜ `PaymentAdapter` rozhraní + **Adapter A (SPAYD/QR + bankovní údaje majitele)**
-- ⬜ Potvrzení platby (manuál/účtenka) → `paid`; pokyny k platbě na stránce objednávky + e-mail
-- ⬜ `picked_up` → loan pohyb; `returned` → return + vypořádání kauce (manuálně)
-- ⬜ **Renter portál „Moje výpůjčky"** (self-scoped) – přehled + stav + pokyny k platbě
-- ⬜ **Hlášení poškození/poruchy** nájemcem na půjčené věci (znovupoužití `asset.reportIssue`,
+- ✅ `PaymentAdapter` rozhraní + **Adapter A (SPAYD/QR + bankovní údaje majitele)**
+- 🟡 Potvrzení platby (manuál) → `paid`; pokyny k platbě (SPAYD/QR + IBAN/VS) na portálu
+  nájemce *(e-mailová notifikace zatím ne – jen na stránce)*
+- ✅ `picked_up` → loan pohyb; `returned` → return + vypořádání kauce (manuálně, přes existující asset movements)
+- ✅ **Renter portál „Moje výpůjčky"** (self-scoped) – přehled + stav + pokyny k platbě
+- ✅ **Hlášení poškození/poruchy** nájemcem na půjčené věci (`create_renter_issue`,
   gate „mám objednávku na tuto věc") → majiteli do „Vyžaduje pozornost"
-- ⬜ E2e: objednávka → QR/pokyny → potvrzení → předání → nájemce nahlásí poškození → vrácení → completed
+- ✅ E2e: objednávka → QR/pokyny → potvrzení → předání → nájemce nahlásí poškození → vrácení → completed
 
 ### F4 – Karty přes PSP + provize/výplaty + hodnocení (marketplace „jako Alza")
 - ⬜ **Adapter B – Stripe Connect** (Express účty, application_fee, payouty)

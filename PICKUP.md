@@ -3,9 +3,19 @@
 ## Poslední session
 - **Datum:** 2026-08-24
 - **Agent:** Claude (Opus 4.8)
-- **Dokončeno:** **EPIC-19 F1 + F2** (veřejná půjčovna / marketplace). Modul `marketplace`
-  (oddělený od interního EPIC-10 Rental). Commity `0c21c7e` (F1), `1dad74b` (F2 backend),
-  `6ae8385` (F2 web).
+- **Dokončeno:** **EPIC-19 F1 + F2 + F3** (veřejná půjčovna / marketplace). Modul `marketplace`
+  (oddělený od interního EPIC-10 Rental). Commity `0c21c7e` (F1), `1dad74b`+`6ae8385` (F2),
+  `1ded8eb`+`6b03790` (F3).
+  - **F3:** stavový automat objednávky (order-status.logic + 6 testů) + migrace 1907 (lifecycle
+    timestampy, VS sekvence, deposit_returned, renter_person_id). Majitel: POST
+    `/rental-orders/:id/transition` (confirm_payment/pickup/return/complete/cancel); pickup→`loan`
+    pohyb na Person nájemce, return→`return` pohyb + vypořádání kauce (přes existující asset
+    movements). **PaymentAdapter** port + **Adapter A** (SpaydPaymentAdapter, buildSpayd + 5 testů),
+    bankovní údaje v `tenant.settings.rentalPayment` (nastavitelné v /admin/settings). Nájemce:
+    GET `/renter/orders/:id/payment` (SPAYD+IBAN+VS) + `/payment/qr.png` (QrService), POST
+    `/renter/orders/:id/issue` → SECURITY DEFINER `create_renter_issue` (gate „vyzvednuto")
+    → majiteli do „Vyžaduje pozornost". Web: akce majitele nad objednávkou, platební QR + hlášení
+    poškození na portálu nájemce.
   - **F1:** `rental_listing` (RLS) + veřejný katalog/detail přes SECURITY DEFINER
     (`public_rental_catalog/listing/photo`, jen published); `tenants.slug`; admin `/admin/rental`;
     veřejné SSR `/pujcovna/[tenant]/[listing]`.
@@ -21,9 +31,13 @@
     order, overlap→409, availability, owner list pod RLS).
   - **POZOR – deploy:** běžící Docker kontejnery mají ještě **starý build**. Nasazení = `docker
     compose build` (čeká na pokyn uživatele).
-  - **Další:** **F3** – `PaymentAdapter` + Adapter A (SPAYD/QR + bankovní údaje majitele), potvrzení
-    platby→`paid`, `picked_up`/`returned` (loan/return pohyby + kauce), hlášení poškození nájemcem
-    (`asset.reportIssue`, gate „mám objednávku"). Renter portál „Moje výpůjčky" už z F2 hotový.
+  - **Ověřeno (F3):** typecheck api+web, **87 testů**, migrace 1907 proti DB, HTTP e2e celý
+    lifecycle (objednávka→SPAYD+QR png→confirm→paid→issue před pickup=400→pickup(asset loaned)→
+    issue OK→return(kauce 800/1000, asset available)→complete→neplatný přechod=400→issue v attention).
+  - **Další:** **F4** – Adapter B (Stripe Connect: Express účty, application_fee, payouty), KYC přes
+    Stripe, kauce jako předautorizace karty, oboustranné hodnocení (EPIC-10 reputace), moderace
+    inzerátů, nový ADR „marketplace-payments". Drobné follow-upy: e-mailové notifikace (platba/stav),
+    per-listing verification-level policy gate, foto při vrácení v marketplace toku.
 
 ## Předchozí session
 - **Datum:** 2026-08-10
