@@ -9,10 +9,11 @@ import { ActionForm } from '../../action-form';
 import { ActionButton } from '../../action-button';
 import { MovementForm } from '../movement-form';
 import { PhotoGallery } from '../photo-gallery';
+import { AssetManuals } from '../asset-manuals';
 import { MediaTimeline } from '../media-timeline';
 import { ReturnForm } from '../return-form';
 import { PrintLabelButton } from '../printing/print-label-button';
-import type { AssetMedia, Tenant, Observation } from '../../../lib/types';
+import type { AssetMedia, AssetManual, Tenant, Observation } from '../../../lib/types';
 import {
   addCarrierToObject,
   adoptCarrier,
@@ -86,6 +87,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
   ]);
   const issues = await apiFetch<Issue[]>(`/assets/${id}/issues`);
   const media = await apiFetch<AssetMedia[]>(`/assets/${id}/media`);
+  const manuals = await apiFetch<AssetManual[]>(`/assets/${id}/manuals`).catch(() => []);
   const observations = await apiFetch<Observation[]>(`/assets/${id}/observations`).catch(() => []);
   const tenant = await apiFetch<Tenant>('/tenant');
   const perms = await getMyPermissions();
@@ -224,6 +226,13 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
         description="Fotodokumentace stavu v čase – porovnání při půjčení a vrácení"
       >
         <MediaTimeline assetId={asset.id} media={media} />
+      </Section>
+
+      <Section
+        title="Manuály a návody"
+        description="Dokumentace k obsluze – nahraj soubor, vyfoť kamerou, nebo nech AI najít oficiální manuál"
+      >
+        <AssetManuals assetId={asset.id} manuals={manuals} canManage={canManagePhotos} />
       </Section>
 
       {canReturn && (

@@ -67,6 +67,19 @@ export interface AssetMedia {
   createdAt: string;
 }
 
+export interface AssetManual {
+  id: string;
+  assetId: string;
+  title: string;
+  fileKey: string | null;
+  mime: string | null;
+  sizeBytes: number | string | null;
+  source: 'upload' | 'camera' | 'ai';
+  sourceUrl: string | null;
+  status: 'ready' | 'fetching' | 'failed';
+  createdAt: string;
+}
+
 export interface Observation {
   id: string;
   source: string;

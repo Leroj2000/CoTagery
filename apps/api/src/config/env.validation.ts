@@ -33,6 +33,17 @@ export const envSchema = z.object({
   SMTP_FROM: z.string().optional(),
   // Sdílené tajemství pro ověření podpisu PSP webhooků (EPIC-17, stub PSP).
   BILLING_WEBHOOK_SECRET: z.string().min(8).default('whsec_stub'),
+  // Volitelný webhook (n8n) pro AI stažení manuálu k položce. Když prázdné,
+  // endpoint fetch-ai vrátí „není nakonfigurováno" – upload/kamera fungují dál.
+  MANUAL_FETCH_WEBHOOK_URL: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().url().optional(),
+  ),
+  // Volitelné sdílené tajemství pro podpis webhooku i ověření callbacku (HMAC).
+  MANUAL_FETCH_WEBHOOK_SECRET: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().optional(),
+  ),
 });
 
 export type Env = z.infer<typeof envSchema>;
