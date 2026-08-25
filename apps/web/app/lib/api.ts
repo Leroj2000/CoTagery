@@ -25,9 +25,23 @@ export interface UnassignedScan {
   message: string;
 }
 
+export interface AssetScan {
+  type: 'asset';
+  asset: {
+    name: string;
+    status: string;
+    holderType: string | null;
+    holderId: string | null;
+    responsiblePersonId: string | null;
+    dueAt: string | null;
+  } | null;
+  actions?: string[];
+}
+
 export type ScanResult =
   | MembershipCardScan
   | ProductScan
+  | AssetScan
   | UnassignedScan
   | Record<string, unknown>;
 

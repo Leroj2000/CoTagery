@@ -1,4 +1,5 @@
 import { Controller, Get, Headers, Ip, Param, Query, Res } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ResolverService } from './resolver.service';
 import { RateLimitService } from './rate-limit.service';
 import { ScanLoggerService } from './scan-logger.service';
@@ -22,6 +23,7 @@ export class ResolverController {
     private readonly scanLogger: ScanLoggerService,
     private readonly registry: ModuleRegistry,
     private readonly tenantContext: TenantContextService,
+    private readonly config: ConfigService,
   ) {}
 
   @Get(':code')
@@ -68,6 +70,10 @@ export class ResolverController {
       return;
     }
 
+    // Chce klient JSON (API/`?format=json`/`Accept: application/json`), nebo je to
+    // prohlížeč (sken telefonem), kterému patří vyrenderovaná karta?
+    const wantsJson = format === 'json' || (accept ?? '').includes('application/json');
+
     // Modulový handler (pokud zaregistrován); jinak default níže.
     const handler = resolution.moduleType ? this.registry.get(resolution.moduleType) : undefined;
     if (handler) {
@@ -92,12 +98,18 @@ export class ResolverController {
         res.redirect(302, response.url);
         return;
       }
+      // Prohlížeč (sken telefonem) → modul-aware karta na webu (`/s/{code}`) místo
+      // syrového JSONu. API klient (`format=json`/`Accept: json`) dostane JSON dál.
+      if (!wantsJson) {
+        const webBase = this.config.get<string>('PUBLIC_WEB_URL') ?? 'http://localhost:3000';
+        res.redirect(302, `${webBase}/s/${encodeURIComponent(code)}`);
+        return;
+      }
       res.status(200).json(response.body ?? {});
       return;
     }
 
-    // Default: JSON (dle Accept/format) nebo redirect na primary_url.
-    const wantsJson = format === 'json' || (accept ?? '').includes('application/json');
+    // Default (bez handleru): JSON (dle Accept/format) nebo redirect na primary_url.
     if (!wantsJson && resolution.primaryUrl) {
       res.redirect(302, resolution.primaryUrl);
       return;

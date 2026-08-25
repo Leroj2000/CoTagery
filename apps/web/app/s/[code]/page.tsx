@@ -4,13 +4,26 @@ import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Loader2, ArrowRight } from 'lucide-react';
 import { Logo } from '../../ui/logo';
-import { fetchScan, type ScanResult, type MembershipCardScan } from '../../lib/api';
+import { fetchScan, type ScanResult, type MembershipCardScan, type AssetScan } from '../../lib/api';
 
 const STATUS_LABELS: Record<string, { label: string; cls: string }> = {
   active: { label: 'Aktivní', cls: 'bg-emerald-400/20 text-emerald-100 ring-emerald-300/30' },
   expired: { label: 'Vypršelo', cls: 'bg-red-400/20 text-red-100 ring-red-300/30' },
   suspended: { label: 'Pozastaveno', cls: 'bg-amber-400/20 text-amber-100 ring-amber-300/30' },
   cancelled: { label: 'Zrušeno', cls: 'bg-white/15 text-white/80 ring-white/20' },
+};
+
+/** Stav položky → český label + barva (veřejná karta po skenu). */
+const ASSET_STATUS: Record<string, { label: string; cls: string }> = {
+  available: { label: 'Skladem', cls: 'bg-emerald-50 text-emerald-700' },
+  assigned: { label: 'Přiděleno', cls: 'bg-sky-50 text-sky-700' },
+  loaned: { label: 'Vypůjčeno', cls: 'bg-amber-50 text-amber-700' },
+  reserved: { label: 'Rezervováno', cls: 'bg-amber-50 text-amber-700' },
+  in_transfer: { label: 'Na cestě', cls: 'bg-slate-100 text-slate-600' },
+  service: { label: 'Servis', cls: 'bg-violet-50 text-violet-700' },
+  damaged: { label: 'Poškozeno', cls: 'bg-red-50 text-red-600' },
+  lost: { label: 'Ztraceno', cls: 'bg-red-50 text-red-600' },
+  retired: { label: 'Vyřazeno', cls: 'bg-slate-100 text-slate-500' },
 };
 
 const BENEFIT_LABELS: Record<string, string> = {
@@ -99,6 +112,23 @@ function ScanBody({ code, status, body }: { code: string; status: number; body: 
         <h2 className="text-lg font-semibold text-slate-900">{p?.name ?? 'Produkt'}</h2>
         {p?.brand && <p className="mt-0.5 text-sm text-slate-500">{p.brand}</p>}
         {p?.description && <p className="mt-2 text-sm text-slate-600">{p.description}</p>}
+      </Card>
+    );
+  }
+
+  if ('type' in body && body.type === 'asset') {
+    const a = (body as AssetScan).asset;
+    if (!a) return <Card>Položka nenalezena.</Card>;
+    const st = ASSET_STATUS[a.status] ?? { label: a.status, cls: 'bg-slate-100 text-slate-600' };
+    return (
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-lg font-semibold text-slate-900">{a.name}</h2>
+          <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${st.cls}`}>
+            {st.label}
+          </span>
+        </div>
+        <p className="mt-2 text-xs text-slate-400">Evidováno v Tagery</p>
       </Card>
     );
   }
