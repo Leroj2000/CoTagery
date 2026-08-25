@@ -68,6 +68,8 @@
 ### Fáze 3 – Rozšíření (post-MVP)
 Loyalty, Payment (plná PSP integrace), Inventory, Trace/DPP, GS1 Digital Link, SAML SSO, custom domény, billing tenantů, PWA, veřejné API + webhooky.
 
+- **EPIC-20 PLATFORM-PLANS** ⬜ – SaaS plány firem, entitlementy a limity (config katalog řídí `organization_modules` + vynucení limitů). Návrh: [ADR-0009](../docs/architecture/decisions/0009-platform-plans-entitlements.md); spec: `tasks/EPIC-20-PLATFORM-PLANS/`. Platform-admin vrstva pro přiřazení plánu už hotová.
+
 ## Cross-cutting (průběžně)
 Observability (OpenTelemetry, per-tenant metriky) · i18n (CS/EN) · přístupnost (WCAG 2.1 AA) · bezpečnostní a izolační testy (Stage 04) u každého datového EPICu.
 
