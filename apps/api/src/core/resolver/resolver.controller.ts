@@ -49,15 +49,20 @@ export class ResolverController {
       return;
     }
 
-    // Async ScanEvent pro každý nalezený kód (fire-and-forget – neblokuje odpověď).
-    this.scanLogger.record(resolution, {
-      carrierType: resolution.carrierType,
-      ip,
-      userAgent: userAgent ?? null,
-    });
+    // Async ScanEvent (fire-and-forget). Loguje se v každé terminální větvi KROMĚ
+    // redirectu prohlížeče na `/s/{code}` – ten hned následuje `/s/` fetch přes
+    // `?format=json`, který sken zaznamená (jinak by 1 fyzický sken = 2 eventy).
+    const logScan = (): void => {
+      void this.scanLogger.record(resolution, {
+        carrierType: resolution.carrierType,
+        ip,
+        userAgent: userAgent ?? null,
+      });
+    };
 
     // Nepřiřazený předgenerovaný kód (pool) → výzva k aktivaci.
     if (isUnassigned(resolution)) {
+      logScan();
       res.status(200).json({
         status: 'unassigned',
         message: 'Tento kód zatím není přiřazený.',
@@ -66,6 +71,7 @@ export class ResolverController {
     }
 
     if (!isActiveResolution(resolution)) {
+      logScan();
       res.status(410).json({ error: { code: 'INACTIVE', message: 'Kód není aktivní nebo vypršel' } });
       return;
     }
@@ -95,25 +101,30 @@ export class ResolverController {
         }),
       );
       if (response.kind === 'redirect' && response.url) {
+        logScan();
         res.redirect(302, response.url);
         return;
       }
       // Prohlížeč (sken telefonem) → modul-aware karta na webu (`/s/{code}`) místo
       // syrového JSONu. API klient (`format=json`/`Accept: json`) dostane JSON dál.
+      // Zde ZÁMĚRNĚ NElogujeme – sken zaznamená následný `/s/` fetch (`?format=json`).
       if (!wantsJson) {
         const webBase = this.config.get<string>('PUBLIC_WEB_URL') ?? 'http://localhost:3000';
         res.redirect(302, `${webBase}/s/${encodeURIComponent(code)}`);
         return;
       }
+      logScan();
       res.status(200).json(response.body ?? {});
       return;
     }
 
     // Default (bez handleru): JSON (dle Accept/format) nebo redirect na primary_url.
     if (!wantsJson && resolution.primaryUrl) {
+      logScan();
       res.redirect(302, resolution.primaryUrl);
       return;
     }
+    logScan();
     res.status(200).json({
       object: { id: resolution.objectId, moduleType: resolution.moduleType, slug: resolution.slug },
       carrier: { type: resolution.carrierType },
