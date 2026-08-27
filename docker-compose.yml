@@ -8,9 +8,11 @@
 x-api-env: &api-env
   NODE_ENV: production
   API_PORT: 3001
-  DATABASE_URL: postgres://tagery:tagery@postgres:5432/tagery
-  APP_DATABASE_URL: postgres://tagery_app:tagery_app@postgres:5432/tagery
-  REDIS_URL: redis://redis:6379
+  # Pozor: api je i na síti n8n_default, kde je taky kontejner `postgres` (n8n) →
+  # DB adresujeme jednoznačně názvem kontejneru, ať nekoliduje DNS. Stejně redis.
+  DATABASE_URL: postgres://tagery:tagery@tagery-postgres-1:5432/tagery
+  APP_DATABASE_URL: postgres://tagery_app:tagery_app@tagery-postgres-1:5432/tagery
+  REDIS_URL: redis://tagery-redis-1:6379
   STORAGE_DRIVER: local
   STORAGE_LOCAL_PATH: /app/.storage
   JWT_SECRET: ${JWT_SECRET:-demo-secret-change-me-min-16-chars}
