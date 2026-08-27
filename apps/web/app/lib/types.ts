@@ -77,6 +77,7 @@ export interface AssetManual {
   source: 'upload' | 'camera' | 'ai';
   sourceUrl: string | null;
   status: 'ready' | 'fetching' | 'failed';
+  failureReason: string | null;
   createdAt: string;
 }
 

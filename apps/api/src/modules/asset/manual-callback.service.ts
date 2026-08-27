@@ -18,6 +18,8 @@ interface CallbackEnvelope {
   fileUrl?: string;
   failed?: boolean;
   sourceUrl?: string;
+  /** Volitelný důvod selhání z workflow (jinak API dovodí srozumitelnou hlášku). */
+  reason?: string;
 }
 
 interface ManualLookupRow {
@@ -71,7 +73,7 @@ export class ManualCallbackService {
 
     return this.context.runInTenant(tenantId, async () => {
       if (event.failed) {
-        await this.manuals.markFailed(manualId);
+        await this.manuals.markFailed(manualId, event.reason);
         return { received: true, status: 'failed' };
       }
       if (!event.fileUrl) throw new BadRequestException('Chybí fileUrl nebo failed');

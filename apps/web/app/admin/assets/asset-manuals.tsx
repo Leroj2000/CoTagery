@@ -144,8 +144,11 @@ export function AssetManuals({
                     {SOURCE_LABELS[m.source]}
                     {size ? ` · ${size}` : ''}
                     {m.status === 'fetching' ? ' · stahuji…' : ''}
-                    {m.status === 'failed' ? ' · nenalezeno' : ''}
+                    {m.status === 'failed' && !m.failureReason ? ' · nenalezeno' : ''}
                   </p>
+                  {m.status === 'failed' && m.failureReason && (
+                    <p className="mt-0.5 text-xs text-red-600">{m.failureReason}</p>
+                  )}
                 </div>
                 {m.status === 'fetching' && (
                   <Loader2 size={16} className="animate-spin text-slate-400" />

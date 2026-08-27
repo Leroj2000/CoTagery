@@ -6,7 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 import { TenantContextService } from '../../core/tenancy/tenant-context.service';
 import { STORAGE, type StoragePort } from '../../core/storage/storage.port';
 import { Asset } from './entities/asset.entity';
@@ -47,9 +47,49 @@ export class ManualsService {
     return this.context.manager.getRepository(AssetManual);
   }
 
-  /** Manuály položky, nejnovější první. */
-  list(assetId: string): Promise<AssetManual[]> {
+  /** Jak dlouho smí AI stahování viset ve `fetching`, než ho pojistka překlopí. */
+  private static readonly FETCH_TIMEOUT_MS = 5 * 60 * 1000;
+
+  /** Manuály položky, nejnovější první. Cestou překlopí zaseknuté `fetching`. */
+  async list(assetId: string): Promise<AssetManual[]> {
+    await this.expireStaleFetching(assetId);
     return this.repo().find({ where: { assetId }, order: { createdAt: 'DESC' } });
+  }
+
+  /**
+   * Pojistka: řádky, které visí ve `fetching` déle než timeout (n8n nezavolal
+   * callback – např. workflow spadl bez failed-callbacku), překlopí na `failed`
+   * se srozumitelným důvodem. Volá se lazy při čtení seznamu.
+   */
+  private async expireStaleFetching(assetId: string): Promise<void> {
+    const cutoff = new Date(Date.now() - ManualsService.FETCH_TIMEOUT_MS);
+    const stale = await this.repo().find({
+      where: { assetId, status: 'fetching', createdAt: LessThan(cutoff) },
+    });
+    if (stale.length === 0) return;
+    const asset = await this.context.manager.getRepository(Asset).findOne({ where: { id: assetId } });
+    const reason = this.failureReasonFor(asset, true);
+    for (const m of stale) {
+      m.status = 'failed';
+      m.failureReason = reason;
+    }
+    await this.repo().save(stale);
+  }
+
+  /**
+   * Srozumitelný důvod selhání. Když položce chybí výrobce i model, AI nemá dost
+   * podkladů → to je nejčastější příčina; jinak obecná hláška (příp. timeout).
+   */
+  private failureReasonFor(
+    asset: Pick<Asset, 'manufacturer' | 'model'> | null,
+    timedOut: boolean,
+  ): string {
+    if (!asset?.manufacturer && !asset?.model) {
+      return 'Dostupný manuál nenalezen – o položce je příliš málo detailů (doplňte výrobce a model).';
+    }
+    return timedOut
+      ? 'Stažení manuálu se nezdařilo (vypršel čas).'
+      : 'Dostupný manuál nenalezen.';
   }
 
   /** Upload souboru nebo fotky z kamery (stejný endpoint, jiný `source`). */
@@ -140,6 +180,7 @@ export class ManualsService {
       }
     } catch {
       manual.status = 'failed';
+      manual.failureReason = this.failureReasonFor(asset, false);
       await this.repo().save(manual);
     }
     return { manual, configured: true };
@@ -171,10 +212,14 @@ export class ManualsService {
   }
 
   /** Callback označí stažení jako neúspěšné (nenalezeno). */
-  async markFailed(manualId: string): Promise<void> {
+  async markFailed(manualId: string, reason?: string): Promise<void> {
     const manual = await this.repo().findOne({ where: { id: manualId } });
     if (!manual) throw new NotFoundException('Manuál neexistuje');
+    const asset = await this.context.manager
+      .getRepository(Asset)
+      .findOne({ where: { id: manual.assetId } });
     manual.status = 'failed';
+    manual.failureReason = reason?.trim() || this.failureReasonFor(asset, false);
     await this.repo().save(manual);
   }
 

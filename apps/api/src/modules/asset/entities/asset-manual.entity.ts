@@ -37,4 +37,8 @@ export class AssetManual extends BaseTenantEntity {
   /** Stav: připraveno / probíhá AI stahování / selhalo. */
   @Column({ type: 'text', default: 'ready' })
   status!: 'ready' | 'fetching' | 'failed';
+
+  /** Srozumitelný důvod selhání (např. málo detailů o položce, vypršel čas). */
+  @Column({ type: 'text', name: 'failure_reason', nullable: true })
+  failureReason!: string | null;
 }
