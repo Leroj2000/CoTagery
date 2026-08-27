@@ -44,6 +44,13 @@ export const envSchema = z.object({
     (v) => (v === '' ? undefined : v),
     z.string().optional(),
   ),
+  // Základ URL, na kterou n8n zavolá callback. Když API a n8n běží v oddělených
+  // docker stacích, nastav interní adresu API (např. http://tagery-api-1:3001);
+  // jinak se použije PUBLIC_BASE_URL.
+  MANUAL_CALLBACK_BASE_URL: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().url().optional(),
+  ),
 });
 
 export type Env = z.infer<typeof envSchema>;

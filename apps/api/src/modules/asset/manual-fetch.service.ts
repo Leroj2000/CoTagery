@@ -51,8 +51,13 @@ export class ManualFetchService {
       return { configured: false };
     }
 
+    // Adresa, na kterou n8n zavolá callback. Když API a n8n běží v oddělených
+    // docker stacích, `PUBLIC_BASE_URL` (app.tagery.tech) nemíří na API → použij
+    // interní `MANUAL_CALLBACK_BASE_URL` (např. http://tagery-api-1:3001).
     const callbackBaseUrl =
-      this.config.get<string>('PUBLIC_BASE_URL') ?? 'http://localhost:3001';
+      this.config.get<string>('MANUAL_CALLBACK_BASE_URL') ||
+      this.config.get<string>('PUBLIC_BASE_URL') ||
+      'http://localhost:3001';
     const payload = buildFetchPayload({ ...input, callbackBaseUrl });
     const rawBody = JSON.stringify(payload);
 

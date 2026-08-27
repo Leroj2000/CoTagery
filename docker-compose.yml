@@ -22,6 +22,8 @@ x-api-env: &api-env
   # AI stažení manuálů přes n8n (viz docs/manual-ai-fetch.md). Prázdné → AI cesta vypnutá.
   MANUAL_FETCH_WEBHOOK_URL: ${MANUAL_FETCH_WEBHOOK_URL:-}
   MANUAL_FETCH_WEBHOOK_SECRET: ${MANUAL_FETCH_WEBHOOK_SECRET:-}
+  # Interní adresa API pro callback z n8n (n8n běží v jiném stacku, viz síť n8n_default).
+  MANUAL_CALLBACK_BASE_URL: ${MANUAL_CALLBACK_BASE_URL:-}
   SMTP_HOST: ${SMTP_HOST:-}
   SMTP_PORT: ${SMTP_PORT:-465}
   SMTP_USER: ${SMTP_USER:-}
@@ -79,6 +81,11 @@ services:
     volumes:
       # Perzistentní lokální úložiště médií (fotky věcí) – přežije rebuild/recreate.
       - storage:/app/.storage
+    # Kromě výchozí sítě i síť n8n stacku – kvůli AI stažení manuálů (webhook +
+    # callback jedou interně, ne přes veřejnou doménu). Viz docs/manual-ai-fetch.md.
+    networks:
+      - default
+      - n8n_default
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -106,3 +113,10 @@ services:
 volumes:
   pgdata:
   storage:
+
+networks:
+  # Výchozí síť stacku (tagery_default) – vytvoří compose automaticky.
+  default:
+  # Síť n8n stacku (externí) – kvůli internímu volání webhooku/callbacku AI manuálů.
+  n8n_default:
+    external: true
