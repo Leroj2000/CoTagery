@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import {
   Camera,
   Download,
+  ExternalLink,
   FileText,
   ImageIcon,
   Loader2,
@@ -27,6 +28,15 @@ function fmtSize(bytes: number | string | null): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${Math.round(n / 1024)} kB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** Zkrátí zdroj na doménu (u URL), jinak vrátí původní text zkrácený. */
+function sourceHost(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url.length > 48 ? `${url.slice(0, 48)}…` : url;
+  }
 }
 
 /**
@@ -148,6 +158,18 @@ export function AssetManuals({
                   </p>
                   {m.status === 'failed' && m.failureReason && (
                     <p className="mt-0.5 text-xs text-red-600">{m.failureReason}</p>
+                  )}
+                  {m.sourceUrl && (
+                    <a
+                      href={m.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={m.sourceUrl}
+                      className="mt-0.5 inline-flex max-w-full items-center gap-1 text-xs text-brand-600 hover:underline"
+                    >
+                      <ExternalLink size={12} className="shrink-0" />
+                      <span className="truncate">Zdroj: {sourceHost(m.sourceUrl)}</span>
+                    </a>
                   )}
                 </div>
                 {m.status === 'fetching' && (
