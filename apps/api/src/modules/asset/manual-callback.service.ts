@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { TenantContextService } from '../../core/tenancy/tenant-context.service';
 import { ManualsService } from './manuals.service';
-import { verifyManualSignature } from './manuals.logic';
+import { validateDownloadedManual, verifyManualSignature } from './manuals.logic';
 
 interface CallbackEnvelope {
   manualId?: string;
@@ -78,21 +78,45 @@ export class ManualCallbackService {
       }
       if (!event.fileUrl) throw new BadRequestException('Chybí fileUrl nebo failed');
 
-      const { buffer, mime } = await this.download(event.fileUrl);
+      // Fail-fast: když stažení odkazu selže NEBO to není platné PDF/obrázek
+      // (AI často vrátí odkaz na HTML stránku „ke stažení"), rovnou označ jako
+      // `failed` se srozumitelným důvodem – ať řádek nevisí do timeoutu.
+      let downloaded: { buffer: Buffer; contentType: string | null };
+      try {
+        downloaded = await this.download(event.fileUrl);
+      } catch (err) {
+        const detail = err instanceof Error && err.name === 'AbortError' ? 'příliš pomalý' : 'nedostupný';
+        await this.manuals.markFailed(manualId, `Nalezený odkaz na manuál je ${detail}.`);
+        return { received: true, status: 'failed' };
+      }
+
+      const check = validateDownloadedManual(downloaded.buffer, downloaded.contentType);
+      if ('error' in check) {
+        await this.manuals.markFailed(manualId, `Nalezený odkaz nebyl platný manuál – ${check.error}.`);
+        return { received: true, status: 'failed' };
+      }
+
       await this.manuals.completeFromCallback(manualId, {
-        buffer,
-        mime,
+        buffer: downloaded.buffer,
+        mime: check.mime,
         sourceUrl: event.sourceUrl ?? event.fileUrl,
       });
       return { received: true, status: 'ready' };
     });
   }
 
-  private async download(url: string): Promise<{ buffer: Buffer; mime: string }> {
-    const res = await fetch(url);
-    if (!res.ok) throw new BadRequestException(`Stažení souboru selhalo (${res.status})`);
-    const mime = res.headers.get('content-type')?.split(';')[0]?.trim() ?? 'application/pdf';
-    const buffer = Buffer.from(await res.arrayBuffer());
-    return { buffer, mime };
+  /** Stáhne odkaz s časovým limitem (AI odkaz může být pomalý/nedostupný). */
+  private async download(url: string): Promise<{ buffer: Buffer; contentType: string | null }> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20_000);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const contentType = res.headers.get('content-type');
+      const buffer = Buffer.from(await res.arrayBuffer());
+      return { buffer, contentType };
+    } finally {
+      clearTimeout(timer);
+    }
   }
 }

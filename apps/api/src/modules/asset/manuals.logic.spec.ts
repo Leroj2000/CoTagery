@@ -4,11 +4,36 @@ import {
   isAllowedManualMime,
   normalizeSource,
   signManualPayload,
+  validateDownloadedManual,
   validateManualFile,
   verifyManualSignature,
 } from './manuals.logic';
 
 describe('manuals.logic', () => {
+  describe('validateDownloadedManual', () => {
+    it('přijme skutečné PDF podle magic bytes (i při špatném content-type)', () => {
+      const pdf = Buffer.concat([Buffer.from('%PDF-1.6\n'), Buffer.alloc(100)]);
+      expect(validateDownloadedManual(pdf, 'text/html')).toEqual({ mime: 'application/pdf' });
+    });
+
+    it('odmítne HTML stránku vydávanou za PDF (chybí %PDF)', () => {
+      const html = Buffer.from('<!DOCTYPE html><html>…</html>');
+      const r = validateDownloadedManual(html, 'application/pdf');
+      expect('error' in r).toBe(true);
+    });
+
+    it('přijme obrázek podle content-type', () => {
+      const img = Buffer.alloc(500);
+      expect(validateDownloadedManual(img, 'image/png')).toEqual({ mime: 'image/png' });
+    });
+
+    it('odmítne příliš velký soubor', () => {
+      const big = Buffer.concat([Buffer.from('%PDF-'), Buffer.alloc(MANUAL_MAX_BYTES + 10)]);
+      const r = validateDownloadedManual(big, 'application/pdf');
+      expect('error' in r).toBe(true);
+    });
+  });
+
   describe('isAllowedManualMime', () => {
     it('povolí PDF a obrázky', () => {
       expect(isAllowedManualMime('application/pdf')).toBe(true);

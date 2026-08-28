@@ -23,6 +23,30 @@ export function validateManualFile(mime: string, sizeBytes: number): string | nu
   return null;
 }
 
+/**
+ * Ověří STAŽENÝ obsah manuálu (z AI callbacku). Skutečné PDF pozná podle magic
+ * bytes `%PDF-` (ne podle content-type, který AI/server může nastavit špatně),
+ * obrázek podle content-type. Chrání před tím, že AI vrátí odkaz na HTML stránku
+ * „ke stažení" místo přímého PDF. Vrací `{ mime }` nebo `{ error }`.
+ */
+export function validateDownloadedManual(
+  buffer: Buffer,
+  contentType: string | null,
+): { mime: string } | { error: string } {
+  const isPdf =
+    buffer.length >= 5 && buffer.subarray(0, 5).toString('latin1') === '%PDF-';
+  if (isPdf) {
+    const err = validateManualFile('application/pdf', buffer.length);
+    return err ? { error: err } : { mime: 'application/pdf' };
+  }
+  const ct = (contentType ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
+  if (ct.startsWith('image/')) {
+    const err = validateManualFile(ct, buffer.length);
+    return err ? { error: err } : { mime: ct };
+  }
+  return { error: 'odkaz nevede na přímé PDF ani obrázek (nejspíš webová stránka)' };
+}
+
 /** Odvodí zdroj manuálu z volitelného vstupu (default upload). */
 export function normalizeSource(raw: string | undefined): 'upload' | 'camera' {
   return raw === 'camera' ? 'camera' : 'upload';

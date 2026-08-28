@@ -48,7 +48,7 @@ export class ManualsService {
   }
 
   /** Jak dlouho smí AI stahování viset ve `fetching`, než ho pojistka překlopí. */
-  private static readonly FETCH_TIMEOUT_MS = 5 * 60 * 1000;
+  private static readonly FETCH_TIMEOUT_MS = 2 * 60 * 1000;
 
   /** Manuály položky, nejnovější první. Cestou překlopí zaseknuté `fetching`. */
   async list(assetId: string): Promise<AssetManual[]> {
@@ -149,6 +149,27 @@ export class ManualsService {
     if (!this.fetcher.isConfigured()) {
       // Nezakládej řádek – ať UI neukazuje trvale „hledám".
       return { manual: this.placeholder(assetId, asset), configured: false };
+    }
+
+    // Pre-check: bez výrobce i modelu nemá AI dost podkladů (Perplexity typicky
+    // vrátí „Bad request" / nic) → nevoláme workflow, rovnou `failed` se
+    // srozumitelným důvodem. Rychlejší a spolehlivější než čekat na selhání.
+    if (!asset.manufacturer && !asset.model) {
+      const manual = await this.repo().save(
+        this.repo().create({
+          tenantId: this.context.tenantId,
+          assetId,
+          title: this.deriveTitle(undefined, null, 'ai', asset),
+          fileKey: null,
+          mime: null,
+          sizeBytes: null,
+          source: 'ai',
+          sourceUrl: null,
+          status: 'failed',
+          failureReason: this.failureReasonFor(asset, false),
+        }),
+      );
+      return { manual, configured: true };
     }
 
     const manual = await this.repo().save(
