@@ -10,10 +10,11 @@ import { ActionButton } from '../../action-button';
 import { MovementForm } from '../movement-form';
 import { PhotoGallery } from '../photo-gallery';
 import { AssetManuals } from '../asset-manuals';
+import { AssetSpecs } from '../asset-specs';
 import { MediaTimeline } from '../media-timeline';
 import { ReturnForm } from '../return-form';
 import { PrintLabelButton } from '../printing/print-label-button';
-import type { AssetMedia, AssetManual, Tenant, Observation } from '../../../lib/types';
+import type { AssetMedia, AssetManual, AssetSpec, Tenant, Observation } from '../../../lib/types';
 import {
   addCarrierToObject,
   adoptCarrier,
@@ -88,6 +89,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
   const issues = await apiFetch<Issue[]>(`/assets/${id}/issues`);
   const media = await apiFetch<AssetMedia[]>(`/assets/${id}/media`);
   const manuals = await apiFetch<AssetManual[]>(`/assets/${id}/manuals`).catch(() => []);
+  const spec = await apiFetch<AssetSpec | null>(`/assets/${id}/specs`).catch(() => null);
   const observations = await apiFetch<Observation[]>(`/assets/${id}/observations`).catch(() => []);
   const tenant = await apiFetch<Tenant>('/tenant');
   const perms = await getMyPermissions();
@@ -228,9 +230,11 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
         <MediaTimeline assetId={asset.id} media={media} />
       </Section>
 
+      <AssetSpecs assetId={asset.id} initial={spec} canManage={canManagePhotos} />
+
       <Section
         title="Manuály a návody"
-        description="Dokumentace k obsluze – nahraj soubor, vyfoť kamerou, nebo nech AI najít oficiální manuál"
+        description="Dokumentace k obsluze – nahraj soubor nebo vyfoť kamerou."
       >
         <AssetManuals assetId={asset.id} manuals={manuals} canManage={canManagePhotos} />
       </Section>

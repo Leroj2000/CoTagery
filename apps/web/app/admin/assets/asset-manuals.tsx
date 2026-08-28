@@ -9,7 +9,6 @@ import {
   FileText,
   ImageIcon,
   Loader2,
-  Sparkles,
   Trash2,
   Upload,
 } from 'lucide-react';
@@ -56,7 +55,6 @@ export function AssetManuals({
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [aiInfo, setAiInfo] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
 
@@ -68,7 +66,6 @@ export function AssetManuals({
     if (!file) return;
     setBusy(source);
     setError(null);
-    setAiInfo(null);
     try {
       const fd = new FormData();
       fd.append('file', file);
@@ -92,32 +89,6 @@ export function AssetManuals({
     }
   }
 
-  async function fetchAi(): Promise<void> {
-    setBusy('ai');
-    setError(null);
-    setAiInfo(null);
-    try {
-      const res = await fetch(`/api/asset-manuals/${assetId}/fetch-ai`, { method: 'POST' });
-      const data = (await res.json().catch(() => null)) as {
-        configured?: boolean;
-        status?: string;
-      } | null;
-      if (!res.ok) {
-        setError('Spuštění AI stahování selhalo.');
-        return;
-      }
-      if (data && data.configured === false) {
-        setAiInfo('AI stahování zatím není nakonfigurováno (chybí webhook).');
-        return;
-      }
-      setAiInfo('Hledám oficiální manuál… hotovo se objeví v seznamu.');
-      router.refresh();
-    } catch {
-      setError('Spuštění AI stahování selhalo.');
-    } finally {
-      setBusy(null);
-    }
-  }
 
   async function remove(manualId: string): Promise<void> {
     if (!confirm('Smazat tento manuál?')) return;
@@ -256,27 +227,10 @@ export function AssetManuals({
               />
             </label>
 
-            <button
-              onClick={fetchAi}
-              disabled={anyBusy}
-              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium shadow-sm transition ${
-                anyBusy
-                  ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
-                  : 'border-brand-300 bg-brand-50 text-brand-700 hover:bg-brand-100'
-              }`}
-            >
-              {busy === 'ai' ? (
-                <Loader2 size={15} className="animate-spin" />
-              ) : (
-                <Sparkles size={15} />
-              )}
-              Stáhnout přes AI
-            </button>
           </div>
           <p className="text-xs text-slate-400">
             Podporované soubory: PDF a obrázky. „Vyfotit" na telefonu spustí kameru.
           </p>
-          {aiInfo && <p className="text-xs text-brand-700">{aiInfo}</p>}
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
       )}

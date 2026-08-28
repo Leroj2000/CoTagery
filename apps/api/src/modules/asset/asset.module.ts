@@ -10,6 +10,7 @@ import { Issue } from './entities/issue.entity';
 import { AssetMedia } from './entities/asset-media.entity';
 import { AssetPhoto } from './entities/asset-photo.entity';
 import { AssetManual } from './entities/asset-manual.entity';
+import { AssetSpec } from './entities/asset-spec.entity';
 import { AssetObservation } from './entities/asset-observation.entity';
 import { Tenant } from '../../core/domain/entities/tenant.entity';
 import { AssetService } from './asset.service';
@@ -18,6 +19,8 @@ import { MediaService } from './media.service';
 import { ManualsService } from './manuals.service';
 import { ManualFetchService } from './manual-fetch.service';
 import { ManualCallbackService } from './manual-callback.service';
+import { SpecsService } from './specs.service';
+import { SpecCallbackService } from './spec-callback.service';
 import { AssetController } from './asset.controller';
 import { ScanController } from './scan.controller';
 import { ReservationsController } from './reservations.controller';
@@ -25,6 +28,8 @@ import { CategoriesController } from './categories.controller';
 import { MediaController } from './media.controller';
 import { ManualsController } from './manuals.controller';
 import { ManualCallbackController } from './manual-callback.controller';
+import { SpecsController } from './specs.controller';
+import { SpecCallbackController } from './spec-callback.controller';
 import { AssetHandler } from './asset.handler';
 
 /**
@@ -44,6 +49,7 @@ import { AssetHandler } from './asset.handler';
       AssetMedia,
       AssetPhoto,
       AssetManual,
+      AssetSpec,
       AssetObservation,
       Tenant,
     ]),
@@ -57,6 +63,8 @@ import { AssetHandler } from './asset.handler';
     MediaController,
     ManualsController,
     ManualCallbackController,
+    SpecsController,
+    SpecCallbackController,
   ],
   providers: [
     AssetService,
@@ -65,6 +73,8 @@ import { AssetHandler } from './asset.handler';
     ManualsService,
     ManualFetchService,
     ManualCallbackService,
+    SpecsService,
+    SpecCallbackService,
     AssetHandler,
   ],
   exports: [AssetService],

@@ -81,6 +81,20 @@ export interface AssetManual {
   createdAt: string;
 }
 
+export interface AssetSpecItem {
+  label: string;
+  value: string;
+}
+
+export interface AssetSpec {
+  id: string;
+  assetId: string;
+  specs: AssetSpecItem[] | null;
+  sourceUrl: string | null;
+  status: 'fetching' | 'ready' | 'failed';
+  failureReason: string | null;
+}
+
 export interface Observation {
   id: string;
   source: string;

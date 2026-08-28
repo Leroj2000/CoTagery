@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { buildFetchPayload, signManualPayload } from './manuals.logic';
+import { buildSpecPayload } from './specs.logic';
 
 /** Výsledek pokusu o spuštění AI stažení manuálu. */
 export interface FetchDispatchResult {
@@ -69,6 +70,38 @@ export class ManualFetchService {
       await fetch(hook, { method: 'POST', headers, body: rawBody });
     } catch (err) {
       this.logger.error(`Odeslání manual-fetch webhooku selhalo: ${String(err)}`);
+      throw err;
+    }
+    return { configured: true };
+  }
+
+  /** Spustí AI dohledání technických specifikací (stejný webhook, jiný payload). */
+  async dispatchSpec(input: {
+    specId: string;
+    assetId: string;
+    tenantId: string;
+    name: string;
+    manufacturer?: string | null;
+    model?: string | null;
+  }): Promise<FetchDispatchResult> {
+    const hook = this.config.get<string>('MANUAL_FETCH_WEBHOOK_URL');
+    if (!hook) return { configured: false };
+
+    const callbackBaseUrl =
+      this.config.get<string>('MANUAL_CALLBACK_BASE_URL') ||
+      this.config.get<string>('PUBLIC_BASE_URL') ||
+      'http://localhost:3001';
+    const payload = buildSpecPayload({ ...input, callbackBaseUrl });
+    const rawBody = JSON.stringify(payload);
+
+    const headers: Record<string, string> = { 'content-type': 'application/json' };
+    const secret = this.config.get<string>('MANUAL_FETCH_WEBHOOK_SECRET');
+    if (secret) headers['x-manual-signature'] = signManualPayload(rawBody, secret);
+
+    try {
+      await fetch(hook, { method: 'POST', headers, body: rawBody });
+    } catch (err) {
+      this.logger.error(`Odeslání spec-fetch webhooku selhalo: ${String(err)}`);
       throw err;
     }
     return { configured: true };
