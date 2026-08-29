@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { Package, AlertTriangle } from 'lucide-react';
 import { apiFetch } from '../../lib/server-api';
 import type { Asset, Person, Location, Category } from '../../lib/types';
-import { PageHeader, Section } from '../ui';
-import { AssetForm } from './asset-form';
+import { PageHeader } from '../ui';
+import { NewAssetPanel } from './new-asset';
 import { CsvTools } from './csv-tools';
 import { AssetsExplorer } from './assets-explorer';
 
@@ -72,19 +72,13 @@ export default async function AssetsPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <Section title="Nová položka">
-          <AssetForm categories={categoryOptions} locations={locationOptions} />
-        </Section>
-        <Section title="Import / export CSV" description="Hromadné nahrání a stažení položek">
-          <CsvTools />
-        </Section>
-      </div>
+      <NewAssetPanel categories={categoryOptions} locations={locationOptions} />
 
       <AssetsExplorer
         assets={assets}
         categoryNames={categoryNames}
         locations={locations.map((l) => ({ id: l.id, name: l.name }))}
+        actions={<CsvTools />}
       />
     </div>
   );

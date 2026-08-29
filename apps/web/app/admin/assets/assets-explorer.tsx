@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Search, SlidersHorizontal, X, ChevronDown, Check } from 'lucide-react';
@@ -105,10 +105,12 @@ export function AssetsExplorer({
   assets,
   categoryNames,
   locations,
+  actions,
 }: {
   assets: Asset[];
   categoryNames: string[];
   locations: { id: string; name: string }[];
+  actions?: ReactNode;
 }) {
   const [q, setQ] = useState('');
   const [cats, setCats] = useState<Set<string>>(new Set());
@@ -158,6 +160,12 @@ export function AssetsExplorer({
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card sm:p-5">
+      {actions && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <h3 className="text-sm font-semibold text-slate-700">Položky</h3>
+          {actions}
+        </div>
+      )}
       {/* Řádek: hledání + přepínač filtrů na mobilu */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">

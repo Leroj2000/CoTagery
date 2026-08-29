@@ -19,49 +19,40 @@ export function CsvTools() {
     if (csvRef.current) csvRef.current.value = text;
   }
 
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <a
-          href="/api/assets-export"
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-        >
-          <Download size={15} /> Export CSV
-        </a>
-      </div>
+  const btn =
+    'inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50';
 
-      <form action={action} className="flex flex-col gap-3">
-        <input ref={csvRef} type="hidden" name="csv" />
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
-            <Upload size={15} /> Vybrat CSV…
-            <input type="file" accept=".csv,text/csv" onChange={onFile} className="hidden" />
-          </label>
-          {fileName && <span className="text-xs text-slate-500">{fileName}</span>}
-          <button
-            type="submit"
-            disabled={pending || !fileName}
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-40"
-          >
-            {pending && <Loader2 size={14} className="animate-spin" />}
-            {pending ? 'Importuji…' : 'Importovat'}
-          </button>
-        </div>
-        <p className="text-xs text-slate-400">
-          Sloupce: name (povinné), category, manufacturer, model, serialNumber, inventoryNumber,
-          homeLocation. Kategorie a místa se dohledají podle názvu nebo založí.
-        </p>
-        {state?.error && (
-          <p className="flex items-center gap-1.5 text-sm text-red-600">
-            <AlertCircle size={15} /> {state.error}
-          </p>
-        )}
-        {state?.ok && (
-          <p className="flex items-center gap-1.5 text-sm text-emerald-600">
-            <CheckCircle2 size={15} /> {state.message}
-          </p>
-        )}
-      </form>
-    </div>
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-2">
+      <input ref={csvRef} type="hidden" name="csv" />
+      <a href="/api/assets-export" className={btn}>
+        <Download size={15} /> Export CSV
+      </a>
+      <label
+        className={`cursor-pointer ${btn}`}
+        title="Sloupce: name (povinné), category, manufacturer, model, serialNumber, inventoryNumber, homeLocation. Kategorie a místa se dohledají podle názvu nebo založí."
+      >
+        <Upload size={15} /> {fileName || 'Vybrat CSV…'}
+        <input type="file" accept=".csv,text/csv" onChange={onFile} className="hidden" />
+      </label>
+      <button
+        type="submit"
+        disabled={pending || !fileName}
+        className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-40"
+      >
+        {pending && <Loader2 size={14} className="animate-spin" />}
+        {pending ? 'Importuji…' : 'Import CSV'}
+      </button>
+      {state?.error && (
+        <span className="flex items-center gap-1 text-xs text-red-600">
+          <AlertCircle size={13} /> {state.error}
+        </span>
+      )}
+      {state?.ok && (
+        <span className="flex items-center gap-1 text-xs text-emerald-600">
+          <CheckCircle2 size={13} /> {state.message}
+        </span>
+      )}
+    </form>
   );
 }
