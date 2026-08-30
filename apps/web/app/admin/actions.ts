@@ -361,19 +361,63 @@ export async function createAsset(_p: ActionState, fd: FormData): Promise<Action
   if (categoryId === '__new__') {
     categoryId = newCategory ? ((await findOrCreateCategory(newCategory)) ?? '') : '';
   }
-  return run(
-    '/assets',
-    {
-      name: str(fd, 'name'),
-      categoryId: categoryId || undefined,
-      manufacturer: str(fd, 'manufacturer') || undefined,
-      serialNumber: str(fd, 'serialNumber') || undefined,
-      homeLocationId: str(fd, 'homeLocationId') || undefined,
-      canContainAssets: str(fd, 'canContainAssets') === 'true',
-    },
-    '/admin/assets',
-    'Položka vytvořena.',
-  );
+
+  const idMode = str(fd, 'idMode'); // '' | 'generate' | 'adopt'
+  const carrierType = str(fd, 'carrierType') || 'qr';
+
+  try {
+    // 1) Vytvoř položku (vrací digital_object_id pro případný identifikátor).
+    const asset = await apiFetch<{ id: string; digitalObjectId: string }>('/assets', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: str(fd, 'name'),
+        categoryId: categoryId || undefined,
+        manufacturer: str(fd, 'manufacturer') || undefined,
+        serialNumber: str(fd, 'serialNumber') || undefined,
+        homeLocationId: str(fd, 'homeLocationId') || undefined,
+        canContainAssets: str(fd, 'canContainAssets') === 'true',
+      }),
+    });
+
+    // 2) Volitelný identifikátor – vygenerovat nový, nebo adoptovat vlastní kód.
+    //    Selhání identifikátoru nesmí shodit už vytvořenou položku.
+    let extra = '';
+    try {
+      if (idMode === 'generate') {
+        await apiFetch(`/objects/${asset.digitalObjectId}/carriers`, {
+          method: 'POST',
+          body: JSON.stringify({ carrierType }),
+        });
+        extra = ` + ${carrierType.toUpperCase()} identifikátor vytvořen`;
+      } else if (idMode === 'adopt') {
+        const externalCode = str(fd, 'externalCode');
+        if (externalCode) {
+          await apiFetch(`/objects/${asset.digitalObjectId}/carriers/adopt`, {
+            method: 'POST',
+            body: JSON.stringify({
+              externalCode,
+              externalScheme: str(fd, 'externalScheme') || undefined,
+              carrierType,
+            }),
+          });
+          extra = ' + vlastní kód adoptován';
+        }
+      }
+    } catch (e) {
+      revalidatePath('/admin/assets');
+      return {
+        ok: true,
+        message: `Položka vytvořena, ale identifikátor se nepodařilo přidat (${
+          e instanceof ApiError ? e.message : 'chyba'
+        }).`,
+      };
+    }
+
+    revalidatePath('/admin/assets');
+    return { ok: true, message: `Položka vytvořena${extra}.` };
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Neočekávaná chyba' };
+  }
 }
 
 // --- Servis / revize (§17) ---

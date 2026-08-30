@@ -27,6 +27,7 @@ export function AssetForm({
 }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(createAsset, null);
   const [category, setCategory] = useState('');
+  const [idMode, setIdMode] = useState('');
 
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -80,6 +81,60 @@ export function AssetForm({
             <option value="true">Ano (dodávka, kufr…)</option>
           </select>
         </Field>
+      </div>
+
+      {/* Identifikátor (QR/NFC) rovnou při vytvoření – volitelné. */}
+      <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Identifikátor">
+            <select
+              name="idMode"
+              value={idMode}
+              onChange={(e) => setIdMode(e.target.value)}
+              className={inputCls}
+            >
+              <option value="">— nepřidávat —</option>
+              <option value="generate">Vygenerovat nový</option>
+              <option value="adopt">Adoptovat vlastní kód</option>
+            </select>
+          </Field>
+
+          {idMode !== '' && (
+            <Field label="Typ">
+              <select name="carrierType" className={inputCls} defaultValue="qr">
+                <option value="qr">QR kód</option>
+                <option value="nfc">NFC</option>
+              </select>
+            </Field>
+          )}
+
+          {idMode === 'adopt' && (
+            <>
+              <Field label="Externí kód" required>
+                <input
+                  name="externalCode"
+                  required
+                  placeholder="EAN / URL / vlastní kód"
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Typ kódu">
+                <select name="externalScheme" className={inputCls} defaultValue="">
+                  <option value="">— automaticky —</option>
+                  <option value="ean13">EAN-13</option>
+                  <option value="url">URL</option>
+                  <option value="custom">Vlastní</option>
+                </select>
+              </Field>
+            </>
+          )}
+        </div>
+        {idMode === 'adopt' && (
+          <p className="mt-2 text-xs text-slate-400">
+            Uloží cizí kód jako alias rozpoznatelný interním skenerem a vytvoří k němu náš
+            vlastní identifikátor pro veřejný resolver.
+          </p>
+        )}
       </div>
 
       {state?.error && (
