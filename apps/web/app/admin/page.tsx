@@ -1,8 +1,9 @@
 import Link from 'next/link';
-import { Boxes, QrCode, ScanLine, ArrowRight } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { ScanLine, Store, KeyRound, ArrowRight } from 'lucide-react';
 import { getMe, apiFetch } from '../lib/server-api';
 import { NAV_ITEMS } from './nav-items';
-import { Section, StatCard, PageHeader, EmptyState } from './ui';
+import { Section, PageHeader, EmptyState } from './ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,10 +14,56 @@ interface Overview {
   scansByModule: { moduleType: string; count: number }[];
 }
 
-/** Admin dashboard – analytics přehled (EPIC-07) + rozcestník na moduly. */
+/** Stavy objednávek půjčovny, které vyžadují pozornost majitele (badge). */
+const RENTAL_PENDING = new Set(['awaiting_payment', 'paid', 'confirmed', 'picked_up', 'returned']);
+
+/** Velká akční dlaždice na dashboardu (rozcestník na klíčové akce). */
+function ActionTile({
+  href,
+  icon,
+  title,
+  subtitle,
+  badge,
+}: {
+  href: string;
+  icon: ReactNode;
+  title: string;
+  subtitle: string;
+  badge?: number;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group relative flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-card transition hover:border-brand-300 hover:shadow-elevate"
+    >
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 transition group-hover:bg-brand-100">
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-2">
+          <span className="text-base font-semibold text-slate-900">{title}</span>
+          {badge != null && badge > 0 && (
+            <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-xs font-bold text-white">
+              {badge}
+            </span>
+          )}
+        </span>
+        <span className="mt-0.5 block text-sm text-slate-500">{subtitle}</span>
+      </span>
+      <ArrowRight size={18} className="text-slate-300 transition group-hover:text-brand-500" />
+    </Link>
+  );
+}
+
+/** Admin dashboard – akční dlaždice + analytics přehled (EPIC-07) + rozcestník. */
 export default async function AdminDashboard() {
-  const [me, overview] = await Promise.all([getMe(), apiFetch<Overview>('/analytics/overview')]);
+  const [me, overview, rentalOrders] = await Promise.all([
+    getMe(),
+    apiFetch<Overview>('/analytics/overview'),
+    apiFetch<{ status: string }[]>('/rental-orders').catch(() => [] as { status: string }[]),
+  ]);
   const max = Math.max(...overview.scansByModule.map((x) => x.count), 1);
+  const rentalPending = rentalOrders.filter((o) => RENTAL_PENDING.has(o.status)).length;
 
   return (
     <div className="flex flex-col gap-8">
@@ -26,9 +73,25 @@ export default async function AdminDashboard() {
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Digitální objekty" value={overview.totalObjects} icon={<Boxes size={20} />} />
-        <StatCard label="Identifikátory (QR/NFC)" value={overview.totalCarriers} icon={<QrCode size={20} />} />
-        <StatCard label="Skeny celkem" value={overview.totalScans} icon={<ScanLine size={20} />} />
+        <ActionTile
+          href="/admin/scan"
+          icon={<ScanLine size={26} />}
+          title="Identifikovat"
+          subtitle="Naskenuj QR / kód"
+        />
+        <ActionTile
+          href="/admin/rental"
+          icon={<Store size={26} />}
+          title="Půjčovna"
+          subtitle="Objednávky a výpůjčky"
+          badge={rentalPending}
+        />
+        <ActionTile
+          href="/admin/klicenka"
+          icon={<KeyRound size={26} />}
+          title="Klíčenka"
+          subtitle="Slevové a přístupové kódy"
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
