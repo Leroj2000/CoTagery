@@ -24,6 +24,7 @@ import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { FoundModule } from './modules/found/found.module';
+import { WalletModule } from './modules/wallet/wallet.module';
 import { WebhooksModule } from './core/webhooks/webhooks.module';
 import { HealthModule } from './health/health.module';
 
@@ -59,6 +60,7 @@ import { HealthModule } from './health/health.module';
     PlatformModule,
     InventoryModule,
     FoundModule,
+    WalletModule,
     HealthModule,
   ],
 })

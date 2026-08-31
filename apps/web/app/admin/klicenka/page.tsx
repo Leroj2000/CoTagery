@@ -1,13 +1,22 @@
 import { KeyRound } from 'lucide-react';
+import { apiFetch, getMyPermissions } from '../../lib/server-api';
 import { PageHeader } from '../ui';
+import { KlicenkaClient, type WalletView } from './klicenka-client';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Klíčenka – rychlý přístup ke slevovým a přístupovým kódům (QR / čárový kód / NFC).
- * Zatím kostra; obsah a datový model se dolaďuje dle rozsahu.
+ * Klíčenka – osobní slevové/přístupové kódy uživatele + celofiremní sdílené
+ * (spravuje admin) + agregace nároků z členství. QR / čárový kód / NFC.
  */
-export default function KlicenkaPage() {
+export default async function KlicenkaPage() {
+  const [view, perms] = await Promise.all([
+    apiFetch<WalletView>('/wallet').catch(
+      () => ({ personal: [], shared: [], aggregated: [] }) as WalletView,
+    ),
+    getMyPermissions(),
+  ]);
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -15,14 +24,7 @@ export default function KlicenkaPage() {
         description="Slevové a přístupové kódy po ruce – QR, čárové kódy a NFC."
         icon={<KeyRound size={18} />}
       />
-      <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
-        <KeyRound size={28} className="mx-auto text-slate-300" />
-        <p className="mt-3 text-sm font-medium text-slate-600">Klíčenka se připravuje</p>
-        <p className="mx-auto mt-1 max-w-md text-xs text-slate-400">
-          Tady budou tvoje slevové a přístupové kódy jako QR / čárový kód / NFC, připravené
-          k rychlému ukázání či naskenování. Upřesňujeme rozsah (jaké kódy, odkud).
-        </p>
-      </div>
+      <KlicenkaClient initial={view} canManageShared={perms.has('core.organization.configure')} />
     </div>
   );
 }
