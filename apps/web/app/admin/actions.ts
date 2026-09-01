@@ -198,7 +198,12 @@ export async function updateTenant(_p: ActionState, fd: FormData): Promise<Actio
   if (maxMedia && maxMedia > 0) settings.maxMediaPerEvent = maxMedia;
   return run(
     '/tenant',
-    { name: str(fd, 'name'), brandingDomain: str(fd, 'brandingDomain'), settings },
+    {
+      name: str(fd, 'name'),
+      brandingDomain: str(fd, 'brandingDomain'),
+      networkListed: str(fd, 'networkListed') === 'true',
+      settings,
+    },
     '/admin/settings',
     'Nastavení uloženo.',
     'PATCH',

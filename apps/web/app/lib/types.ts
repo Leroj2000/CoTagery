@@ -354,6 +354,7 @@ export interface Tenant {
   type: string;
   slug: string | null;
   brandingDomain: string | null;
+  networkListed?: boolean;
   settings: Record<string, unknown>;
 }
 

@@ -26,6 +26,7 @@ export class TenantService {
   async update(dto: UpdateTenantDto): Promise<Tenant> {
     const tenant = await this.current();
     if (dto.name !== undefined) tenant.name = dto.name;
+    if (dto.networkListed !== undefined) tenant.networkListed = dto.networkListed;
     if (dto.brandingDomain !== undefined) tenant.brandingDomain = dto.brandingDomain || null;
     // Nastavení se slučují (nepřepisují), aby dílčí změna nesmazala ostatní klíče.
     if (dto.settings !== undefined) tenant.settings = { ...tenant.settings, ...dto.settings };

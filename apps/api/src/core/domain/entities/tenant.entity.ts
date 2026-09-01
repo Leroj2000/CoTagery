@@ -28,6 +28,10 @@ export class Tenant {
   @Column({ type: 'jsonb', name: 'settings_json', default: {} })
   settings!: Record<string, unknown>;
 
+  /** Opt-in viditelnost firmy v síti/discovery nad půjčovnou (EPIC-21). */
+  @Column({ type: 'boolean', name: 'network_listed', default: false })
+  networkListed!: boolean;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt!: Date;
 

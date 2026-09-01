@@ -14,6 +14,7 @@ export default async function SettingsPage() {
     iban?: string;
     accountName?: string;
   };
+  const networkListed = tenant.networkListed === true;
 
   return (
     <div className="flex flex-col gap-6">
@@ -50,6 +51,15 @@ export default async function SettingsPage() {
                 { value: 'true', label: 'Ano' },
               ],
               defaultValue: requireReturnPhoto ? 'true' : 'false',
+            },
+            {
+              name: 'networkListed',
+              label: 'Zobrazovat firmu v síti (discovery půjčovny)',
+              options: [
+                { value: 'false', label: 'Ne' },
+                { value: 'true', label: 'Ano' },
+              ],
+              defaultValue: networkListed ? 'true' : 'false',
             },
           ]}
         />
