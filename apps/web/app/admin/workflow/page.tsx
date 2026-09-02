@@ -22,7 +22,7 @@ export default async function WorkflowPage() {
       />
       <WorkflowClient
         people={people.map((p) => ({ value: p.id, label: p.name }))}
-        locations={locations.map((l) => ({ value: l.id, label: l.name }))}
+        locations={locations.filter((l) => l.cellRow == null).map((l) => ({ value: l.id, label: l.name }))}
         assets={assets.map((a) => ({ id: a.id, name: a.name, status: a.status }))}
       />
     </div>

@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { performAssetMovement } from '../actions';
 import type { ActionState } from '../action-form';
+import { GridCellPicker } from '../locations/grid-cell-picker';
 
 const ACTION_LABELS: Record<string, string> = {
   loan: 'Půjčit',
@@ -31,6 +32,8 @@ const TARGET_KIND: Record<string, 'person' | 'location' | 'both' | 'none'> = {
 interface Opt {
   id: string;
   label: string;
+  /** Místo je regál/skříň s mřížkou → nabídne se podvýběr police. */
+  grid?: boolean;
 }
 
 /** Kontextová akce nad assetem: vybere se typ pohybu → cíl → provede se. */
@@ -50,6 +53,9 @@ export function MovementForm({
     null,
   );
   const [type, setType] = useState(actions[0] ?? '');
+  const [sel, setSel] = useState('');
+  const [cellId, setCellId] = useState('');
+  const [cellLabel, setCellLabel] = useState('');
 
   const kind = TARGET_KIND[type] ?? 'both';
   const targetOptions: { value: string; label: string }[] = [];
@@ -57,6 +63,19 @@ export function MovementForm({
     targetOptions.push(...people.map((p) => ({ value: `person:${p.id}`, label: `👤 ${p.label}` })));
   if (kind === 'location' || kind === 'both')
     targetOptions.push(...locations.map((l) => ({ value: `location:${l.id}`, label: `📍 ${l.label}` })));
+
+  // Vybraný cíl je regál/skříň → nabídni matici polic; cíl se pak stane buňka.
+  const selLoc = sel.startsWith('location:')
+    ? locations.find((l) => l.id === sel.slice('location:'.length))
+    : undefined;
+  const isGrid = selLoc?.grid === true;
+  const finalTarget = isGrid && cellId ? `location:${cellId}` : sel;
+
+  const resetTarget = () => {
+    setSel('');
+    setCellId('');
+    setCellLabel('');
+  };
 
   if (actions.length === 0) {
     return <p className="text-sm text-slate-400">Pro tento stav nejsou dostupné žádné akce.</p>;
@@ -71,7 +90,15 @@ export function MovementForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-slate-600">Akce</label>
-          <select name="type" value={type} onChange={(e) => setType(e.target.value)} className={inputCls}>
+          <select
+            name="type"
+            value={type}
+            onChange={(e) => {
+              setType(e.target.value);
+              resetTarget();
+            }}
+            className={inputCls}
+          >
             {actions.map((a) => (
               <option key={a} value={a}>
                 {ACTION_LABELS[a] ?? a}
@@ -85,7 +112,16 @@ export function MovementForm({
             <label className="text-xs font-medium text-slate-600">
               Komu / kam {type === 'return' || type === 'service_return' ? '(volitelné)' : ''}
             </label>
-            <select name="target" className={inputCls} defaultValue="">
+            <input type="hidden" name="target" value={finalTarget} />
+            <select
+              value={sel}
+              onChange={(e) => {
+                setSel(e.target.value);
+                setCellId('');
+                setCellLabel('');
+              }}
+              className={inputCls}
+            >
               <option value="">
                 {type === 'return' || type === 'service_return' ? '— domů —' : '— vyber —'}
               </option>
@@ -95,6 +131,27 @@ export function MovementForm({
                 </option>
               ))}
             </select>
+            {isGrid && selLoc && (
+              <div className="mt-1 rounded-lg border border-slate-200 bg-slate-50/60 p-2.5">
+                <p className="mb-2 text-xs text-slate-500">
+                  {cellId ? (
+                    <span className="font-medium text-brand-700">
+                      {selLoc.label} › {cellLabel}
+                    </span>
+                  ) : (
+                    'Vyber polici (jinak se uloží celý regál/skříň)'
+                  )}
+                </p>
+                <GridCellPicker
+                  locationId={selLoc.id}
+                  selectedId={cellId}
+                  onPick={(id, lbl) => {
+                    setCellId(id);
+                    setCellLabel(lbl);
+                  }}
+                />
+              </div>
+            )}
           </div>
         )}
 

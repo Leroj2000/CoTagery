@@ -109,7 +109,7 @@ export function AssetsExplorer({
 }: {
   assets: Asset[];
   categoryNames: string[];
-  locations: { id: string; name: string }[];
+  locations: { id: string; name: string; isCell?: boolean }[];
   actions?: ReactNode;
 }) {
   const [q, setQ] = useState('');
@@ -207,11 +207,13 @@ export function AssetsExplorer({
           <span className="text-xs font-medium text-slate-600">Sklad</span>
           <select className={selectCls} value={locationId} onChange={(e) => setLocationId(e.target.value)}>
             <option value="">Všechny sklady</option>
-            {locations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
+            {locations
+              .filter((l) => !l.isCell)
+              .map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
           </select>
         </label>
       </div>

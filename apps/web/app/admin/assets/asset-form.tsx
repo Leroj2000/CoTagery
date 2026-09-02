@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { createAsset } from '../actions';
 import type { ActionState } from '../action-form';
+import { LocationPicker, type LocationOpt } from '../locations/location-picker';
 
 const inputCls =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
@@ -23,7 +24,7 @@ export function AssetForm({
   locations,
 }: {
   categories: Opt[];
-  locations: Opt[];
+  locations: LocationOpt[];
 }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(createAsset, null);
   const [category, setCategory] = useState('');
@@ -66,14 +67,7 @@ export function AssetForm({
           <input name="serialNumber" className={inputCls} />
         </Field>
         <Field label="Patří do (home)">
-          <select name="homeLocationId" className={inputCls} defaultValue="">
-            <option value="">— žádné —</option>
-            {locations.map((l) => (
-              <option key={l.value} value={l.value}>
-                {l.label}
-              </option>
-            ))}
-          </select>
+          <LocationPicker name="homeLocationId" locations={locations} />
         </Field>
         <Field label="Kontejner (může obsahovat položky)">
           <select name="canContainAssets" className={inputCls} defaultValue="false">

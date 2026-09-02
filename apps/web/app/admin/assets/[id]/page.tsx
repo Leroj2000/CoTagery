@@ -105,7 +105,21 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
   const otherActions = actions.filter((a) => a !== 'return');
 
   const personName = new Map(people.map((p) => [p.id, p.name]));
-  const locName = new Map(locations.map((l) => [l.id, l.name]));
+  // Buňku mřížky zobraz jako „Rodič › B2"; ostatní místa názvem.
+  const locById = new Map(locations.map((l) => [l.id, l]));
+  const locName = new Map(
+    locations.map((l): readonly [string, string] => {
+      if (l.cellRow != null && l.parentId) {
+        const parent = locById.get(l.parentId);
+        return [l.id, parent ? `${parent.name} › ${l.name}` : l.name];
+      }
+      return [l.id, l.name];
+    }),
+  );
+  // Místa pro výběr umístění (bez buněk; regál/skříň se rozbalí maticí).
+  const pickLocations = locations
+    .filter((l) => l.cellRow == null)
+    .map((l) => ({ id: l.id, label: l.name, grid: l.type === 'rack' || l.type === 'cabinet' }));
   const assetName = new Map(allAssets.map((a) => [a.id, a.name]));
   // Kandidáti na vložení: nekontejnerové/volné věci mimo tuto věc a její obsah.
   const contentIds = new Set(contents.map((c) => c.id));
@@ -173,7 +187,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
                 defaultValue: asset.homeLocationId ?? '',
                 options: [
                   { value: '', label: '— beze změny —' },
-                  ...locations.map((l) => ({ value: l.id, label: l.name })),
+                  ...pickLocations.map((l) => ({ value: l.id, label: l.label })),
                 ],
               },
             ]}
@@ -266,7 +280,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
             assetId={asset.id}
             actions={otherActions}
             people={people.map((p) => ({ id: p.id, label: p.name }))}
-            locations={locations.map((l) => ({ id: l.id, label: l.name }))}
+            locations={pickLocations}
           />
         </Section>
       )}

@@ -23,7 +23,17 @@ export default async function AssetsPage() {
   const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }));
 
   const personName = new Map(people.map((p) => [p.id, p.name]));
-  const locName = new Map(locations.map((l) => [l.id, l.name]));
+  // Buňku mřížky zobraz jako „Rodič › B2"; ostatní místa názvem.
+  const locById = new Map(locations.map((l) => [l.id, l]));
+  const locName = new Map(
+    locations.map((l): readonly [string, string] => {
+      if (l.cellRow != null && l.parentId) {
+        const parent = locById.get(l.parentId);
+        return [l.id, parent ? `${parent.name} › ${l.name}` : l.name];
+      }
+      return [l.id, l.name];
+    }),
+  );
   const holder = (a: Asset): string => {
     if (!a.currentHolderId) return '—';
     if (a.currentHolderType === 'person') return personName.get(a.currentHolderId) ?? '👤';
@@ -34,7 +44,14 @@ export default async function AssetsPage() {
   const now = Date.now();
   const overdue = assets.filter((a) => a.dueAt && new Date(a.dueAt).getTime() < now && a.status === 'loaned');
 
-  const locationOptions = locations.map((l) => ({ value: l.id, label: l.name }));
+  // Buňky mřížky nejsou v nabídce – regál/skříň se vybere a police se doplní maticí.
+  const locationOptions = locations
+    .filter((l) => l.cellRow == null)
+    .map((l) => ({
+      value: l.id,
+      label: l.name,
+      grid: l.type === 'rack' || l.type === 'cabinet',
+    }));
 
   // Názvy kategorií pro filtr = číselník + volnotextové hodnoty z položek.
   const categoryNames = [
@@ -77,7 +94,11 @@ export default async function AssetsPage() {
       <AssetsExplorer
         assets={assets}
         categoryNames={categoryNames}
-        locations={locations.map((l) => ({ id: l.id, name: l.name }))}
+        locations={locations.map((l) => ({
+          id: l.id,
+          name: locName.get(l.id) ?? l.name,
+          isCell: l.cellRow != null,
+        }))}
         actions={<CsvTools />}
       />
     </div>

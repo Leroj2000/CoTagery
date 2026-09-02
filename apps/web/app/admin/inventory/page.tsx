@@ -32,7 +32,9 @@ export default async function InventoryPage() {
 
   // Subjekt inventury: místo / osoba / kontejner (zakódováno "type:id").
   const subjectOptions = [
-    ...locations.map((l) => ({ value: `location:${l.id}`, label: `📍 ${l.name}` })),
+    ...locations
+      .filter((l) => l.cellRow == null)
+      .map((l) => ({ value: `location:${l.id}`, label: `📍 ${l.name}` })),
     ...people.map((p) => ({ value: `person:${p.id}`, label: `👤 ${p.name}` })),
     ...assets
       .filter((a) => a.canContainAssets)

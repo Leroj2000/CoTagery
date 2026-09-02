@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown, Plus } from 'lucide-react';
 import { AssetForm } from './asset-form';
+import type { LocationOpt } from '../locations/location-picker';
 
 interface Option {
   value: string;
@@ -15,7 +16,7 @@ export function NewAssetPanel({
   locations,
 }: {
   categories: Option[];
-  locations: Option[];
+  locations: LocationOpt[];
 }) {
   const [open, setOpen] = useState(false);
 
