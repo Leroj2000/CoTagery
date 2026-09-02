@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -67,5 +68,12 @@ export class PeopleController {
   async photo(@Param('id', ParseUUIDPipe) id: string): Promise<StreamableFile> {
     const { buffer, mime } = await this.people.getPhotoFile(id);
     return new StreamableFile(buffer, { type: mime });
+  }
+
+  /** Smaže profilovou fotku osoby (soubor + photo_file_key = NULL). */
+  @Delete(':id/photo')
+  @RequirePermission('core.person.manage')
+  deletePhoto(@Param('id', ParseUUIDPipe) id: string): Promise<Person> {
+    return this.people.deletePhoto(id);
   }
 }

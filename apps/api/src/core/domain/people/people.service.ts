@@ -70,6 +70,17 @@ export class PeopleService {
     return saved;
   }
 
+  /** Smaže profilovou fotku osoby (soubor z úložiště + `photo_file_key = NULL`). */
+  async deletePhoto(id: string): Promise<Person> {
+    const person = await this.get(id);
+    const oldKey = person.photoFileKey;
+    if (!oldKey) return person;
+    person.photoFileKey = null;
+    const saved = await this.repo().save(person);
+    await this.storage.del(oldKey).catch(() => undefined);
+    return saved;
+  }
+
   /** Vrátí soubor profilové fotky osoby (respektuje tenant scope přes RLS). */
   async getPhotoFile(id: string): Promise<{ buffer: Buffer; mime: string }> {
     const person = await this.get(id);

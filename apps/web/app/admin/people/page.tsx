@@ -5,6 +5,7 @@ import { PageHeader, Section, EmptyState } from '../ui';
 import { InlineEdit } from '../inline-edit';
 import { updatePerson } from '../actions';
 import { PersonForm } from './person-form';
+import { PersonPhotoEdit } from './person-photo-edit';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,7 +55,8 @@ export default async function PeoplePage() {
                   </p>
                 </div>
                 {canManage && (
-                  <div className="shrink-0">
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <PersonPhotoEdit personId={p.id} hasPhoto={p.photoFileKey != null} />
                     <InlineEdit
                       action={updatePerson}
                       id={p.id}

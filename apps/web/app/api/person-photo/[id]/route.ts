@@ -1,6 +1,6 @@
 import { apiBase, getAccessToken } from '../../../lib/session';
 
-/** BFF proxy profilové fotky osoby – GET streamuje avatar, POST přepošle upload (Bearer). */
+/** BFF proxy profilové fotky osoby – GET stream, POST upload, DELETE smazání (Bearer). */
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -39,6 +39,21 @@ export async function POST(
     method: 'POST',
     headers: { authorization: `Bearer ${token}` },
     body: fwd,
+  });
+  return new Response(res.body, { status: res.status });
+}
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<Response> {
+  const { id } = await params;
+  const token = await getAccessToken();
+  if (!token) return new Response('Unauthorized', { status: 401 });
+
+  const res = await fetch(`${apiBase()}/api/v1/people/${id}/photo`, {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${token}` },
   });
   return new Response(res.body, { status: res.status });
 }
