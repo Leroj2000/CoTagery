@@ -7,6 +7,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -14,7 +15,7 @@ import {
   RenterJwtGuard,
   type RequestRenter,
 } from '../marketplace/renter-jwt.guard';
-import { NetworkService, type FollowedTenant } from './network.service';
+import { NetworkService, type FeedItem, type FollowedTenant } from './network.service';
 
 /**
  * EPIC-21 síť – follow graf nájemce. Vyžaduje renter token (scope='renter').
@@ -24,6 +25,15 @@ import { NetworkService, type FollowedTenant } from './network.service';
 @UseGuards(RenterJwtGuard)
 export class NetworkController {
   constructor(private readonly network: NetworkService) {}
+
+  @Get('feed')
+  feed(
+    @CurrentRenter() renter: RequestRenter,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ): Promise<FeedItem[]> {
+    return this.network.feed(renter.userId, Number(limit) || 30, Number(offset) || 0);
+  }
 
   @Get('follows')
   follows(@CurrentRenter() renter: RequestRenter): Promise<FollowedTenant[]> {

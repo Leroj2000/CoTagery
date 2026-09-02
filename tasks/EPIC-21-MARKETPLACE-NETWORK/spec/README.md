@@ -1,11 +1,16 @@
 # EPIC-21-MARKETPLACE-NETWORK – Síť / discovery nad půjčovnou
 
-## Stav: 🟡 F1 HOTOVO (opt-in + follow graf + renter API, ověřeno e2e) · F2/F3 čeká
+## Stav: 🟡 F1+F2 HOTOVO (opt-in + follow graf + feed, ověřeno e2e) · F3 čeká
 
 **F1 (hotovo):** `tenants.network_listed` (opt-in přepínač v `/admin/settings`); tabulka
 `network_follows` (mimo tenant RLS) + SECURITY DEFINER `network_follow` / `network_unfollow`
 / `network_followed_tenants`; renter API `GET/POST/DELETE /network/follows`. Follow jen na
 firmu opt-in (jinak 404). Modul `apps/api/src/modules/network`.
+
+**F2 (hotovo):** SECURITY DEFINER `network_feed(user, limit, offset)` (publikované inzeráty
+sledovaných opt-in firem, řazeno `published_at DESC`); renter API `GET /network/feed`; web
+stránka `/sit` (feed karet → detail inzerátu na storefrontu) + křížový odkaz z
+`/najem/moje-vypujcky`. Ověřeno e2e: prázdno bez follow → 2 inzeráty po follow.
 
 Sociální/discovery vrstva nad marketplace: **účet nájemce sleduje firmy (tenanty)** a
 dostává feed jejich publikovaných inzerátů. Bez samostatného ADR – řídí se **ADR-0002**

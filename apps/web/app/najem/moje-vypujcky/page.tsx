@@ -65,7 +65,15 @@ export default async function MyRentalsPage() {
             <h1 className="text-xl font-semibold tracking-tight text-slate-900">Moje výpůjčky</h1>
             <p className="mt-0.5 text-sm text-slate-500">{renter.name} · {renter.email}</p>
           </div>
-          <RenterLogoutButton />
+          <div className="flex items-center gap-2">
+            <Link
+              href="/sit"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Síť
+            </Link>
+            <RenterLogoutButton />
+          </div>
         </div>
       </header>
 

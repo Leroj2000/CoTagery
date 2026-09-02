@@ -11,6 +11,24 @@ export interface FollowedTenant {
   followedAt: string;
 }
 
+/** Položka feedu – publikovaný inzerát sledované firmy. */
+export interface FeedItem {
+  listingId: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  currency: string;
+  pricePerDay: string;
+  depositAmount: string;
+  pickup: string | null;
+  assetName: string;
+  photoCount: number;
+  tenantId: string;
+  tenantName: string;
+  tenantSlug: string | null;
+  publishedAt: string | null;
+}
+
 /**
  * EPIC-21 síť/discovery. Nájemce běží MIMO tenant kontext (renter guard nenastaví
  * request.user) → veškeré čtení/zápis jde přes SECURITY DEFINER funkce nad
@@ -31,6 +49,36 @@ export class NetworkService {
 
   async unfollow(userId: string, tenantId: string): Promise<void> {
     await this.dataSource.query(`SELECT network_unfollow($1, $2)`, [userId, tenantId]);
+  }
+
+  /** Feed publikovaných inzerátů sledovaných opt-in firem (stránkovaný). */
+  async feed(userId: string, limit = 30, offset = 0): Promise<FeedItem[]> {
+    const rows = (await this.dataSource.query(`SELECT * FROM network_feed($1, $2, $3)`, [
+      userId,
+      Math.min(Math.max(limit, 1), 60),
+      Math.max(offset, 0),
+    ])) as Record<string, unknown>[];
+    return rows.map((r) => ({
+      listingId: String(r.listing_id),
+      slug: String(r.slug),
+      title: String(r.title),
+      description: (r.description as string | null) ?? null,
+      currency: String(r.currency),
+      pricePerDay: String(r.price_per_day),
+      depositAmount: String(r.deposit_amount),
+      pickup: (r.pickup as string | null) ?? null,
+      assetName: String(r.asset_name),
+      photoCount: Number(r.photo_count ?? 0),
+      tenantId: String(r.tenant_id),
+      tenantName: String(r.tenant_name),
+      tenantSlug: (r.tenant_slug as string | null) ?? null,
+      publishedAt:
+        r.published_at instanceof Date
+          ? r.published_at.toISOString()
+          : r.published_at
+            ? String(r.published_at)
+            : null,
+    }));
   }
 
   async followed(userId: string): Promise<FollowedTenant[]> {
