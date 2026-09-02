@@ -120,6 +120,7 @@ export interface Person {
   email: string | null;
   phone: string | null;
   company: string | null;
+  photoFileKey: string | null;
 }
 
 export interface Issue {

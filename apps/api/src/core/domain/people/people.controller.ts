@@ -1,10 +1,29 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  StreamableFile,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../rbac/permissions.guard';
 import { RequirePermission } from '../../rbac/require-permission.decorator';
 import { PeopleService } from './people.service';
 import { CreatePersonDto, UpdatePersonDto } from './dto/people.dto';
 import type { Person } from '../entities/person.entity';
+
+interface UploadedFileLike {
+  buffer: Buffer;
+  mimetype: string;
+}
 
 /** Osoby (Party) – lidé bez nutnosti účtu (dokument §12). */
 @Controller('people')
@@ -27,5 +46,26 @@ export class PeopleController {
   @RequirePermission('core.person.manage')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdatePersonDto): Promise<Person> {
     return this.people.update(id, dto);
+  }
+
+  // --- Profilová fotka (avatar) ---
+
+  /** Nahraje/nahradí profilovou fotku osoby (multipart, pole „file"). */
+  @Post(':id/photo')
+  @RequirePermission('core.person.manage')
+  @UseInterceptors(FileInterceptor('file'))
+  async setPhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file?: UploadedFileLike,
+  ): Promise<Person> {
+    if (!file) throw new BadRequestException('Chybí soubor (pole "file")');
+    return this.people.setPhoto(id, file.buffer, file.mimetype);
+  }
+
+  /** Vrátí soubor profilové fotky osoby (tenant-scoped přes RLS). */
+  @Get(':id/photo')
+  async photo(@Param('id', ParseUUIDPipe) id: string): Promise<StreamableFile> {
+    const { buffer, mime } = await this.people.getPhotoFile(id);
+    return new StreamableFile(buffer, { type: mime });
   }
 }

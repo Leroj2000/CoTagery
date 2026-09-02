@@ -1,10 +1,10 @@
-import { Contact } from 'lucide-react';
+import { Contact, UserRound } from 'lucide-react';
 import { apiFetch, getMyPermissions } from '../../lib/server-api';
 import type { Person } from '../../lib/types';
 import { PageHeader, Section, EmptyState } from '../ui';
-import { ActionForm } from '../action-form';
 import { InlineEdit } from '../inline-edit';
-import { createPerson, updatePerson } from '../actions';
+import { updatePerson } from '../actions';
+import { PersonForm } from './person-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,16 +22,7 @@ export default async function PeoplePage() {
 
       {canManage && (
         <Section title="Nová osoba">
-          <ActionForm
-            action={createPerson}
-            submitLabel="Vytvořit osobu"
-            fields={[
-              { name: 'name', label: 'Jméno', required: true },
-              { name: 'email', label: 'E-mail', type: 'email' },
-              { name: 'phone', label: 'Telefon' },
-              { name: 'company', label: 'Firma' },
-            ]}
-          />
+          <PersonForm />
         </Section>
       )}
 
@@ -45,6 +36,17 @@ export default async function PeoplePage() {
                 key={p.id}
                 className="flex flex-col gap-2 rounded-xl border border-slate-200 p-3 sm:flex-row sm:items-center"
               >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-slate-400">
+                  {p.photoFileKey ? (
+                    <img
+                      src={`/api/person-photo/${p.id}`}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <UserRound size={20} />
+                  )}
+                </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-slate-800">{p.name}</p>
                   <p className="truncate text-xs text-slate-500">

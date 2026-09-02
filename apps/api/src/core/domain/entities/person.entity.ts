@@ -24,4 +24,8 @@ export class Person extends BaseTenantEntity {
   /** Volitelná vazba na uživatelský účet (má-li osoba login). */
   @Column({ type: 'uuid', name: 'user_id', nullable: true })
   userId!: string | null;
+
+  /** Klíč profilové fotky (avatar) v úložišti; null = bez fotky. */
+  @Column({ type: 'text', name: 'photo_file_key', nullable: true })
+  photoFileKey!: string | null;
 }
