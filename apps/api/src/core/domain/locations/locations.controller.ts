@@ -2,9 +2,14 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } f
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../rbac/permissions.guard';
 import { RequirePermission } from '../../rbac/require-permission.decorator';
-import { LocationsService } from './locations.service';
+import {
+  LocationsService,
+  type CellAsset,
+  type GridView,
+} from './locations.service';
 import { CreateLocationDto } from './dto/create-location.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
+import { GenerateGridDto } from './dto/grid.dto';
 import type { Location } from '../entities/location.entity';
 
 @Controller('locations')
@@ -32,5 +37,24 @@ export class LocationsController {
   @RequirePermission('core.location.create')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateLocationDto): Promise<Location> {
     return this.locations.update(id, dto);
+  }
+
+  @Get(':id/grid')
+  grid(@Param('id', ParseUUIDPipe) id: string): Promise<GridView> {
+    return this.locations.getGrid(id);
+  }
+
+  @Post(':id/grid')
+  @RequirePermission('core.location.create')
+  generateGrid(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: GenerateGridDto,
+  ): Promise<GridView> {
+    return this.locations.generateGrid(id, dto);
+  }
+
+  @Get(':id/assets')
+  cellAssets(@Param('id', ParseUUIDPipe) id: string): Promise<CellAsset[]> {
+    return this.locations.cellAssets(id);
   }
 }

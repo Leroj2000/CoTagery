@@ -173,6 +173,10 @@ export interface Location {
   type: string;
   address: string | null;
   parentId: string | null;
+  gridRows?: number | null;
+  gridCols?: number | null;
+  cellRow?: number | null;
+  cellCol?: number | null;
 }
 
 export interface InventoryCheck {
