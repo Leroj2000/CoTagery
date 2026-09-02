@@ -1,6 +1,25 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiBase } from '../../lib/session';
+import { FollowButton } from './follow-button';
+
+interface TenantProfile {
+  tenantId: string;
+  name: string;
+  slug: string | null;
+  networkListed: boolean;
+  followerCount: number;
+  listingCount: number;
+}
+
+async function loadProfile(tenant: string): Promise<TenantProfile | null> {
+  const res = await fetch(
+    `${apiBase()}/api/v1/network/tenants/${encodeURIComponent(tenant)}`,
+    { cache: 'no-store' },
+  );
+  if (!res.ok) return null;
+  return (await res.json()) as TenantProfile | null;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -36,15 +55,26 @@ export default async function RentalCatalog({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant } = await params;
-  const items = await loadCatalog(tenant);
+  const [items, profile] = await Promise.all([loadCatalog(tenant), loadProfile(tenant)]);
   if (items === null) notFound();
 
   return (
     <main className="min-h-dvh bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Půjčovna</h1>
-          <p className="mt-1 text-sm text-slate-500">Položky k zapůjčení</p>
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+              {profile?.name ?? 'Půjčovna'}
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">Položky k zapůjčení</p>
+          </div>
+          {profile?.networkListed && profile.slug && (
+            <FollowButton
+              tenantId={profile.tenantId}
+              tenantSlug={profile.slug}
+              initialFollowerCount={profile.followerCount}
+            />
+          )}
         </div>
       </header>
 

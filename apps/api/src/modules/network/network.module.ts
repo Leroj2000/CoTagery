@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { NetworkService } from './network.service';
 import { NetworkController } from './network.controller';
+import { NetworkPublicController } from './network-public.controller';
 
 /**
  * EPIC-21 síť/discovery nad půjčovnou. F1: follow graf nájemce (renter-scoped)
@@ -8,7 +9,7 @@ import { NetworkController } from './network.controller';
  * se spravuje přes stávající `PATCH /tenant` (TenantController).
  */
 @Module({
-  controllers: [NetworkController],
+  controllers: [NetworkController, NetworkPublicController],
   providers: [NetworkService],
 })
 export class NetworkModule {}

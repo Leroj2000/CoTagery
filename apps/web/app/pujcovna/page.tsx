@@ -1,89 +1,71 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { apiBase } from '../lib/session';
-import { getRenter, getRenterToken } from '../lib/renter-session';
 
 export const dynamic = 'force-dynamic';
 
-/** Položka feedu sítě (publikovaný inzerát sledované firmy). */
 interface FeedItem {
   listingId: string;
   slug: string;
   title: string;
-  description: string | null;
   currency: string;
   pricePerDay: string;
-  depositAmount: string;
-  pickup: string | null;
   assetName: string;
   photoCount: number;
-  tenantId: string;
   tenantName: string;
   tenantSlug: string | null;
-  publishedAt: string | null;
 }
 
 function money(v: string, currency: string): string {
   return `${Number(v).toLocaleString('cs-CZ', { maximumFractionDigits: 2 })} ${currency}`;
 }
 
-async function loadFeed(): Promise<FeedItem[]> {
-  const token = await getRenterToken();
-  if (!token) return [];
-  const res = await fetch(`${apiBase()}/api/v1/network/feed?limit=40`, {
-    headers: { authorization: `Bearer ${token}` },
-    cache: 'no-store',
-  });
+async function loadDiscover(q: string): Promise<FeedItem[]> {
+  const res = await fetch(
+    `${apiBase()}/api/v1/network/discover?q=${encodeURIComponent(q)}&limit=48`,
+    { cache: 'no-store' },
+  );
   if (!res.ok) return [];
   return (await res.json()) as FeedItem[];
 }
 
-export default async function SitPage() {
-  const renter = await getRenter();
-  if (!renter) redirect('/najem/prihlaseni?next=/sit');
-  const items = await loadFeed();
+export default async function DiscoverPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q = '' } = await searchParams;
+  const items = await loadDiscover(q);
 
   return (
     <main className="min-h-dvh bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-6">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Síť</h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Novinky z půjčoven, které sleduješ · {renter.name}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Link
-              href="/pujcovna"
-              className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700"
+        <div className="mx-auto max-w-6xl px-4 py-6">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Objevit půjčovny</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Prohledej nabídku firem zapojených v síti.
+          </p>
+          <form action="/pujcovna" method="get" className="mt-4 flex gap-2">
+            <input
+              name="q"
+              defaultValue={q}
+              placeholder="Hledat položku, kategorii, firmu nebo místo…"
+              className="w-full max-w-lg rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10"
+            />
+            <button
+              type="submit"
+              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700"
             >
-              Objevit
-            </Link>
-            <Link
-              href="/najem/moje-vypujcky"
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              Moje výpůjčky
-            </Link>
-          </div>
+              Hledat
+            </button>
+          </form>
         </div>
       </header>
 
       <div className="mx-auto max-w-6xl px-4 py-8">
         {items.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-            <p className="text-sm font-medium text-slate-600">Ve feedu zatím nic není</p>
-            <p className="mx-auto mt-1 max-w-md text-xs text-slate-400">
-              Až začneš sledovat půjčovny, jejich nabídka se objeví tady.
-            </p>
-            <Link
-              href="/pujcovna"
-              className="mt-4 inline-flex rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700"
-            >
-              Objevit půjčovny
-            </Link>
-          </div>
+          <p className="text-sm text-slate-500">
+            {q ? `Pro „${q}" nic nenalezeno.` : 'Zatím žádné nabídky v síti.'}
+          </p>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((it) => (

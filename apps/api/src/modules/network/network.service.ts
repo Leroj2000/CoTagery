@@ -11,6 +11,16 @@ export interface FollowedTenant {
   followedAt: string;
 }
 
+/** Veřejný profil firmy v síti (hlavička storefrontu). */
+export interface TenantProfile {
+  tenantId: string;
+  name: string;
+  slug: string | null;
+  networkListed: boolean;
+  followerCount: number;
+  listingCount: number;
+}
+
 /** Položka feedu – publikovaný inzerát sledované firmy. */
 export interface FeedItem {
   listingId: string;
@@ -58,27 +68,34 @@ export class NetworkService {
       Math.min(Math.max(limit, 1), 60),
       Math.max(offset, 0),
     ])) as Record<string, unknown>[];
-    return rows.map((r) => ({
-      listingId: String(r.listing_id),
-      slug: String(r.slug),
-      title: String(r.title),
-      description: (r.description as string | null) ?? null,
-      currency: String(r.currency),
-      pricePerDay: String(r.price_per_day),
-      depositAmount: String(r.deposit_amount),
-      pickup: (r.pickup as string | null) ?? null,
-      assetName: String(r.asset_name),
-      photoCount: Number(r.photo_count ?? 0),
+    return rows.map(mapFeedRow);
+  }
+
+  /** Veřejné objevování: publikované inzeráty všech opt-in firem + fulltext. */
+  async discover(query = '', limit = 40, offset = 0): Promise<FeedItem[]> {
+    const rows = (await this.dataSource.query(`SELECT * FROM network_discover($1, $2, $3)`, [
+      query.trim(),
+      Math.min(Math.max(limit, 1), 60),
+      Math.max(offset, 0),
+    ])) as Record<string, unknown>[];
+    return rows.map(mapFeedRow);
+  }
+
+  /** Veřejný profil firmy (pro hlavičku storefrontu + follow tlačítko). */
+  async tenantProfile(slug: string): Promise<TenantProfile | null> {
+    const rows = (await this.dataSource.query(`SELECT * FROM public_tenant_profile($1)`, [
+      slug,
+    ])) as Record<string, unknown>[];
+    const r = rows[0];
+    if (!r) return null;
+    return {
       tenantId: String(r.tenant_id),
-      tenantName: String(r.tenant_name),
-      tenantSlug: (r.tenant_slug as string | null) ?? null,
-      publishedAt:
-        r.published_at instanceof Date
-          ? r.published_at.toISOString()
-          : r.published_at
-            ? String(r.published_at)
-            : null,
-    }));
+      name: String(r.name),
+      slug: (r.slug as string | null) ?? null,
+      networkListed: r.network_listed === true,
+      followerCount: Number(r.follower_count ?? 0),
+      listingCount: Number(r.listing_count ?? 0),
+    };
   }
 
   async followed(userId: string): Promise<FollowedTenant[]> {
@@ -93,4 +110,29 @@ export class NetworkService {
       followedAt: r.followed_at instanceof Date ? r.followed_at.toISOString() : String(r.followed_at),
     }));
   }
+}
+
+/** Řádek z network_feed / network_discover → FeedItem. */
+function mapFeedRow(r: Record<string, unknown>): FeedItem {
+  return {
+    listingId: String(r.listing_id),
+    slug: String(r.slug),
+    title: String(r.title),
+    description: (r.description as string | null) ?? null,
+    currency: String(r.currency),
+    pricePerDay: String(r.price_per_day),
+    depositAmount: String(r.deposit_amount),
+    pickup: (r.pickup as string | null) ?? null,
+    assetName: String(r.asset_name),
+    photoCount: Number(r.photo_count ?? 0),
+    tenantId: String(r.tenant_id),
+    tenantName: String(r.tenant_name),
+    tenantSlug: (r.tenant_slug as string | null) ?? null,
+    publishedAt:
+      r.published_at instanceof Date
+        ? r.published_at.toISOString()
+        : r.published_at
+          ? String(r.published_at)
+          : null,
+  };
 }

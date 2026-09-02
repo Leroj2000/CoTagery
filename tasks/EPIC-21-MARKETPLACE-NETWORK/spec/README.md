@@ -1,6 +1,12 @@
 # EPIC-21-MARKETPLACE-NETWORK – Síť / discovery nad půjčovnou
 
-## Stav: 🟡 F1+F2 HOTOVO (opt-in + follow graf + feed, ověřeno e2e) · F3 čeká
+## Stav: 🟡 F1+F2+F3 HOTOVO (opt-in + follow + feed + objevování, ověřeno e2e) · F4 = post-MVP
+
+**F3 (hotovo):** SECURITY DEFINER `network_discover(q, limit, offset)` (fulltext přes
+název/popis/položku/kategorii/firmu/lokalitu) + `public_tenant_profile(slug)` (opt-in flag,
+počet sledujících, počet inzerátů). Veřejné endpointy `GET /network/discover` a
+`GET /network/tenants/:slug`. Web: discovery index `/pujcovna` s hledáním; follow tlačítko
++ počet sledujících v hlavičce storefrontu `/pujcovna/[tenant]`; „Objevit" z `/sit`.
 
 **F1 (hotovo):** `tenants.network_listed` (opt-in přepínač v `/admin/settings`); tabulka
 `network_follows` (mimo tenant RLS) + SECURITY DEFINER `network_follow` / `network_unfollow`
