@@ -3,13 +3,14 @@
 import { useActionState, useEffect, useState } from 'react';
 import { Pencil, X, Loader2 } from 'lucide-react';
 import type { ActionState } from './action-form';
+import { SelectOptions, type SelectOption } from './select-options';
 
 interface EditField {
   name: string;
   label: string;
   defaultValue?: string;
   type?: 'text' | 'email';
-  options?: { value: string; label: string }[];
+  options?: SelectOption[];
 }
 
 /**
@@ -58,11 +59,7 @@ export function InlineEdit({
               defaultValue={f.defaultValue ?? ''}
               className="rounded border border-slate-300 px-2 py-1 text-xs focus:border-brand-500 focus:outline-none"
             >
-              {f.options.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
+              <SelectOptions options={f.options} />
             </select>
           ) : (
             <input

@@ -10,13 +10,13 @@ import { LocationGrid } from './location-grid';
 export const dynamic = 'force-dynamic';
 
 const LOCATION_TYPES = [
-  { value: 'warehouse', label: 'Sklad' },
-  { value: 'store', label: 'Prodejna' },
-  { value: 'venue', label: 'Místo konání' },
-  { value: 'office', label: 'Kancelář' },
-  { value: 'home', label: 'Domov' },
-  { value: 'rack', label: 'Regál' },
-  { value: 'cabinet', label: 'Skříň' },
+  { value: 'warehouse', label: 'Sklad', group: 'Místa' },
+  { value: 'store', label: 'Prodejna', group: 'Místa' },
+  { value: 'venue', label: 'Místo konání', group: 'Místa' },
+  { value: 'office', label: 'Kancelář', group: 'Místa' },
+  { value: 'home', label: 'Domov', group: 'Místa' },
+  { value: 'rack', label: 'Regál', group: 'Úložné prostory' },
+  { value: 'cabinet', label: 'Skříň', group: 'Úložné prostory' },
 ];
 
 const TYPE_LABEL = new Map(LOCATION_TYPES.map((t) => [t.value, t.label]));

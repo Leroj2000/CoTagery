@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { SelectOptions, type SelectOption } from './select-options';
 
 export type ActionState = { ok?: boolean; error?: string; message?: string } | null;
 export type ServerAction = (prev: ActionState, formData: FormData) => Promise<ActionState>;
@@ -13,7 +14,7 @@ export interface Field {
   required?: boolean;
   placeholder?: string;
   defaultValue?: string;
-  options?: { value: string; label: string }[];
+  options?: SelectOption[];
 }
 
 const inputCls =
@@ -55,11 +56,7 @@ export function ActionForm({
                 defaultValue={f.defaultValue}
                 className={inputCls}
               >
-                {f.options.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
+                <SelectOptions options={f.options} />
               </select>
             ) : (
               <input
