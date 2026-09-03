@@ -2,10 +2,10 @@ import { MapPin } from 'lucide-react';
 import { apiFetch, getMyPermissions } from '../../lib/server-api';
 import type { Asset, Location } from '../../lib/types';
 import { PageHeader, Section, Badge, EmptyState } from '../ui';
-import { ActionForm } from '../action-form';
 import { InlineEdit } from '../inline-edit';
-import { createLocation, updateLocation } from '../actions';
+import { updateLocation } from '../actions';
 import { LocationGrid } from './location-grid';
+import { NewLocationForm } from './new-location-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -113,15 +113,7 @@ export default async function LocationsPage() {
 
       {canManage && (
         <Section title="Nové místo">
-          <ActionForm
-            action={createLocation}
-            submitLabel="Vytvořit místo"
-            fields={[
-              { name: 'name', label: 'Název', required: true, placeholder: 'Sklad Praha' },
-              { name: 'type', label: 'Typ', options: LOCATION_TYPES },
-              { name: 'parentId', label: 'Nadřazené místo', options: parentOptions },
-            ]}
-          />
+          <NewLocationForm parentOptions={parentOptions} />
         </Section>
       )}
 

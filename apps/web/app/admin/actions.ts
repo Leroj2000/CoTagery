@@ -535,16 +535,37 @@ export async function createPerson(_p: ActionState, fd: FormData): Promise<Actio
 }
 
 export async function createLocation(_p: ActionState, fd: FormData): Promise<ActionState> {
-  return run(
-    '/locations',
-    {
-      name: str(fd, 'name'),
-      type: str(fd, 'type') || undefined,
-      parentId: str(fd, 'parentId') || undefined,
-    },
-    '/admin/locations',
-    'Místo vytvořeno.',
-  );
+  const type = str(fd, 'type') || undefined;
+  const gridRows = num(fd, 'gridRows');
+  const gridCols = num(fd, 'gridCols');
+  try {
+    // 1) Vytvoř místo.
+    const loc = await apiFetch<{ id: string }>('/locations', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: str(fd, 'name'),
+        type,
+        parentId: str(fd, 'parentId') || undefined,
+      }),
+    });
+    // 2) Úložný prostor (regál/skříň) se zadanou mřížkou → rovnou vygeneruj buňky.
+    let extra = '';
+    if ((type === 'rack' || type === 'cabinet') && gridRows && gridCols) {
+      try {
+        await apiFetch(`/locations/${loc.id}/grid`, {
+          method: 'POST',
+          body: JSON.stringify({ rows: gridRows, cols: gridCols }),
+        });
+        extra = ` + mřížka ${gridRows}×${gridCols}`;
+      } catch {
+        extra = ' (mřížku se nepodařilo vygenerovat – zkus ji v místě ručně)';
+      }
+    }
+    revalidatePath('/admin/locations');
+    return { ok: true, message: `Místo vytvořeno.${extra}` };
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Neočekávaná chyba' };
+  }
 }
 
 // --- Editace položek (permission-gated) ---
