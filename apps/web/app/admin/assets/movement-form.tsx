@@ -131,27 +131,6 @@ export function MovementForm({
                 </option>
               ))}
             </select>
-            {isGrid && selLoc && (
-              <div className="mt-1 rounded-lg border border-slate-200 bg-slate-50/60 p-2.5">
-                <p className="mb-2 text-xs text-slate-500">
-                  {cellId ? (
-                    <span className="font-medium text-brand-700">
-                      {selLoc.label} › {cellLabel}
-                    </span>
-                  ) : (
-                    'Vyber polici (jinak se uloží celý regál/skříň)'
-                  )}
-                </p>
-                <GridCellPicker
-                  locationId={selLoc.id}
-                  selectedId={cellId}
-                  onPick={(id, lbl) => {
-                    setCellId(id);
-                    setCellLabel(lbl);
-                  }}
-                />
-              </div>
-            )}
           </div>
         )}
 
@@ -177,6 +156,29 @@ export function MovementForm({
           <input name="note" placeholder="volitelně" className={inputCls} />
         </div>
       </div>
+
+      {isGrid && selLoc && (
+        <div className="rounded-xl border border-brand-200 bg-brand-50/40 p-3">
+          <p className="mb-2 text-sm font-medium text-slate-700">
+            Police ve „{selLoc.label}"{' '}
+            {cellId ? (
+              <span className="text-brand-700">→ vybráno {cellLabel}</span>
+            ) : (
+              <span className="font-normal text-slate-500">
+                – vyber polici (jinak se uloží celý regál/skříň)
+              </span>
+            )}
+          </p>
+          <GridCellPicker
+            locationId={selLoc.id}
+            selectedId={cellId}
+            onPick={(id, lbl) => {
+              setCellId(id);
+              setCellLabel(lbl);
+            }}
+          />
+        </div>
+      )}
 
       {state?.error && (
         <p className="flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
