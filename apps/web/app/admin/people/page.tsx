@@ -7,7 +7,7 @@ import { updatePerson } from '../actions';
 import { PersonForm } from './person-form';
 import { PersonPhotoEdit } from './person-photo-edit';
 import { PersonCategoriesManager } from './person-categories-manager';
-import { CategorySelect } from './category-select';
+import { CategoryMultiEdit } from './category-multi-edit';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +16,7 @@ interface Row {
   id: string;
   name: string;
   subtitle: string;
-  categoryId: string | null;
+  categoryIds: string[];
   photoKey?: string | null;
   role?: string;
   person?: Person;
@@ -43,7 +43,7 @@ export default async function PeoplePage() {
         id: p.id,
         name: p.name,
         subtitle: [p.email, p.phone, p.company].filter(Boolean).join(' · ') || '—',
-        categoryId: p.categoryId,
+        categoryIds: p.categoryIds ?? [],
         photoKey: p.photoFileKey,
         person: p,
       }),
@@ -54,7 +54,7 @@ export default async function PeoplePage() {
         id: u.id,
         name: u.name,
         subtitle: u.email,
-        categoryId: u.personCategoryId ?? null,
+        categoryIds: u.categoryIds ?? [],
         role: u.tenantRole,
       }),
     ),
@@ -70,7 +70,7 @@ export default async function PeoplePage() {
 
       {canManage && (
         <Section title="Nová osoba">
-          <PersonForm />
+          <PersonForm categories={categories} />
         </Section>
       )}
 
@@ -106,14 +106,14 @@ export default async function PeoplePage() {
                   <p className="truncate text-xs text-slate-500">{r.subtitle}</p>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
-                  <CategorySelect
+                  <CategoryMultiEdit
                     endpoint={
                       r.kind === 'person'
                         ? `/api/people/${r.id}/category`
                         : `/api/users/${r.id}/category`
                     }
                     categories={categories}
-                    value={r.categoryId}
+                    value={r.categoryIds}
                     disabled={!canManage}
                   />
                   {canManage && r.kind === 'person' && (

@@ -17,8 +17,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../rbac/permissions.guard';
 import { RequirePermission } from '../../rbac/require-permission.decorator';
-import { PeopleService } from './people.service';
-import { CreatePersonDto, UpdatePersonDto } from './dto/people.dto';
+import { PeopleService, type PersonView } from './people.service';
+import { CreatePersonDto, SetCategoriesDto, UpdatePersonDto } from './dto/people.dto';
 import type { Person } from '../entities/person.entity';
 
 interface UploadedFileLike {
@@ -33,7 +33,7 @@ export class PeopleController {
   constructor(private readonly people: PeopleService) {}
 
   @Get()
-  list(): Promise<Person[]> {
+  list(): Promise<PersonView[]> {
     return this.people.list();
   }
 
@@ -47,6 +47,17 @@ export class PeopleController {
   @RequirePermission('core.person.manage')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdatePersonDto): Promise<Person> {
     return this.people.update(id, dto);
+  }
+
+  /** Nahradí kategorie osoby (many-to-many). */
+  @Patch(':id/categories')
+  @RequirePermission('core.person.manage')
+  async setCategories(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetCategoriesDto,
+  ): Promise<{ ok: true }> {
+    await this.people.setCategories(id, dto.categoryIds);
+    return { ok: true };
   }
 
   // --- Profilová fotka (avatar) ---

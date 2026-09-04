@@ -5,7 +5,11 @@ import sharp from 'sharp';
 import { TenantContextService } from '../../tenancy/tenant-context.service';
 import { STORAGE, type StoragePort } from '../../storage/storage.port';
 import { Person } from '../entities/person.entity';
+import { CategoryLinksService } from './category-links.service';
 import type { CreatePersonDto, UpdatePersonDto } from './dto/people.dto';
+
+/** Osoba + její kategorie (many-to-many). */
+export type PersonView = Person & { categoryIds: string[] };
 
 /** Osoby (Party) tenantu – oddělené od uživatelských účtů. Tenant-scoped (RLS). */
 @Injectable()
@@ -13,29 +17,45 @@ export class PeopleService {
   constructor(
     private readonly context: TenantContextService,
     @Inject(STORAGE) private readonly storage: StoragePort,
+    private readonly links: CategoryLinksService,
   ) {}
 
   private repo(): Repository<Person> {
     return this.context.manager.getRepository(Person);
   }
 
-  list(): Promise<Person[]> {
-    return this.repo().find({ order: { createdAt: 'DESC' }, take: 500 });
+  /** Seznam osob s jejich kategoriemi (categoryIds). */
+  async list(): Promise<PersonView[]> {
+    const people = await this.repo().find({ order: { createdAt: 'DESC' }, take: 500 });
+    const map = await this.links.mapFor(
+      'person',
+      people.map((p) => p.id),
+    );
+    return people.map((p) => ({ ...p, categoryIds: map.get(p.id) ?? [] }));
   }
 
-  create(dto: CreatePersonDto): Promise<Person> {
-    return this.repo().save(
+  async create(dto: CreatePersonDto): Promise<Person> {
+    const person = await this.repo().save(
       this.repo().create({
         tenantId: this.context.tenantId,
         name: dto.name,
         email: dto.email ?? null,
         phone: dto.phone ?? null,
         company: dto.company ?? null,
-        categoryId: dto.categoryId ?? null,
         userId: null,
         photoFileKey: null,
       }),
     );
+    if (dto.categoryIds && dto.categoryIds.length > 0) {
+      await this.links.set('person', person.id, dto.categoryIds);
+    }
+    return person;
+  }
+
+  /** Nahradí kategorie osoby (many-to-many). */
+  async setCategories(id: string, categoryIds: string[]): Promise<void> {
+    await this.get(id); // ověří existenci + tenant scope
+    await this.links.set('person', id, categoryIds);
   }
 
   async get(id: string): Promise<Person> {
@@ -50,7 +70,6 @@ export class PeopleService {
     if (dto.email !== undefined) person.email = dto.email || null;
     if (dto.phone !== undefined) person.phone = dto.phone || null;
     if (dto.company !== undefined) person.company = dto.company || null;
-    if (dto.categoryId !== undefined) person.categoryId = dto.categoryId || null;
     return this.repo().save(person);
   }
 

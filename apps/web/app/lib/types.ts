@@ -120,7 +120,7 @@ export interface Person {
   email: string | null;
   phone: string | null;
   company: string | null;
-  categoryId: string | null;
+  categoryIds: string[];
   photoFileKey: string | null;
 }
 
@@ -390,5 +390,5 @@ export interface AdminUser {
   tenantRole: string;
   status: string;
   createdAt: string;
-  personCategoryId?: string | null;
+  categoryIds?: string[];
 }

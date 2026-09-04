@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { AlertCircle, Camera, CheckCircle2, Loader2, UserRound } from 'lucide-react';
+import type { PersonCategory } from '../../lib/types';
 
 const inputCls =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
@@ -13,14 +14,19 @@ const inputCls =
  * její id (dvoukrok, mirror uploadu fotek u položek). `capture="environment"`
  * umožní vyfotit rovnou z mobilu.
  */
-export function PersonForm() {
+export function PersonForm({ categories = [] }: { categories?: PersonCategory[] }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [cats, setCats] = useState<string[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  function toggleCat(id: string): void {
+    setCats((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>): void {
     const f = e.target.files?.[0] ?? null;
@@ -39,6 +45,7 @@ export function PersonForm() {
         email: ((fd.get('email') as string) || '').trim() || undefined,
         phone: ((fd.get('phone') as string) || '').trim() || undefined,
         company: ((fd.get('company') as string) || '').trim() || undefined,
+        categoryIds: cats.length > 0 ? cats : undefined,
       };
       const res = await fetch('/api/people', {
         method: 'POST',
@@ -64,6 +71,7 @@ export function PersonForm() {
       }
       setOk(true);
       setPreview(null);
+      setCats([]);
       formRef.current?.reset();
       router.refresh();
     } catch {
@@ -116,6 +124,38 @@ export function PersonForm() {
           </Field>
         </div>
       </div>
+
+      {categories.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-slate-600">Kategorie (více možností)</span>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((c) => {
+              const on = cats.includes(c.id);
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => toggleCat(c.id)}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition ${
+                    on
+                      ? 'border-brand-300 bg-brand-50 text-brand-700'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300'
+                  }`}
+                >
+                  <span
+                    className={`flex h-3.5 w-3.5 items-center justify-center rounded-[4px] border ${
+                      on ? 'border-brand-500 bg-brand-500 text-white' : 'border-slate-300'
+                    }`}
+                  >
+                    {on && <CheckCircle2 size={10} />}
+                  </span>
+                  {c.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {error && (
         <p className="flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-inset ring-red-100">

@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { ArrayUnique, IsArray, IsEmail, IsIn, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import type { TenantRole } from '@tagery/shared';
 
 const ROLES: TenantRole[] = ['OWNER', 'ADMIN', 'MANAGER', 'EDITOR', 'VIEWER', 'SCAN_ONLY'];
@@ -22,7 +22,8 @@ export class UpdateRoleDto {
 }
 
 export class SetUserCategoryDto {
-  @IsOptional()
-  @IsUUID()
-  categoryId?: string | null;
+  @IsArray()
+  @IsUUID('4', { each: true })
+  @ArrayUnique()
+  categoryIds!: string[];
 }

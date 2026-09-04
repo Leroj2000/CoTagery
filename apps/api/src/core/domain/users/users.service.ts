@@ -8,6 +8,7 @@ import { AuthService } from '../../auth/auth.service';
 import { User } from '../../auth/entities/user.entity';
 import { OrgMembership } from '../../auth/entities/membership.entity';
 import { RoleAssignment } from '../../auth/entities/role-assignment.entity';
+import { CategoryLinksService } from '../people/category-links.service';
 import type { InviteUserDto, UpdateRoleDto } from './dto/users.dto';
 
 /** Veřejný pohled na uživatele (bez password_hash). */
@@ -18,11 +19,11 @@ export interface UserView {
   tenantRole: TenantRole;
   status: string;
   createdAt: Date;
-  /** Kategorie uživatele v této firmě (z org_memberships). */
-  personCategoryId: string | null;
+  /** Kategorie uživatele v této firmě (many-to-many). */
+  categoryIds: string[];
 }
 
-function toView(u: User, personCategoryId: string | null = null): UserView {
+function toView(u: User, categoryIds: string[] = []): UserView {
   return {
     id: u.id,
     email: u.email,
@@ -30,7 +31,7 @@ function toView(u: User, personCategoryId: string | null = null): UserView {
     tenantRole: u.tenantRole,
     status: u.status,
     createdAt: u.createdAt,
-    personCategoryId,
+    categoryIds,
   };
 }
 
@@ -44,6 +45,7 @@ export class UsersService {
   constructor(
     private readonly context: TenantContextService,
     private readonly audit: AuditService,
+    private readonly links: CategoryLinksService,
   ) {}
 
   private repo(): Repository<User> {
@@ -55,7 +57,7 @@ export class UsersService {
     // přes `org_memberships` (to RLS má) – jinak by výpis vracel uživatele všech
     // firem (cross-tenant únik). Role je efektivní role v této org (z membershipu).
     const rows = (await this.context.manager.query(
-      `SELECT u.id, u.email, u.name, m.role, u.status, u.created_at, m.person_category_id
+      `SELECT u.id, u.email, u.name, m.role, u.status, u.created_at
          FROM org_memberships m
          JOIN users u ON u.id = m.user_id
         ORDER BY u.created_at DESC
@@ -67,8 +69,11 @@ export class UsersService {
       role: TenantRole;
       status: string;
       created_at: Date;
-      person_category_id: string | null;
     }>;
+    const catMap = await this.links.mapFor(
+      'user',
+      rows.map((r) => r.id),
+    );
     return rows.map((r) => ({
       id: r.id,
       email: r.email,
@@ -76,17 +81,18 @@ export class UsersService {
       tenantRole: r.role,
       status: r.status,
       createdAt: r.created_at,
-      personCategoryId: r.person_category_id,
+      categoryIds: catMap.get(r.id) ?? [],
     }));
   }
 
-  /** Nastaví kategorii uživatele v aktuální firmě (org_memberships). */
-  async setCategory(userId: string, categoryId: string | null): Promise<void> {
-    const mRepo = this.context.manager.getRepository(OrgMembership);
-    const m = await mRepo.findOne({ where: { userId } }); // RLS → jen naše firma
+  /** Nastaví kategorie uživatele v aktuální firmě (many-to-many). */
+  async setCategories(userId: string, categoryIds: string[]): Promise<void> {
+    // Gate: uživatel musí být člen aktuální firmy (org_memberships má RLS).
+    const m = await this.context.manager
+      .getRepository(OrgMembership)
+      .findOne({ where: { userId } });
     if (!m) throw new NotFoundException('Uživatel neexistuje');
-    m.personCategoryId = categoryId;
-    await mRepo.save(m);
+    await this.links.set('user', userId, categoryIds);
   }
 
   async invite(dto: InviteUserDto): Promise<{ user: UserView; tempPassword: string }> {

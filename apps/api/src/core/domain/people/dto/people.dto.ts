@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { ArrayUnique, IsArray, IsEmail, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 export class CreatePersonDto {
   @IsString()
@@ -21,8 +21,10 @@ export class CreatePersonDto {
   company?: string;
 
   @IsOptional()
-  @IsUUID()
-  categoryId?: string;
+  @IsArray()
+  @IsUUID('4', { each: true })
+  @ArrayUnique()
+  categoryIds?: string[];
 }
 
 export class UpdatePersonDto {
@@ -45,8 +47,11 @@ export class UpdatePersonDto {
   @IsString()
   @MaxLength(200)
   company?: string;
+}
 
-  @IsOptional()
-  @IsUUID()
-  categoryId?: string | null;
+export class SetCategoriesDto {
+  @IsArray()
+  @IsUUID('4', { each: true })
+  @ArrayUnique()
+  categoryIds!: string[];
 }

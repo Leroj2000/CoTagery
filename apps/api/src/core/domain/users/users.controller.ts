@@ -38,7 +38,7 @@ export class UsersController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SetUserCategoryDto,
   ): Promise<{ ok: true }> {
-    await this.users.setCategory(id, dto.categoryId ?? null);
+    await this.users.setCategories(id, dto.categoryIds);
     return { ok: true };
   }
 
