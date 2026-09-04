@@ -163,7 +163,8 @@ export async function claimCarrier(_p: ActionState, fd: FormData): Promise<Actio
 
 // --- Skupiny ---
 export async function createGroup(_p: ActionState, fd: FormData): Promise<ActionState> {
-  return run('/groups', { name: str(fd, 'name') }, '/admin/groups', 'Skupina vytvořena.');
+  const type = str(fd, 'type') === 'person' ? 'person' : 'user';
+  return run('/groups', { name: str(fd, 'name'), type }, '/admin/groups', 'Skupina vytvořena.');
 }
 
 export async function deleteGroup(_p: ActionState, fd: FormData): Promise<ActionState> {
@@ -171,9 +172,11 @@ export async function deleteGroup(_p: ActionState, fd: FormData): Promise<Action
 }
 
 export async function addGroupMember(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const userId = str(fd, 'userId');
+  const personId = str(fd, 'personId');
   return run(
     `/groups/${str(fd, 'groupId')}/members`,
-    { userId: str(fd, 'userId') },
+    personId ? { personId } : { userId },
     '/admin/groups',
     'Člen přidán.',
   );
@@ -181,7 +184,7 @@ export async function addGroupMember(_p: ActionState, fd: FormData): Promise<Act
 
 export async function removeGroupMember(_p: ActionState, fd: FormData): Promise<ActionState> {
   return run(
-    `/groups/${str(fd, 'groupId')}/members/${str(fd, 'userId')}`,
+    `/groups/${str(fd, 'groupId')}/members/${str(fd, 'memberRef')}`,
     null,
     '/admin/groups',
     'Člen odebrán.',

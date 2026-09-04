@@ -9,15 +9,19 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { JwtAuthGuard, type RequestUser } from '../../auth/jwt-auth.guard';
+import { CurrentUser } from '../../auth/decorators';
 import { PermissionsGuard } from '../../rbac/permissions.guard';
-import { RequirePermission } from '../../rbac/require-permission.decorator';
 import { GroupsService } from './groups.service';
 import { CreateGroupDto, AddGroupMemberDto } from './dto/groups.dto';
 import type { Group } from '../entities/group.entity';
 import type { GroupMember } from '../entities/group-member.entity';
 
-/** Skupiny uživatelů (EPIC-03) – správa ADMIN+, čtení VIEWER+. */
+/**
+ * Skupiny (EPIC-03) – uživatelů i osob. Čtení VIEWER+. Zápis se gatuje v service
+ * podle typu skupiny (`core.group.manage` pro `user`, `core.person_group.manage`
+ * pro `person`), protože jeden endpoint obsluhuje oba typy.
+ */
 @Controller('groups')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class GroupsController {
@@ -29,16 +33,17 @@ export class GroupsController {
   }
 
   @Post()
-  @RequirePermission('core.group.manage')
-  create(@Body() dto: CreateGroupDto): Promise<Group> {
-    return this.groups.create(dto);
+  create(@CurrentUser() user: RequestUser, @Body() dto: CreateGroupDto): Promise<Group> {
+    return this.groups.create(user, dto);
   }
 
   @Delete(':id')
-  @RequirePermission('core.group.manage')
   @HttpCode(204)
-  remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    return this.groups.remove(id);
+  remove(
+    @CurrentUser() user: RequestUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<void> {
+    return this.groups.remove(user, id);
   }
 
   @Get(':id/members')
@@ -47,21 +52,21 @@ export class GroupsController {
   }
 
   @Post(':id/members')
-  @RequirePermission('core.group.manage')
   addMember(
+    @CurrentUser() user: RequestUser,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AddGroupMemberDto,
   ): Promise<GroupMember> {
-    return this.groups.addMember(id, dto);
+    return this.groups.addMember(user, id, dto);
   }
 
-  @Delete(':id/members/:userId')
-  @RequirePermission('core.group.manage')
+  @Delete(':id/members/:memberRef')
   @HttpCode(204)
   removeMember(
+    @CurrentUser() user: RequestUser,
     @Param('id', ParseUUIDPipe) id: string,
-    @Param('userId', ParseUUIDPipe) userId: string,
+    @Param('memberRef', ParseUUIDPipe) memberRef: string,
   ): Promise<void> {
-    return this.groups.removeMember(id, userId);
+    return this.groups.removeMember(user, id, memberRef);
   }
 }

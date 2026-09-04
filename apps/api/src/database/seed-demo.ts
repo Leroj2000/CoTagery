@@ -115,8 +115,9 @@ async function seedDemo(): Promise<void> {
     const editor = await users.invite({ email: 'editor@demo.cz', name: 'Editor Demo', tenantRole: 'EDITOR' });
     await users.invite({ email: 'viewer@demo.cz', name: 'Viewer Demo', tenantRole: 'VIEWER' });
     console.log('Pozvaný editor (dočasné heslo):', editor.tempPassword);
-    const group = await groups.create({ name: 'Zaměstnanci' });
-    await groups.addMember(group.id, { userId: editor.user.id });
+    const seedUser = { userId: editor.user.id, tenantId, tenantRole: 'OWNER' as const };
+    const group = await groups.create(seedUser, { name: 'Zaměstnanci', type: 'user' });
+    await groups.addMember(seedUser, group.id, { userId: editor.user.id });
 
     // Skeny pro analytiku (dashboard graf)
     const scanRepo = ctx.manager.getRepository(ScanEvent);

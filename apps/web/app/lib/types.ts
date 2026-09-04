@@ -303,16 +303,20 @@ export interface Membership {
   validTo: string;
 }
 
+export type GroupType = 'user' | 'person';
+
 export interface Group {
   id: string;
   name: string;
+  type: GroupType;
   createdAt: string;
 }
 
 export interface GroupMember {
   id: string;
   groupId: string;
-  userId: string;
+  userId: string | null;
+  personId: string | null;
 }
 
 export interface Subscription {
