@@ -31,6 +31,7 @@ export class PeopleService {
         email: dto.email ?? null,
         phone: dto.phone ?? null,
         company: dto.company ?? null,
+        categoryId: dto.categoryId ?? null,
         userId: null,
         photoFileKey: null,
       }),
@@ -49,6 +50,7 @@ export class PeopleService {
     if (dto.email !== undefined) person.email = dto.email || null;
     if (dto.phone !== undefined) person.phone = dto.phone || null;
     if (dto.company !== undefined) person.company = dto.company || null;
+    if (dto.categoryId !== undefined) person.categoryId = dto.categoryId || null;
     return this.repo().save(person);
   }
 

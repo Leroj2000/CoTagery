@@ -5,6 +5,7 @@ import { Location } from './entities/location.entity';
 import { Group } from './entities/group.entity';
 import { GroupMember } from './entities/group-member.entity';
 import { Person } from './entities/person.entity';
+import { PersonCategory } from './entities/person-category.entity';
 import { DigitalObject } from './entities/digital-object.entity';
 import { DataCarrier } from './entities/data-carrier.entity';
 import { ScanEvent } from './entities/scan-event.entity';
@@ -23,6 +24,8 @@ import { TenantController } from './tenant/tenant.controller';
 import { TenantService } from './tenant/tenant.service';
 import { PeopleController } from './people/people.controller';
 import { PeopleService } from './people/people.service';
+import { PersonCategoriesController } from './people/person-categories.controller';
+import { PersonCategoriesService } from './people/person-categories.service';
 import { ModuleRegistry } from './module-handler';
 
 /** Jádro doménového modelu (EPIC-03, EPIC-04). */
@@ -34,6 +37,7 @@ import { ModuleRegistry } from './module-handler';
       Group,
       GroupMember,
       Person,
+      PersonCategory,
       DigitalObject,
       DataCarrier,
       ScanEvent,
@@ -47,6 +51,7 @@ import { ModuleRegistry } from './module-handler';
     GroupsController,
     TenantController,
     PeopleController,
+    PersonCategoriesController,
   ],
   providers: [
     LocationsService,
@@ -57,6 +62,7 @@ import { ModuleRegistry } from './module-handler';
     GroupsService,
     TenantService,
     PeopleService,
+    PersonCategoriesService,
     ModuleRegistry,
   ],
   exports: [ModuleRegistry, DataCarriersService],

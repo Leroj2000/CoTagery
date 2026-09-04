@@ -27,6 +27,10 @@ export class OrgMembership {
   @Column({ type: 'text', default: 'active' })
   status!: 'active' | 'suspended';
 
+  /** Kategorie osoby (uživatele) per-firma – číselník person_categories. */
+  @Column({ type: 'uuid', name: 'person_category_id', nullable: true })
+  personCategoryId!: string | null;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt!: Date;
 }

@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 export class CreatePersonDto {
   @IsString()
@@ -19,6 +19,10 @@ export class CreatePersonDto {
   @IsString()
   @MaxLength(200)
   company?: string;
+
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
 }
 
 export class UpdatePersonDto {
@@ -41,4 +45,8 @@ export class UpdatePersonDto {
   @IsString()
   @MaxLength(200)
   company?: string;
+
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string | null;
 }

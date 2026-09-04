@@ -3,7 +3,7 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../rbac/permissions.guard';
 import { RequirePermission } from '../../rbac/require-permission.decorator';
 import { UsersService, type UserView } from './users.service';
-import { InviteUserDto, UpdateRoleDto } from './dto/users.dto';
+import { InviteUserDto, SetUserCategoryDto, UpdateRoleDto } from './dto/users.dto';
 
 /** Správa uživatelů tenanta (EPIC-03/01). Náhled=Manager+, správa=Admin+. */
 @Controller('users')
@@ -30,6 +30,16 @@ export class UsersController {
     @Body() dto: UpdateRoleDto,
   ): Promise<UserView> {
     return this.users.updateRole(id, dto);
+  }
+
+  @Patch(':id/category')
+  @RequirePermission('core.person.manage')
+  async setCategory(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetUserCategoryDto,
+  ): Promise<{ ok: true }> {
+    await this.users.setCategory(id, dto.categoryId ?? null);
+    return { ok: true };
   }
 
   @Post(':id/suspend')

@@ -18,9 +18,11 @@ export interface UserView {
   tenantRole: TenantRole;
   status: string;
   createdAt: Date;
+  /** Kategorie uživatele v této firmě (z org_memberships). */
+  personCategoryId: string | null;
 }
 
-function toView(u: User): UserView {
+function toView(u: User, personCategoryId: string | null = null): UserView {
   return {
     id: u.id,
     email: u.email,
@@ -28,6 +30,7 @@ function toView(u: User): UserView {
     tenantRole: u.tenantRole,
     status: u.status,
     createdAt: u.createdAt,
+    personCategoryId,
   };
 }
 
@@ -52,7 +55,7 @@ export class UsersService {
     // přes `org_memberships` (to RLS má) – jinak by výpis vracel uživatele všech
     // firem (cross-tenant únik). Role je efektivní role v této org (z membershipu).
     const rows = (await this.context.manager.query(
-      `SELECT u.id, u.email, u.name, m.role, u.status, u.created_at
+      `SELECT u.id, u.email, u.name, m.role, u.status, u.created_at, m.person_category_id
          FROM org_memberships m
          JOIN users u ON u.id = m.user_id
         ORDER BY u.created_at DESC
@@ -64,6 +67,7 @@ export class UsersService {
       role: TenantRole;
       status: string;
       created_at: Date;
+      person_category_id: string | null;
     }>;
     return rows.map((r) => ({
       id: r.id,
@@ -72,7 +76,17 @@ export class UsersService {
       tenantRole: r.role,
       status: r.status,
       createdAt: r.created_at,
+      personCategoryId: r.person_category_id,
     }));
+  }
+
+  /** Nastaví kategorii uživatele v aktuální firmě (org_memberships). */
+  async setCategory(userId: string, categoryId: string | null): Promise<void> {
+    const mRepo = this.context.manager.getRepository(OrgMembership);
+    const m = await mRepo.findOne({ where: { userId } }); // RLS → jen naše firma
+    if (!m) throw new NotFoundException('Uživatel neexistuje');
+    m.personCategoryId = categoryId;
+    await mRepo.save(m);
   }
 
   async invite(dto: InviteUserDto): Promise<{ user: UserView; tempPassword: string }> {

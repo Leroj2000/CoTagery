@@ -120,7 +120,14 @@ export interface Person {
   email: string | null;
   phone: string | null;
   company: string | null;
+  categoryId: string | null;
   photoFileKey: string | null;
+}
+
+export interface PersonCategory {
+  id: string;
+  name: string;
+  color: string | null;
 }
 
 export interface Issue {
@@ -379,4 +386,5 @@ export interface AdminUser {
   tenantRole: string;
   status: string;
   createdAt: string;
+  personCategoryId?: string | null;
 }

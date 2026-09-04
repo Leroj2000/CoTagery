@@ -1,23 +1,70 @@
 import { Contact, UserRound } from 'lucide-react';
-import { apiFetch, getMyPermissions } from '../../lib/server-api';
-import type { Person } from '../../lib/types';
-import { PageHeader, Section, EmptyState } from '../ui';
+import { apiFetch, ApiError, getMyPermissions } from '../../lib/server-api';
+import type { AdminUser, Person, PersonCategory } from '../../lib/types';
+import { PageHeader, Section, Badge, EmptyState } from '../ui';
 import { InlineEdit } from '../inline-edit';
 import { updatePerson } from '../actions';
 import { PersonForm } from './person-form';
 import { PersonPhotoEdit } from './person-photo-edit';
+import { PersonCategoriesManager } from './person-categories-manager';
+import { CategorySelect } from './category-select';
 
 export const dynamic = 'force-dynamic';
 
+interface Row {
+  kind: 'person' | 'user';
+  id: string;
+  name: string;
+  subtitle: string;
+  categoryId: string | null;
+  photoKey?: string | null;
+  role?: string;
+  person?: Person;
+}
+
 export default async function PeoplePage() {
-  const [people, perms] = await Promise.all([apiFetch<Person[]>('/people'), getMyPermissions()]);
+  const [people, categories, perms] = await Promise.all([
+    apiFetch<Person[]>('/people'),
+    apiFetch<PersonCategory[]>('/person-categories').catch(() => [] as PersonCategory[]),
+    getMyPermissions(),
+  ]);
+  // Uživatelé firmy (přes org_memberships) – patří do seznamu Lidé. Bez oprávnění
+  // na výpis uživatelů se prostě nepřidají.
+  const users = await apiFetch<AdminUser[]>('/users').catch((e) => {
+    if (e instanceof ApiError && e.status === 403) return [] as AdminUser[];
+    throw e;
+  });
   const canManage = perms.has('core.person.manage');
+
+  const rows: Row[] = [
+    ...people.map(
+      (p): Row => ({
+        kind: 'person',
+        id: p.id,
+        name: p.name,
+        subtitle: [p.email, p.phone, p.company].filter(Boolean).join(' · ') || '—',
+        categoryId: p.categoryId,
+        photoKey: p.photoFileKey,
+        person: p,
+      }),
+    ),
+    ...users.map(
+      (u): Row => ({
+        kind: 'user',
+        id: u.id,
+        name: u.name,
+        subtitle: u.email,
+        categoryId: u.personCategoryId ?? null,
+        role: u.tenantRole,
+      }),
+    ),
+  ].sort((a, b) => a.name.localeCompare(b.name, 'cs'));
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Lidé"
-        description="Osoby (Party) – lidé bez nutnosti účtu (příjemci, subdodavatelé)."
+        description="Osoby (Party) i uživatelé firmy – s možností zařazení do kategorií."
         icon={<Contact size={18} />}
       />
 
@@ -27,48 +74,64 @@ export default async function PeoplePage() {
         </Section>
       )}
 
-      <Section title={`Osoby (${people.length})`}>
-        {people.length === 0 ? (
-          <EmptyState>Zatím žádné osoby.</EmptyState>
+      {canManage && (
+        <Section title="Kategorie osob" description="Vlastní číselník – přidávej a maž dle potřeby.">
+          <PersonCategoriesManager categories={categories} />
+        </Section>
+      )}
+
+      <Section title={`Lidé (${rows.length})`}>
+        {rows.length === 0 ? (
+          <EmptyState>Zatím žádní lidé.</EmptyState>
         ) : (
           <ul className="flex flex-col gap-2">
-            {people.map((p) => (
+            {rows.map((r) => (
               <li
-                key={p.id}
+                key={`${r.kind}:${r.id}`}
                 className="flex flex-col gap-2 rounded-xl border border-slate-200 p-3 sm:flex-row sm:items-center"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-slate-400">
-                  {p.photoFileKey ? (
-                    <img
-                      src={`/api/person-photo/${p.id}`}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
+                  {r.kind === 'person' && r.photoKey ? (
+                    <img src={`/api/person-photo/${r.id}`} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <UserRound size={20} />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-slate-800">{p.name}</p>
-                  <p className="truncate text-xs text-slate-500">
-                    {[p.email, p.phone, p.company].filter(Boolean).join(' · ') || '—'}
+                  <p className="flex items-center gap-2 truncate text-sm font-medium text-slate-800">
+                    {r.name}
+                    {r.kind === 'user' && <Badge tone="brand">Uživatel</Badge>}
+                    {r.role && <Badge tone="slate">{r.role}</Badge>}
                   </p>
+                  <p className="truncate text-xs text-slate-500">{r.subtitle}</p>
                 </div>
-                {canManage && (
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <PersonPhotoEdit personId={p.id} hasPhoto={p.photoFileKey != null} />
-                    <InlineEdit
-                      action={updatePerson}
-                      id={p.id}
-                      fields={[
-                        { name: 'name', label: 'Jméno', defaultValue: p.name },
-                        { name: 'email', label: 'E-mail', type: 'email', defaultValue: p.email ?? '' },
-                        { name: 'phone', label: 'Telefon', defaultValue: p.phone ?? '' },
-                        { name: 'company', label: 'Firma', defaultValue: p.company ?? '' },
-                      ]}
-                    />
-                  </div>
-                )}
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  <CategorySelect
+                    endpoint={
+                      r.kind === 'person'
+                        ? `/api/people/${r.id}/category`
+                        : `/api/users/${r.id}/category`
+                    }
+                    categories={categories}
+                    value={r.categoryId}
+                    disabled={!canManage}
+                  />
+                  {canManage && r.kind === 'person' && (
+                    <>
+                      <PersonPhotoEdit personId={r.id} hasPhoto={r.photoKey != null} />
+                      <InlineEdit
+                        action={updatePerson}
+                        id={r.id}
+                        fields={[
+                          { name: 'name', label: 'Jméno', defaultValue: r.name },
+                          { name: 'email', label: 'E-mail', type: 'email', defaultValue: r.person?.email ?? '' },
+                          { name: 'phone', label: 'Telefon', defaultValue: r.person?.phone ?? '' },
+                          { name: 'company', label: 'Firma', defaultValue: r.person?.company ?? '' },
+                        ]}
+                      />
+                    </>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

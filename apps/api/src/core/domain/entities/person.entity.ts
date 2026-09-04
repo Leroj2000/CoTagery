@@ -25,6 +25,10 @@ export class Person extends BaseTenantEntity {
   @Column({ type: 'uuid', name: 'user_id', nullable: true })
   userId!: string | null;
 
+  /** Kategorie osoby (číselník person_categories). Null = bez kategorie. */
+  @Column({ type: 'uuid', name: 'category_id', nullable: true })
+  categoryId!: string | null;
+
   /** Klíč profilové fotky (avatar) v úložišti; null = bez fotky. */
   @Column({ type: 'text', name: 'photo_file_key', nullable: true })
   photoFileKey!: string | null;
