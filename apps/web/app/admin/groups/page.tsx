@@ -1,9 +1,10 @@
 import { apiFetch, ApiError, getMyPermissions } from '../../lib/server-api';
-import type { Group, GroupMember, AdminUser, Person } from '../../lib/types';
+import type { Group, GroupMember, AdminUser, Person, PersonCategory } from '../../lib/types';
 import { Section, Table, Mono } from '../ui';
 import { ActionForm } from '../action-form';
 import { ActionButton } from '../action-button';
 import { createGroup, deleteGroup, addGroupMember, removeGroupMember } from '../actions';
+import { MemberPicker, type Candidate } from './member-picker';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,11 @@ export default async function GroupsPage() {
     if (!(e instanceof ApiError && e.status === 403)) throw e;
   }
   const userById = new Map(users.map((u) => [u.id, u]));
-  const userOptions = users.map((u) => ({ value: u.id, label: `${u.name} (${u.email})` }));
+  const userCandidates: Candidate[] = users.map((u) => ({
+    id: u.id,
+    label: `${u.name} (${u.email})`,
+    categoryIds: u.categoryIds ?? [],
+  }));
 
   let people: Person[] = [];
   try {
@@ -28,10 +33,19 @@ export default async function GroupsPage() {
     if (!(e instanceof ApiError && e.status === 403)) throw e;
   }
   const personById = new Map(people.map((p) => [p.id, p]));
-  const personOptions = people.map((p) => ({
-    value: p.id,
+  const personCandidates: Candidate[] = people.map((p) => ({
+    id: p.id,
     label: p.email ? `${p.name} (${p.email})` : p.name,
+    categoryIds: p.categoryIds ?? [],
   }));
+
+  let categories: PersonCategory[] = [];
+  try {
+    categories = await apiFetch<PersonCategory[]>('/person-categories');
+  } catch (e) {
+    if (!(e instanceof ApiError && e.status === 403)) throw e;
+  }
+  const categoryOptions = categories.map((c) => ({ id: c.id, name: c.name }));
 
   const membersByGroup = await Promise.all(
     groups.map((g) => apiFetch<GroupMember[]>(`/groups/${g.id}/members`).catch(() => [])),
@@ -78,7 +92,11 @@ export default async function GroupsPage() {
       {groups.map((g, i) => {
         const isPerson = g.type === 'person';
         const canManage = isPerson ? canManagePersons : canManageUsers;
-        const options = isPerson ? personOptions : userOptions;
+        const candidates = isPerson ? personCandidates : userCandidates;
+        const members = membersByGroup[i];
+        const memberIds = members
+          .map((m) => (isPerson ? m.personId : m.userId))
+          .filter((id): id is string => id !== null);
         return (
           <Section
             key={g.id}
@@ -111,7 +129,7 @@ export default async function GroupsPage() {
             <div className="flex flex-col gap-4">
               <Table
                 head={[isPerson ? 'Osoba' : 'Uživatel', 'Akce']}
-                rows={membersByGroup[i].map((m) => {
+                rows={members.map((m) => {
                   const ref = isPerson ? m.personId : m.userId;
                   const label = isPerson
                     ? personById.get(m.personId ?? '')?.name
@@ -134,19 +152,16 @@ export default async function GroupsPage() {
                   ];
                 })}
               />
-              {canManage && options.length > 0 && (
-                <ActionForm
+              {canManage && candidates.length > 0 && (
+                <MemberPicker
                   action={addGroupMember}
-                  hidden={{ groupId: g.id }}
-                  submitLabel="Přidat člena"
-                  fields={[
-                    {
-                      name: isPerson ? 'personId' : 'userId',
-                      label: isPerson ? 'Osoba' : 'Uživatel',
-                      required: true,
-                      options,
-                    },
-                  ]}
+                  groupId={g.id}
+                  fieldName={isPerson ? 'personId' : 'userId'}
+                  candidates={candidates}
+                  memberIds={memberIds}
+                  categories={categoryOptions}
+                  addLabel="Přidat člena"
+                  memberLabel={isPerson ? 'Osoba' : 'Uživatel'}
                 />
               )}
             </div>
