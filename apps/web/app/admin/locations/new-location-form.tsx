@@ -4,33 +4,13 @@ import { useActionState, useState } from 'react';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { createLocation } from '../actions';
 import type { ActionState } from '../action-form';
+import { LOCATION_CATEGORIES, LOCATION_TYPES_BY_CATEGORY, cellLabel } from './location-types';
 
 const inputCls =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
 
-const CATEGORIES = [
-  { value: 'place', label: 'Místo' },
-  { value: 'storage', label: 'Úložný prostor' },
-];
-const TYPES: Record<string, { value: string; label: string }[]> = {
-  place: [
-    { value: 'warehouse', label: 'Sklad' },
-    { value: 'store', label: 'Prodejna' },
-    { value: 'venue', label: 'Místo konání' },
-    { value: 'office', label: 'Kancelář' },
-    { value: 'home', label: 'Domov' },
-  ],
-  storage: [
-    { value: 'rack', label: 'Regál' },
-    { value: 'cabinet', label: 'Skříň' },
-  ],
-};
-
-/** Label buňky: řada = písmeno, sloupec = číslo → „A1" (shodné s backendem). */
-function cellLabel(row: number, col: number): string {
-  const letter = row <= 26 ? String.fromCharCode(64 + row) : `R${row}`;
-  return `${letter}${col}`;
-}
+const CATEGORIES = LOCATION_CATEGORIES;
+const TYPES = LOCATION_TYPES_BY_CATEGORY;
 
 /**
  * Zakládání místa dvoukrokově: kategorie (Místo / Úložný prostor) → konkrétní typ.

@@ -2,10 +2,9 @@ import { MapPin } from 'lucide-react';
 import { apiFetch, getMyPermissions } from '../../lib/server-api';
 import type { Asset, Location } from '../../lib/types';
 import { PageHeader, Section, Badge, EmptyState } from '../ui';
-import { InlineEdit } from '../inline-edit';
-import { updateLocation } from '../actions';
 import { LocationGrid } from './location-grid';
 import { NewLocationForm } from './new-location-form';
+import { EditLocationForm } from './edit-location-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,20 +47,13 @@ function Tree({ nodes, byParent, depth = 0, canManage, parentOptions, assets }: 
             <Badge tone="slate">{TYPE_LABEL.get(n.type) ?? n.type}</Badge>
             {canManage && (
               <span className="ml-auto">
-                <InlineEdit
-                  action={updateLocation}
+                <EditLocationForm
                   id={n.id}
-                  fields={[
-                    { name: 'name', label: 'Název', defaultValue: n.name },
-                    { name: 'type', label: 'Typ', defaultValue: n.type, options: LOCATION_TYPES },
-                    { name: 'address', label: 'Adresa', defaultValue: n.address ?? '' },
-                    {
-                      name: 'parentId',
-                      label: 'Nadřazené',
-                      defaultValue: n.parentId ?? '',
-                      options: parentOptions.filter((o) => o.value !== n.id),
-                    },
-                  ]}
+                  name={n.name}
+                  type={n.type}
+                  address={n.address}
+                  parentId={n.parentId}
+                  parentOptions={parentOptions}
                 />
               </span>
             )}
