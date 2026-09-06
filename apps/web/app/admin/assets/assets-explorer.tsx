@@ -3,7 +3,15 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, SlidersHorizontal, X, ChevronDown, Check } from 'lucide-react';
+import {
+  Search,
+  SlidersHorizontal,
+  X,
+  ChevronDown,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import type { Asset } from '../../lib/types';
 
 /** Stav položky → český label + barva badge (vzor MyStock). */
@@ -117,6 +125,9 @@ export function AssetsExplorer({
   const [status, setStatus] = useState('');
   const [locationId, setLocationId] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sort, setSort] = useState('name-asc');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const locName = useMemo(() => new Map(locations.map((l) => [l.id, l.name])), [locations]);
 
@@ -133,12 +144,49 @@ export function AssetsExplorer({
       if (status && a.status !== status) return false;
       if (locationId && a.homeLocationId !== locationId) return false;
       if (needle) {
-        const hay = `${a.name} ${a.inventoryNumber ?? ''} ${a.manufacturer ?? ''} ${a.serialNumber ?? ''}`.toLowerCase();
+        const hay =
+          `${a.name} ${a.inventoryNumber ?? ''} ${a.manufacturer ?? ''} ${a.serialNumber ?? ''}`.toLowerCase();
         if (!hay.includes(needle)) return false;
       }
       return true;
     });
   }, [assets, cats, status, locationId, q]);
+
+  const sorted = useMemo(() => {
+    const [field, direction] = sort.split('-') as [
+      'name' | 'inventory' | 'status' | 'created',
+      'asc' | 'desc',
+    ];
+    const sign = direction === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const left =
+        field === 'inventory'
+          ? (a.inventoryNumber ?? '')
+          : field === 'status'
+            ? statusLabel(a.status)
+            : field === 'created'
+              ? a.createdAt
+              : a.name;
+      const right =
+        field === 'inventory'
+          ? (b.inventoryNumber ?? '')
+          : field === 'status'
+            ? statusLabel(b.status)
+            : field === 'created'
+              ? b.createdAt
+              : b.name;
+      return left.localeCompare(right, 'cs', { numeric: true, sensitivity: 'base' }) * sign;
+    });
+  }, [filtered, sort]);
+
+  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const visible = useMemo(
+    () => sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [sorted, currentPage, pageSize],
+  );
+
+  useEffect(() => setPage(1), [q, cats, status, locationId, sort, pageSize]);
 
   const hasFilters = cats.size > 0 || status !== '' || locationId !== '' || q !== '';
 
@@ -169,7 +217,10 @@ export function AssetsExplorer({
       {/* Řádek: hledání + přepínač filtrů na mobilu */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search
+            size={15}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+          />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -205,7 +256,11 @@ export function AssetsExplorer({
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs font-medium text-slate-600">Sklad</span>
-          <select className={selectCls} value={locationId} onChange={(e) => setLocationId(e.target.value)}>
+          <select
+            className={selectCls}
+            value={locationId}
+            onChange={(e) => setLocationId(e.target.value)}
+          >
             <option value="">Všechny sklady</option>
             {locations
               .filter((l) => !l.isCell)
@@ -227,7 +282,10 @@ export function AssetsExplorer({
           ))}
           {status && <Chip label={`Stav: ${statusLabel(status)}`} onClear={() => setStatus('')} />}
           {locationId && (
-            <Chip label={`Sklad: ${locName.get(locationId) ?? '—'}`} onClear={() => setLocationId('')} />
+            <Chip
+              label={`Sklad: ${locName.get(locationId) ?? '—'}`}
+              onClear={() => setLocationId('')}
+            />
           )}
           {q && <Chip label={`Hledání: „${q}"`} onClear={() => setQ('')} />}
           <button
@@ -245,6 +303,33 @@ export function AssetsExplorer({
         Zobrazeno {filtered.length} {plural(filtered.length)}
         {filtered.length !== assets.length && ` z ${assets.length}`}
       </p>
+
+      <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+        <label className="flex min-w-48 flex-col gap-1">
+          <span className="text-xs font-medium text-slate-600">Řazení</span>
+          <select className={selectCls} value={sort} onChange={(e) => setSort(e.target.value)}>
+            <option value="name-asc">Název A–Z</option>
+            <option value="name-desc">Název Z–A</option>
+            <option value="inventory-asc">Inventární číslo</option>
+            <option value="status-asc">Stav</option>
+            <option value="created-desc">Nejnovější</option>
+            <option value="created-asc">Nejstarší</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-slate-600">Na stránku</span>
+          <select
+            className={selectCls}
+            value={pageSize}
+            onChange={(e) => setPageSize(Number(e.target.value))}
+          >
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+        </label>
+      </div>
 
       {/* Tabulka */}
       <div className="mt-2 overflow-x-auto">
@@ -268,10 +353,16 @@ export function AssetsExplorer({
                 </td>
               </tr>
             ) : (
-              filtered.map((a) => {
-                const st = STATUS[a.status] ?? { label: a.status, cls: 'bg-slate-100 text-slate-600' };
+              visible.map((a) => {
+                const st = STATUS[a.status] ?? {
+                  label: a.status,
+                  cls: 'bg-slate-100 text-slate-600',
+                };
                 return (
-                  <tr key={a.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
+                  <tr
+                    key={a.id}
+                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60"
+                  >
                     <td className="py-2.5">
                       {a.photoKey ? (
                         <Image
@@ -289,20 +380,31 @@ export function AssetsExplorer({
                       )}
                     </td>
                     <td className="py-2.5 pr-3">
-                      <Link href={`/admin/assets/${a.id}`} className="font-medium text-brand-700 hover:underline">
+                      <Link
+                        href={`/admin/assets/${a.id}`}
+                        className="font-medium text-brand-700 hover:underline"
+                      >
                         {a.name}
                       </Link>
                     </td>
                     <td className="py-2.5 pr-3">
                       {a.category ? (
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{a.category}</span>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                          {a.category}
+                        </span>
                       ) : (
                         <span className="text-slate-300">—</span>
                       )}
                     </td>
-                    <td className="py-2.5 pr-3 font-mono text-xs text-slate-500">{a.inventoryNumber ?? '—'}</td>
+                    <td className="py-2.5 pr-3 font-mono text-xs text-slate-500">
+                      {a.inventoryNumber ?? '—'}
+                    </td>
                     <td className="py-2.5 pr-3">
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${st.cls}`}>{st.label}</span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${st.cls}`}
+                      >
+                        {st.label}
+                      </span>
                     </td>
                     <td className="py-2.5 pr-3 text-slate-600">
                       {a.homeLocationId ? (locName.get(a.homeLocationId) ?? '—') : '—'}
@@ -315,6 +417,33 @@ export function AssetsExplorer({
           </tbody>
         </table>
       </div>
+      {sorted.length > pageSize && (
+        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-sm text-slate-600">
+          <span>
+            Strana {currentPage} z {pageCount}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={currentPage === 1}
+              onClick={() => setPage((value) => Math.max(1, value - 1))}
+              className="rounded-lg border border-slate-300 p-2 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Předchozí strana"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              type="button"
+              disabled={currentPage === pageCount}
+              onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
+              className="rounded-lg border border-slate-300 p-2 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Další strana"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -323,7 +452,12 @@ function Chip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
       {label}
-      <button type="button" onClick={onClear} className="hover:text-brand-900" aria-label="Odebrat filtr">
+      <button
+        type="button"
+        onClick={onClear}
+        className="hover:text-brand-900"
+        aria-label="Odebrat filtr"
+      >
         <X size={12} />
       </button>
     </span>

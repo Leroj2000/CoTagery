@@ -53,6 +53,14 @@ describe('movement.logic – stavový automat Asset/Movement', () => {
     );
   });
 
+  it('MOVE ani ASSIGN nesmí obejít vrácení půjčené položky', () => {
+    const loaned = applyMovement(fresh(), { type: 'loan', toType: 'person', toId: PERSON });
+    expect(() => applyMovement(loaned, { type: 'move', toId: SITE })).toThrow(/nelze přesunout/);
+    expect(() => applyMovement(loaned, { type: 'assign', toId: PERSON2 })).toThrow(
+      /nelze přidělit/,
+    );
+  });
+
   it('HANDOVER: půjčené předá dál na jinou osobu', () => {
     const loaned = applyMovement(fresh(), { type: 'loan', toType: 'person', toId: PERSON });
     const s = applyMovement(loaned, { type: 'handover', toType: 'person', toId: PERSON2 });
@@ -85,6 +93,26 @@ describe('movement.logic – stavový automat Asset/Movement', () => {
     expect(disposed.status).toBe('retired');
     expect(disposed.holderId).toBeNull();
     expect(() => applyMovement(disposed, { type: 'move', toId: SITE })).toThrow(/Vyřazený/);
+  });
+
+  it('nelze vyřadit půjčenou, rezervovanou ani servisovanou položku', () => {
+    const loaned = applyMovement(fresh(), { type: 'loan', toType: 'person', toId: PERSON });
+    const service = applyMovement(fresh(), { type: 'service_out', toType: 'location', toId: SITE });
+    expect(() => applyMovement(loaned, { type: 'dispose' })).toThrow(/nelze vyřadit/);
+    expect(() => applyMovement({ ...fresh(), status: 'reserved' }, { type: 'dispose' })).toThrow(
+      /nelze vyřadit/,
+    );
+    expect(() => applyMovement(service, { type: 'dispose' })).toThrow(/nelze vyřadit/);
+  });
+
+  it('nelze poslat do servisu rezervovanou ani již servisovanou položku', () => {
+    const service = applyMovement(fresh(), { type: 'service_out', toType: 'location', toId: SITE });
+    expect(() =>
+      applyMovement({ ...fresh(), status: 'reserved' }, { type: 'service_out', toId: SITE }),
+    ).toThrow(/nelze odeslat do servisu/);
+    expect(() => applyMovement(service, { type: 'service_out', toId: SITE })).toThrow(
+      /nelze odeslat do servisu/,
+    );
   });
 
   it('ASSIGN na lokaci i osobu', () => {

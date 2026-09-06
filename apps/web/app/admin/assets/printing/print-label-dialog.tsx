@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Bluetooth, Info, Printer, RotateCcw, X } from 'lucide-react';
+import { AlertTriangle, Bluetooth, Download, Info, Printer, RotateCcw, X } from 'lucide-react';
 import { useNiimbotPrinter } from '../../../lib/printing/use-niimbot-printer';
 import { clampCopies } from '../../../lib/printing/copies';
 import { COPIES_MAX, COPIES_MIN } from '../../../lib/printing/niimbot-config';
@@ -17,13 +17,21 @@ const BLUEFY_URL = 'https://apps.apple.com/us/app/bluefy-web-ble-browser/id14928
  * připojení, počet kopií (1–99), tisk, průběh, opakování po chybě a zákaz
  * dvojitého odeslání. Veškerá tisková logika je v hooku/izolované vrstvě.
  */
-export function PrintLabelDialog({ data, onClose }: { data: LabelData; onClose: () => void }) {
+export function PrintLabelDialog({
+  data,
+  carrierId,
+  onClose,
+}: {
+  data: LabelData;
+  carrierId: string;
+  onClose: () => void;
+}) {
   const printer = useNiimbotPrinter();
   const [copies, setCopies] = useState(1);
 
-  const busy = printer.state === 'connecting' || printer.state === 'rendering' || printer.state === 'printing';
-  const canPrint =
-    (printer.state === 'connected' || printer.state === 'success') && !busy;
+  const busy =
+    printer.state === 'connecting' || printer.state === 'rendering' || printer.state === 'printing';
+  const canPrint = (printer.state === 'connected' || printer.state === 'success') && !busy;
 
   const previewData = useMemo(() => data, [data]);
 
@@ -59,7 +67,17 @@ export function PrintLabelDialog({ data, onClose }: { data: LabelData; onClose: 
           {/* Přesný náhled 384 × 240 px */}
           <div>
             <LabelPreview data={previewData} />
-            <p className="mt-1 text-center text-[11px] text-slate-400">384 × 240 px · 50 × 30 mm · 203 DPI</p>
+            <p className="mt-1 text-center text-[11px] text-slate-400">
+              384 × 240 px · 50 × 30 mm · 203 DPI
+            </p>
+            <a
+              href={`/api/carrier-label/${carrierId}`}
+              target="_blank"
+              rel="noreferrer"
+              className="mx-auto mt-2 flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline"
+            >
+              <Download size={13} /> Vytisknout nebo uložit jako PDF
+            </a>
           </div>
 
           {/* Nepodporované prostředí → návod */}
@@ -67,7 +85,11 @@ export function PrintLabelDialog({ data, onClose }: { data: LabelData; onClose: 
             <UnsupportedNotice kind={printer.unsupportedKind} />
           ) : (
             <>
-              <PrinterStatus state={printer.state} printer={printer.printer} progress={printer.progress} />
+              <PrinterStatus
+                state={printer.state}
+                printer={printer.printer}
+                progress={printer.progress}
+              />
 
               {/* Chyba + možnost opakovat */}
               {printer.state === 'error' && printer.error && (
@@ -155,7 +177,12 @@ function UnsupportedNotice({ kind }: { kind: 'ios-no-bluetooth' | 'unsupported' 
         <Info size={16} className="mt-0.5 shrink-0" />
         <div>
           <p>{PRINTER_MESSAGES['ios-no-bluetooth']}</p>
-          <a href={BLUEFY_URL} target="_blank" rel="noreferrer" className="mt-1 inline-block font-medium underline">
+          <a
+            href={BLUEFY_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-1 inline-block font-medium underline"
+          >
             Stáhnout Bluefy
           </a>
         </div>

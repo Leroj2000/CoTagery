@@ -18,7 +18,7 @@ const PrintLabelDialog = dynamic(
   { ssr: false },
 );
 
-export function PrintLabelButton({ data }: { data: LabelData }) {
+export function PrintLabelButton({ data, carrierId }: { data: LabelData; carrierId: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -30,7 +30,9 @@ export function PrintLabelButton({ data }: { data: LabelData }) {
         <Printer size={14} className="text-brand-600" />
         Vytisknout štítek
       </button>
-      {open && <PrintLabelDialog data={data} onClose={() => setOpen(false)} />}
+      {open && (
+        <PrintLabelDialog data={data} carrierId={carrierId} onClose={() => setOpen(false)} />
+      )}
     </>
   );
 }

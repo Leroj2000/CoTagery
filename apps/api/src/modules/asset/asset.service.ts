@@ -1,4 +1,10 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { In, LessThanOrEqual, Repository } from 'typeorm';
 import sharp from 'sharp';
 import { TenantContextService } from '../../core/tenancy/tenant-context.service';
@@ -8,6 +14,7 @@ import { Location } from '../../core/domain/entities/location.entity';
 import { Person } from '../../core/domain/entities/person.entity';
 import { Tenant } from '../../core/domain/entities/tenant.entity';
 import { DigitalObject } from '../../core/domain/entities/digital-object.entity';
+import { DataCarrier } from '../../core/domain/entities/data-carrier.entity';
 import { DataCarriersService } from '../../core/domain/carriers/data-carriers.service';
 import { User } from '../../core/auth/entities/user.entity';
 import { Asset } from './entities/asset.entity';
@@ -242,7 +249,12 @@ export class AssetService {
    */
   async recordObservation(
     assetId: string,
-    opts: { source: 'scan' | 'inventory'; locationId?: string | null; actorUserId?: string | null; note?: string | null },
+    opts: {
+      source: 'scan' | 'inventory';
+      locationId?: string | null;
+      actorUserId?: string | null;
+      note?: string | null;
+    },
   ): Promise<void> {
     try {
       const repo = this.repo(AssetObservation);
@@ -267,7 +279,13 @@ export class AssetService {
     assetId: string,
     limit = 10,
   ): Promise<
-    { id: string; source: string; observedAt: string; locationName: string | null; actorName: string | null }[]
+    {
+      id: string;
+      source: string;
+      observedAt: string;
+      locationName: string | null;
+      actorName: string | null;
+    }[]
   > {
     const rows = await this.repo(AssetObservation).find({
       where: { assetId },
@@ -325,10 +343,19 @@ export class AssetService {
 
     if (!carrier.digitalObjectId) {
       // Nepřiřazený pool kód – zatím bez objektu/věci.
-      return { found: true, code, carrier: carrierInfo, asset: null, object: null, primaryAction: null };
+      return {
+        found: true,
+        code,
+        carrier: carrierInfo,
+        asset: null,
+        object: null,
+        primaryAction: null,
+      };
     }
 
-    const object = await this.repo(DigitalObject).findOne({ where: { id: carrier.digitalObjectId } });
+    const object = await this.repo(DigitalObject).findOne({
+      where: { id: carrier.digitalObjectId },
+    });
     const asset = await this.getByObject(carrier.digitalObjectId);
 
     if (!asset) {
@@ -362,16 +389,18 @@ export class AssetService {
   /** Rozřeší jména držitele / domovské lokace / odpovědné osoby pro scan kartu. */
   private async resolveContext(asset: Asset): Promise<ScanResult['context']> {
     const locName = async (id: string | null): Promise<string | null> =>
-      id ? (await this.repo(Location).findOne({ where: { id } }))?.name ?? null : null;
+      id ? ((await this.repo(Location).findOne({ where: { id } }))?.name ?? null) : null;
     const personName = async (id: string | null): Promise<string | null> =>
-      id ? (await this.repo(Person).findOne({ where: { id } }))?.name ?? null : null;
+      id ? ((await this.repo(Person).findOne({ where: { id } }))?.name ?? null) : null;
     const assetName = async (id: string | null): Promise<string | null> =>
-      id ? (await this.repo(Asset).findOne({ where: { id } }))?.name ?? null : null;
+      id ? ((await this.repo(Asset).findOne({ where: { id } }))?.name ?? null) : null;
 
     let holderName: string | null = null;
     if (asset.currentHolderType === 'person') holderName = await personName(asset.currentHolderId);
-    else if (asset.currentHolderType === 'location') holderName = await locName(asset.currentHolderId);
-    else if (asset.currentHolderType === 'asset') holderName = await assetName(asset.currentHolderId);
+    else if (asset.currentHolderType === 'location')
+      holderName = await locName(asset.currentHolderId);
+    else if (asset.currentHolderType === 'asset')
+      holderName = await assetName(asset.currentHolderId);
 
     return {
       homeName: await locName(asset.homeLocationId),
@@ -410,7 +439,50 @@ export class AssetService {
       throw new BadRequestException('Vrácení vyžaduje fotku stavu (politika tenanta)');
     }
 
-    const asset = await this.get(assetId);
+    // FOR UPDATE serializuje souběžné pohyby stejné položky. Bez něj mohou dva
+    // requesty oba vyhodnotit stejný starý stav a vytvořit protichůdný ledger.
+    const asset = await this.repo(Asset)
+      .createQueryBuilder('asset')
+      .setLock('pessimistic_write')
+      .where('asset.id = :assetId', { assetId })
+      .getOne();
+    if (!asset) throw new NotFoundException('Asset neexistuje');
+
+    let reservation: Reservation | null = null;
+    if (dto.reservationId) {
+      reservation = await this.repo(Reservation).findOne({ where: { id: dto.reservationId } });
+      if (!reservation || reservation.assetId !== assetId || reservation.status !== 'approved') {
+        throw new BadRequestException('Rezervace není schválená pro tuto položku');
+      }
+      if (
+        dto.type !== 'loan' ||
+        !reservation.requestedById ||
+        dto.toId !== reservation.requestedById
+      ) {
+        throw new BadRequestException('Rezervaci lze splnit pouze výdejem jejímu žadateli');
+      }
+      const now = new Date();
+      if (
+        !reservation.fromAt ||
+        !reservation.toAt ||
+        now < reservation.fromAt ||
+        now > reservation.toAt
+      ) {
+        throw new BadRequestException('Výdej je mimo schválený termín rezervace');
+      }
+    } else if (dto.type === 'loan') {
+      const fromAt = new Date();
+      const toAt = dto.dueAt ? new Date(dto.dueAt) : new Date('9999-12-31T23:59:59.999Z');
+      const overlap = await this.repo(Reservation)
+        .createQueryBuilder('r')
+        .where('r.asset_id = :assetId', { assetId })
+        .andWhere("r.status = 'approved'")
+        .andWhere('r.from_at < :toAt AND r.to_at > :fromAt', { fromAt, toAt })
+        .getCount();
+      if (overlap > 0) {
+        throw new BadRequestException('Termín výdeje koliduje se schválenou rezervací');
+      }
+    }
 
     const before: AssetState = {
       status: asset.status,
@@ -463,6 +535,19 @@ export class AssetService {
     asset.dueAt = after.dueAt;
     const saved = await this.repo(Asset).save(asset);
 
+    if (reservation) {
+      reservation.status = 'fulfilled';
+      await this.repo(Reservation).save(reservation);
+    }
+
+    if (dto.type === 'dispose') {
+      await this.repo(DataCarrier).update(
+        { digitalObjectId: asset.digitalObjectId, status: 'active' },
+        { status: 'destroyed' },
+      );
+      await this.repo(DigitalObject).update({ id: asset.digitalObjectId }, { status: 'archived' });
+    }
+
     await this.webhooks.emit('movement.created', {
       assetId: asset.id,
       assetName: asset.name,
@@ -475,12 +560,21 @@ export class AssetService {
   }
 
   // --- Potvrzení převzetí (§8) ---
-  async confirmMovement(movementId: string): Promise<Movement> {
+  async confirmMovement(movementId: string, userId: string): Promise<Movement> {
     const repo = this.repo(Movement);
     const mv = await repo.findOne({ where: { id: movementId } });
     if (!mv) throw new NotFoundException('Pohyb neexistuje');
     if (mv.confirmation !== 'pending') {
       throw new BadRequestException('Pohyb nevyžaduje potvrzení nebo už je potvrzený');
+    }
+    if (mv.toType !== 'person' || !mv.toId) throw new BadRequestException('Pohyb nemá příjemce');
+    const recipient = await this.context.manager.query(
+      `SELECT 1 FROM people p JOIN users u ON u.id = $2
+        WHERE p.id = $1 AND (p.user_id = $2 OR lower(p.email) = lower(u.email))`,
+      [mv.toId, userId],
+    );
+    if (recipient.length === 0) {
+      throw new ForbiddenException('Převzetí může potvrdit pouze příjemce');
     }
     mv.confirmation = 'confirmed';
     mv.confirmedAt = new Date();
@@ -533,14 +627,19 @@ export class AssetService {
 
   async createReservation(dto: CreateReservationDto): Promise<Reservation> {
     await this.get(dto.assetId);
+    const fromAt = new Date(dto.fromAt);
+    const toAt = new Date(dto.toAt);
+    if (!Number.isFinite(fromAt.getTime()) || !Number.isFinite(toAt.getTime()) || fromAt >= toAt) {
+      throw new BadRequestException('Rezervace musí mít platný interval od–do');
+    }
     const repo = this.repo(Reservation);
     return repo.save(
       repo.create({
         tenantId: this.context.tenantId,
         assetId: dto.assetId,
         requestedById: dto.requestedById ?? null,
-        fromAt: dto.fromAt ? new Date(dto.fromAt) : null,
-        toAt: dto.toAt ? new Date(dto.toAt) : null,
+        fromAt,
+        toAt,
         purpose: dto.purpose ?? null,
         status: 'pending',
       }),
@@ -554,6 +653,28 @@ export class AssetService {
     const repo = this.repo(Reservation);
     const res = await repo.findOne({ where: { id } });
     if (!res) throw new NotFoundException('Rezervace neexistuje');
+    if (res.status !== 'pending' && !(status === 'cancelled' && res.status === 'approved')) {
+      throw new BadRequestException('Stav této rezervace už nelze změnit');
+    }
+    if (status === 'approved') {
+      const asset = await this.repo(Asset)
+        .createQueryBuilder('asset')
+        .setLock('pessimistic_write')
+        .where('asset.id = :id', { id: res.assetId })
+        .getOne();
+      if (!asset || asset.status !== 'available') {
+        throw new BadRequestException('Položka není dostupná pro rezervaci');
+      }
+      const overlap = await repo
+        .createQueryBuilder('r')
+        .where('r.asset_id = :assetId', { assetId: res.assetId })
+        .andWhere("r.status = 'approved'")
+        .andWhere('r.id <> :id', { id })
+        .andWhere('r.from_at < :toAt AND r.to_at > :fromAt', { fromAt: res.fromAt, toAt: res.toAt })
+        .getCount();
+      if (overlap > 0)
+        throw new BadRequestException('Termín se překrývá s jinou schválenou rezervací');
+    }
     res.status = status;
     return repo.save(res);
   }
@@ -564,17 +685,25 @@ export class AssetService {
     assetIds: string[],
     dto: PerformMovementDto,
   ): Promise<{ ok: number; failed: { assetId: string; error: string }[] }> {
-    const failed: { assetId: string; error: string }[] = [];
-    let ok = 0;
-    for (const id of assetIds) {
-      try {
-        await this.performMovement(id, dto);
-        ok++;
-      } catch (e) {
-        failed.push({ assetId: id, error: e instanceof Error ? e.message : 'chyba' });
-      }
+    const validation = await this.validateWorkflow({
+      type: dto.type,
+      toType: dto.toType,
+      toId: dto.toId,
+      dueAt: dto.dueAt,
+      assetIds,
+    });
+    if (validation.blockedCount > 0) {
+      return {
+        ok: 0,
+        failed: validation.items
+          .filter((item) => !item.ok)
+          .map((item) => ({ assetId: item.assetId ?? item.code, error: item.reason ?? 'chyba' })),
+      };
     }
-    return { ok, failed };
+    // Nezachytáváme chybu jednotlivé položky: request interceptor rollbackne
+    // celou transakci, takže bulk operace nikdy nezůstane napůl provedená.
+    for (const id of [...new Set(assetIds)].sort()) await this.performMovement(id, dto);
+    return { ok: validation.okCount, failed: [] };
   }
 
   /**
@@ -590,11 +719,26 @@ export class AssetService {
     // Sdílená kontrola pro už načtenou věc (dry-run přes stejný applyMovement).
     const evalAsset = (asset: Asset, code: string): WorkflowItem => {
       if (seen.has(asset.id)) {
-        return { code, assetId: asset.id, name: asset.name, status: asset.status, ok: false, reason: 'Duplicitní', duplicate: true };
+        return {
+          code,
+          assetId: asset.id,
+          name: asset.name,
+          status: asset.status,
+          ok: false,
+          reason: 'Duplicitní',
+          duplicate: true,
+        };
       }
       seen.add(asset.id);
       if (blockReturnPhoto) {
-        return { code, assetId: asset.id, name: asset.name, status: asset.status, ok: false, reason: 'Vrácení vyžaduje foto (politika) – vrať přes kartu položky' };
+        return {
+          code,
+          assetId: asset.id,
+          name: asset.name,
+          status: asset.status,
+          ok: false,
+          reason: 'Vrácení vyžaduje foto (politika) – vrať přes kartu položky',
+        };
       }
       try {
         applyMovement(
@@ -615,7 +759,14 @@ export class AssetService {
         );
         return { code, assetId: asset.id, name: asset.name, status: asset.status, ok: true };
       } catch (e) {
-        return { code, assetId: asset.id, name: asset.name, status: asset.status, ok: false, reason: e instanceof MovementError ? e.message : 'Akci nelze provést' };
+        return {
+          code,
+          assetId: asset.id,
+          name: asset.name,
+          status: asset.status,
+          ok: false,
+          reason: e instanceof MovementError ? e.message : 'Akci nelze provést',
+        };
       }
     };
 
@@ -625,12 +776,26 @@ export class AssetService {
       if (!code) continue;
       const carrier = await this.carriers.findByCode(code);
       if (!carrier?.digitalObjectId) {
-        items.push({ code, assetId: null, name: null, status: null, ok: false, reason: 'Kód nenalezen nebo nepřiřazený' });
+        items.push({
+          code,
+          assetId: null,
+          name: null,
+          status: null,
+          ok: false,
+          reason: 'Kód nenalezen nebo nepřiřazený',
+        });
         continue;
       }
       const asset = await this.getByObject(carrier.digitalObjectId);
       if (!asset) {
-        items.push({ code, assetId: null, name: null, status: null, ok: false, reason: 'Kód nevede na položku' });
+        items.push({
+          code,
+          assetId: null,
+          name: null,
+          status: null,
+          ok: false,
+          reason: 'Kód nevede na položku',
+        });
         continue;
       }
       items.push(evalAsset(asset, code));
@@ -640,14 +805,26 @@ export class AssetService {
     for (const id of dto.assetIds ?? []) {
       const asset = await this.repo(Asset).findOne({ where: { id } });
       if (!asset) {
-        items.push({ code: id, assetId: null, name: null, status: null, ok: false, reason: 'Položka neexistuje' });
+        items.push({
+          code: id,
+          assetId: null,
+          name: null,
+          status: null,
+          ok: false,
+          reason: 'Položka neexistuje',
+        });
         continue;
       }
       items.push(evalAsset(asset, id));
     }
 
     const assetIds = items.filter((i) => i.ok && i.assetId).map((i) => i.assetId as string);
-    return { items, okCount: assetIds.length, blockedCount: items.length - assetIds.length, assetIds };
+    return {
+      items,
+      okCount: assetIds.length,
+      blockedCount: items.length - assetIds.length,
+      assetIds,
+    };
   }
 
   // --- CSV export / import ---
@@ -695,14 +872,26 @@ export class AssetService {
    * model, serialNumber, inventoryNumber, homeLocation. Kategorie i home lokace se
    * dohledají podle názvu, nebo založí (find-or-create). Vrací souhrn.
    */
-  async importCsv(csv: string): Promise<{ created: number; failed: { row: number; error: string }[] }> {
+  async importCsv(
+    csv: string,
+  ): Promise<{ created: number; failed: { row: number; error: string }[] }> {
+    if (Buffer.byteLength(csv, 'utf8') > 2 * 1024 * 1024) {
+      throw new BadRequestException('CSV je příliš velké (maximum 2 MB)');
+    }
     const objs = csvToObjects(csv);
+    if (objs.length > 5000) throw new BadRequestException('CSV může obsahovat nejvýše 5 000 řádků');
     const catRepo = this.repo(Category);
     const locRepo = this.repo(Location);
     const cats = await catRepo.find();
     const locs = await locRepo.find();
     const catByName = new Map(cats.map((c) => [c.name.toLowerCase(), c]));
     const locByName = new Map(locs.map((l) => [l.name.toLowerCase(), l]));
+    const existingInventory = new Set(
+      (await this.repo(Asset).find({ select: { inventoryNumber: true } }))
+        .map((a) => a.inventoryNumber?.trim().toLowerCase())
+        .filter((value): value is string => !!value),
+    );
+    const seenInventory = new Set<string>();
 
     const failed: { row: number; error: string }[] = [];
     let created = 0;
@@ -713,6 +902,16 @@ export class AssetService {
         failed.push({ row: i + 2, error: 'chybí name' });
         continue;
       }
+      const inventoryNumber = (o.inventorynumber || o.inventoryNumber || '').trim();
+      const inventoryKey = inventoryNumber.toLowerCase();
+      if (
+        inventoryKey &&
+        (seenInventory.has(inventoryKey) || existingInventory.has(inventoryKey))
+      ) {
+        failed.push({ row: i + 2, error: `duplicitní inventoryNumber '${inventoryNumber}'` });
+        continue;
+      }
+      if (inventoryKey) seenInventory.add(inventoryKey);
       try {
         let categoryId: string | undefined;
         if (o.category) {
@@ -730,7 +929,9 @@ export class AssetService {
         if (locName) {
           let loc = locByName.get(locName.toLowerCase());
           if (!loc) {
-            loc = await locRepo.save(locRepo.create({ tenantId: this.context.tenantId, name: locName }));
+            loc = await locRepo.save(
+              locRepo.create({ tenantId: this.context.tenantId, name: locName }),
+            );
             locByName.set(loc.name.toLowerCase(), loc);
           }
           homeLocationId = loc.id;
@@ -741,7 +942,7 @@ export class AssetService {
           manufacturer: o.manufacturer || undefined,
           model: o.model || undefined,
           serialNumber: o.serialnumber || o.serialNumber || undefined,
-          inventoryNumber: o.inventorynumber || o.inventoryNumber || undefined,
+          inventoryNumber: inventoryNumber || undefined,
           homeLocationId,
         });
         created++;
@@ -855,7 +1056,10 @@ export class AssetService {
   async getPhoto(assetId: string): Promise<{ buffer: Buffer; mime: string }> {
     const asset = await this.get(assetId);
     if (!asset.photoKey) throw new NotFoundException('Položka nemá fotografii');
-    return { buffer: await this.storage.get(asset.photoKey), mime: asset.photoMime ?? 'image/jpeg' };
+    return {
+      buffer: await this.storage.get(asset.photoKey),
+      mime: asset.photoMime ?? 'image/jpeg',
+    };
   }
 
   // --- Nahlášení problému / poškození ---

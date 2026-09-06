@@ -10,7 +10,7 @@ export type ServerAction = (prev: ActionState, formData: FormData) => Promise<Ac
 export interface Field {
   name: string;
   label: string;
-  type?: 'text' | 'number' | 'email' | 'url';
+  type?: 'text' | 'number' | 'email' | 'url' | 'datetime-local';
   required?: boolean;
   placeholder?: string;
   defaultValue?: string;

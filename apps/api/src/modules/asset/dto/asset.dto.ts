@@ -181,6 +181,11 @@ export class PerformMovementDto {
   @IsOptional()
   @IsBoolean()
   requireConfirmation?: boolean;
+
+  /** Schválená rezervace, kterou tento výdej plní. */
+  @IsOptional()
+  @IsUUID()
+  reservationId?: string;
 }
 
 export class BulkMovementDto extends PerformMovementDto {
@@ -255,13 +260,11 @@ export class CreateReservationDto {
   @IsUUID()
   requestedById?: string;
 
-  @IsOptional()
   @IsString()
-  fromAt?: string;
+  fromAt!: string;
 
-  @IsOptional()
   @IsString()
-  toAt?: string;
+  toAt!: string;
 
   @IsOptional()
   @IsString()

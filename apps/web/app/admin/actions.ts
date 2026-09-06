@@ -524,6 +524,22 @@ export async function setReservationStatus(_p: ActionState, fd: FormData): Promi
   );
 }
 
+export async function fulfillReservation(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return run(
+    `/assets/${str(fd, 'assetId')}/movements`,
+    {
+      type: 'loan',
+      toType: 'person',
+      toId: str(fd, 'requestedById'),
+      dueAt: str(fd, 'toAt'),
+      reservationId: str(fd, 'reservationId'),
+      requireConfirmation: true,
+    },
+    '/admin/reservations',
+    'Rezervace vydána žadateli; čeká na potvrzení převzetí.',
+  );
+}
+
 // --- Asset nesting (§14) ---
 export async function putIntoContainer(_p: ActionState, fd: FormData): Promise<ActionState> {
   const containerId = str(fd, 'containerId');

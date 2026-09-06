@@ -3,7 +3,7 @@ import { BaseTenantEntity } from '../../../core/database/base-tenant.entity';
 
 /**
  * Rezervace / požadavek na věc (§15): kdo, kdy od–do, na co. Skladník schválí
- * nebo zamítne. MVP netvrdě neblokuje, jen eviduje záměr.
+ * nebo zamítne. Schválená rezervace blokuje překryv a navazuje na výdej.
  */
 @Entity('reservations')
 export class Reservation extends BaseTenantEntity {
@@ -25,5 +25,5 @@ export class Reservation extends BaseTenantEntity {
   purpose!: string | null;
 
   @Column({ type: 'text', default: 'pending' })
-  status!: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  status!: 'pending' | 'approved' | 'fulfilled' | 'rejected' | 'cancelled';
 }

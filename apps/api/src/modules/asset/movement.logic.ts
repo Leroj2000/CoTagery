@@ -20,14 +20,7 @@ export type AssetStatus =
   | 'retired';
 
 export type MovementType =
-  | 'assign'
-  | 'loan'
-  | 'move'
-  | 'return'
-  | 'handover'
-  | 'service_out'
-  | 'service_return'
-  | 'dispose';
+  'assign' | 'loan' | 'move' | 'return' | 'handover' | 'service_out' | 'service_return' | 'dispose';
 
 export type HolderType = 'location' | 'person' | 'asset';
 
@@ -78,10 +71,20 @@ function person(state: AssetState, toId: string | null | undefined): AssetState 
   return { ...state, holderType: 'person', holderId: toId!, responsiblePersonId: toId! };
 }
 
-function location(state: AssetState, toId: string | null | undefined, fallback?: string | null): AssetState {
+function location(
+  state: AssetState,
+  toId: string | null | undefined,
+  fallback?: string | null,
+): AssetState {
   const target = toId ?? fallback ?? null;
   require_(!!target, 'to_required', 'Chybí cílová lokace (ani home location)');
-  return { ...state, holderType: 'location', holderId: target, responsiblePersonId: null, dueAt: null };
+  return {
+    ...state,
+    holderType: 'location',
+    holderId: target,
+    responsiblePersonId: null,
+    dueAt: null,
+  };
 }
 
 /**
@@ -103,7 +106,7 @@ export function applyMovement(state: AssetState, mv: MovementInput): AssetState 
 
     case 'assign':
       require_(
-        !['service', 'in_transfer'].includes(s),
+        ['available', 'assigned'].includes(s),
         'not_assignable',
         `Položku ve stavu '${s}' nelze přidělit`,
       );
@@ -112,6 +115,11 @@ export function applyMovement(state: AssetState, mv: MovementInput): AssetState 
         : { ...person(state, mv.toId), status: 'assigned', dueAt: mv.dueAt ?? null };
 
     case 'move':
+      require_(
+        ['available', 'assigned'].includes(s),
+        'not_movable',
+        `Položku ve stavu '${s}' nelze přesunout`,
+      );
       return { ...location(state, mv.toId), status: 'available' };
 
     case 'handover':
@@ -131,13 +139,30 @@ export function applyMovement(state: AssetState, mv: MovementInput): AssetState 
       return { ...location(state, mv.toId, mv.homeLocationId), status: 'available' };
 
     case 'service_out':
-      return { ...(mv.toType === 'person' ? person(state, mv.toId) : location(state, mv.toId, mv.homeLocationId)), status: 'service', responsiblePersonId: null, dueAt: null };
+      require_(
+        !['reserved', 'service'].includes(s),
+        'not_serviceable',
+        `Položku ve stavu '${s}' nelze odeslat do servisu`,
+      );
+      return {
+        ...(mv.toType === 'person'
+          ? person(state, mv.toId)
+          : location(state, mv.toId, mv.homeLocationId)),
+        status: 'service',
+        responsiblePersonId: null,
+        dueAt: null,
+      };
 
     case 'service_return':
       require_(s === 'service', 'not_in_service', 'Položka není v servisu');
       return { ...location(state, mv.toId, mv.homeLocationId), status: 'available' };
 
     case 'dispose':
+      require_(
+        !['loaned', 'reserved', 'service', 'in_transfer'].includes(s),
+        'not_disposable',
+        `Položku ve stavu '${s}' nelze vyřadit`,
+      );
       return {
         status: 'retired',
         holderType: null,
@@ -165,8 +190,11 @@ export function availableActions(status: AssetStatus): MovementType[] {
     case 'service':
       return ['service_return'];
     case 'retired':
+    case 'in_transfer':
+    case 'damaged':
+    case 'lost':
       return [];
     default:
-      return ['move', 'return'];
+      return [];
   }
 }

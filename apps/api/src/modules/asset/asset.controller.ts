@@ -36,6 +36,8 @@ import type { Movement } from './entities/movement.entity';
 import type { ServiceRecord } from './entities/service-record.entity';
 import type { Issue } from './entities/issue.entity';
 import type { MovementType } from './movement.logic';
+import { CurrentUser } from '../../core/auth/decorators';
+import type { RequestUser } from '../../core/auth/jwt-auth.guard';
 
 /** Minimální tvar nahraného souboru (bez závislosti na typech express/multer). */
 interface UploadedFileLike {
@@ -115,10 +117,7 @@ export class AssetController {
 
   @Patch(':id')
   @RequirePermission('asset.item.update')
-  updateAsset(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateAssetDto,
-  ): Promise<Asset> {
+  updateAsset(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateAssetDto): Promise<Asset> {
     return this.assets.update(id, dto);
   }
 
@@ -131,20 +130,21 @@ export class AssetController {
   /** Last Observation: kde/kdy byla věc naposledy VIDĚNA (samostatná vrstva). */
   @Get(':id/observations')
   @RequirePermission('asset.item.view')
-  observations(
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<
-    { id: string; source: string; observedAt: string; locationName: string | null; actorName: string | null }[]
+  observations(@Param('id', ParseUUIDPipe) id: string): Promise<
+    {
+      id: string;
+      source: string;
+      observedAt: string;
+      locationName: string | null;
+      actorName: string | null;
+    }[]
   > {
     return this.assets.listObservations(id);
   }
 
   @Post(':id/movements')
   @RequirePermission('asset.movement.perform')
-  perform(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: PerformMovementDto,
-  ): Promise<Asset> {
+  perform(@Param('id', ParseUUIDPipe) id: string, @Body() dto: PerformMovementDto): Promise<Asset> {
     return this.assets.performMovement(id, dto);
   }
 
@@ -180,8 +180,11 @@ export class AssetController {
 
   @Post('movements/:movementId/confirm')
   @RequirePermission('asset.movement.perform')
-  confirmMovement(@Param('movementId', ParseUUIDPipe) movementId: string): Promise<Movement> {
-    return this.assets.confirmMovement(movementId);
+  confirmMovement(
+    @Param('movementId', ParseUUIDPipe) movementId: string,
+    @CurrentUser() user: RequestUser,
+  ): Promise<Movement> {
+    return this.assets.confirmMovement(movementId, user.userId);
   }
 
   // --- Servis / revize (§17) ---
@@ -281,10 +284,7 @@ export class AssetController {
 
   @Post(':id/issues')
   @RequirePermission('asset.issue.manage')
-  reportIssue(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: ReportIssueDto,
-  ): Promise<Issue> {
+  reportIssue(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReportIssueDto): Promise<Issue> {
     return this.assets.reportIssue(id, dto);
   }
 
