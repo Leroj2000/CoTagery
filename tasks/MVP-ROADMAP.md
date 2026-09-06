@@ -118,13 +118,13 @@ pozvánka kolegy, nastavení hesla a přihlášení. Databázová migrace `19220
 - [x] Dokončit rezervace včetně konfliktů a návaznosti na výdej.
 - [x] Dokončit potvrzení převzetí druhou stranou.
 - [x] Doplnit upozornění na opožděné vrácení, servis a otevřenou závadu.
-- [ ] U všech seznamů doplnit použitelné filtrování, stránkování a řazení.
+- [x] U všech seznamů doplnit použitelné filtrování, stránkování a řazení.
 - [x] Ověřit CSV import na chybách, duplicitách a větších souborech.
 - [x] Ověřit tisk štítků na podporovaných tiskárnách a nabídnout PDF fallback.
 
-**Akceptace:** Celý hlavní průchod z kapitoly 3 funguje na mobilu i desktopu bez zásahu do DB.
+**Akceptace:** Celý hlavní průchod z kapitoly 3 funguje na mobilu i desktopu bez zásahu do DB. ✅
 
-**Stav ověření 2026-09-06:** API smoke test nad Docker stackem prošel pro konflikt a splnění rezervace, potvrzení příjemcem, souběžný výdej, atomicitu bulk operace, vyřazení identifikátorů, PDF fallback a CSV duplicity/limity. Fyzický test na NIIMBOT B1 prošel: jeden štítek se vytiskl, QR byl čitelný a otevřel veřejnou stránku správné položky. Zbývá sjednotit filtrování/stránkování/řazení i mimo hlavní seznam věcí a rezervací.
+**Dokončeno 2026-09-06:** API smoke test nad Docker stackem prošel pro konflikt a splnění rezervace, potvrzení příjemcem, souběžný výdej, atomicitu bulk operace, vyřazení identifikátorů, PDF fallback a CSV duplicity/limity. Fyzický test na NIIMBOT B1 prošel: jeden štítek se vytiskl, QR byl čitelný a otevřel veřejnou stránku správné položky. Všechny standardní administrační tabulky používají společné hledání, řazení a stránkování; specializované seznamy položek a rezervací mají vlastní ekvivalentní ovládání. Produkční build a přihlášený runtime smoke test hlavních seznamů prošly bez zásahu do databáze.
 
 ### M3 – Bezpečnost a izolace
 

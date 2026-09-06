@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { DataTable } from './data-table';
 
 /** Karta se sekcí (nadpis + volitelná akce/popis). Server-safe. */
 export function Section({
@@ -92,35 +93,7 @@ export function EmptyState({ children }: { children: ReactNode }) {
 
 /** Tabulka se zebra řádky a hover. `rows` je pole polí buněk. */
 export function Table({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
-  if (rows.length === 0) {
-    return <EmptyState>Zatím žádné záznamy.</EmptyState>;
-  }
-  return (
-    <div className="-mx-1 overflow-x-auto">
-      <table className="w-full min-w-full text-left text-sm">
-        <thead>
-          <tr className="border-b border-slate-200 text-[11px] font-medium uppercase tracking-wide text-slate-400">
-            {head.map((h) => (
-              <th key={h} className="px-3 py-2.5">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((cells, i) => (
-            <tr key={i} className="border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/70">
-              {cells.map((c, j) => (
-                <td key={j} className="px-3 py-2.5 align-middle text-slate-700">
-                  {c}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+  return <DataTable head={head} rows={rows} />;
 }
 
 export type BadgeTone = 'neutral' | 'brand' | 'green' | 'red' | 'amber' | 'slate';
@@ -149,9 +122,15 @@ export function StatusBadge({ status }: { status: string }) {
   const tone: BadgeTone =
     status === 'active' || status === 'paid'
       ? 'green'
-      : status === 'expired' || status === 'canceled' || status === 'cancelled' || status === 'past_due'
+      : status === 'expired' ||
+          status === 'canceled' ||
+          status === 'cancelled' ||
+          status === 'past_due'
         ? 'red'
-        : status === 'suspended' || status === 'trialing' || status === 'incomplete' || status === 'open'
+        : status === 'suspended' ||
+            status === 'trialing' ||
+            status === 'incomplete' ||
+            status === 'open'
           ? 'amber'
           : 'slate';
   return <Badge tone={tone}>{status}</Badge>;
