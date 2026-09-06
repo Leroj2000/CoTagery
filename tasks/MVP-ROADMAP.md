@@ -120,11 +120,11 @@ pozvánka kolegy, nastavení hesla a přihlášení. Databázová migrace `19220
 - [x] Doplnit upozornění na opožděné vrácení, servis a otevřenou závadu.
 - [ ] U všech seznamů doplnit použitelné filtrování, stránkování a řazení.
 - [x] Ověřit CSV import na chybách, duplicitách a větších souborech.
-- [ ] Ověřit tisk štítků na podporovaných tiskárnách a nabídnout PDF fallback.
+- [x] Ověřit tisk štítků na podporovaných tiskárnách a nabídnout PDF fallback.
 
 **Akceptace:** Celý hlavní průchod z kapitoly 3 funguje na mobilu i desktopu bez zásahu do DB.
 
-**Stav ověření 2026-09-06:** API smoke test nad Docker stackem prošel pro konflikt a splnění rezervace, potvrzení příjemcem, souběžný výdej, atomicitu bulk operace, vyřazení identifikátorů, PDF fallback a CSV duplicity/limity. Zbývá sjednotit filtrování/stránkování/řazení i mimo hlavní seznam věcí a rezervací a udělat fyzickou zkoušku podporovaných tiskáren.
+**Stav ověření 2026-09-06:** API smoke test nad Docker stackem prošel pro konflikt a splnění rezervace, potvrzení příjemcem, souběžný výdej, atomicitu bulk operace, vyřazení identifikátorů, PDF fallback a CSV duplicity/limity. Fyzický test na NIIMBOT B1 prošel: jeden štítek se vytiskl, QR byl čitelný a otevřel veřejnou stránku správné položky. Zbývá sjednotit filtrování/stránkování/řazení i mimo hlavní seznam věcí a rezervací.
 
 ### M3 – Bezpečnost a izolace
 

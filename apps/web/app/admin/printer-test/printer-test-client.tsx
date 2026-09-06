@@ -17,10 +17,10 @@ import type { LabelData } from '../../lib/printing/types';
  */
 export function PrinterTestClient() {
   const printer = useNiimbotPrinter();
-  const [qrValue, setQrValue] = useState('https://tagery.app/r/DEMO-CODE');
-  const [itemName, setItemName] = useState('Aku vrtačka Bosch GSB 18V-55 Professional');
-  const [assetCode, setAssetCode] = useState('INV-000123');
-  const [subtitle, setSubtitle] = useState('Nářadí');
+  const [qrValue, setQrValue] = useState('https://app.tagery.tech/r/lC64XUt6XqMQ');
+  const [itemName, setItemName] = useState('Propiska');
+  const [assetCode, setAssetCode] = useState('lC64XUt6XqMQ');
+  const [subtitle, setSubtitle] = useState('Funkční demo identifikátor');
   const [copies, setCopies] = useState(1);
   const [debug, setDebugState] = useState(false);
   const [version, setVersion] = useState<string | null>(null);
