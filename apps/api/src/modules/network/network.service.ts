@@ -48,8 +48,24 @@ export interface FeedItem {
 export class NetworkService {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
+  /** Veřejná/network projekce smí propustit jen firmy s aktivní půjčovnou. */
+  private async filterActiveRental<T extends { tenantId: string }>(rows: T[]): Promise<T[]> {
+    const ids = [...new Set(rows.map((row) => row.tenantId))];
+    if (ids.length === 0) return [];
+    const activeRows = (await this.dataSource.query(
+      `SELECT tenant_id
+         FROM unnest($1::uuid[]) AS ids(tenant_id)
+        WHERE is_org_module_active(tenant_id, 'rental')`,
+      [ids],
+    )) as { tenant_id: string }[];
+    const active = new Set(activeRows.map((row) => row.tenant_id));
+    return rows.filter((row) => active.has(row.tenantId));
+  }
+
   /** Sledovat firmu. Vrací false, pokud firma není opt-in v síti. */
   async follow(userId: string, tenantId: string): Promise<boolean> {
+    const allowed = await this.filterActiveRental([{ tenantId }]);
+    if (allowed.length === 0) return false;
     const rows = (await this.dataSource.query(`SELECT network_follow($1, $2) AS ok`, [
       userId,
       tenantId,
@@ -68,7 +84,7 @@ export class NetworkService {
       Math.min(Math.max(limit, 1), 60),
       Math.max(offset, 0),
     ])) as Record<string, unknown>[];
-    return rows.map(mapFeedRow);
+    return this.filterActiveRental(rows.map(mapFeedRow));
   }
 
   /** Veřejné objevování: publikované inzeráty všech opt-in firem + fulltext. */
@@ -78,7 +94,7 @@ export class NetworkService {
       Math.min(Math.max(limit, 1), 60),
       Math.max(offset, 0),
     ])) as Record<string, unknown>[];
-    return rows.map(mapFeedRow);
+    return this.filterActiveRental(rows.map(mapFeedRow));
   }
 
   /** Veřejný profil firmy (pro hlavičku storefrontu + follow tlačítko). */
@@ -88,7 +104,7 @@ export class NetworkService {
     ])) as Record<string, unknown>[];
     const r = rows[0];
     if (!r) return null;
-    return {
+    const profile = {
       tenantId: String(r.tenant_id),
       name: String(r.name),
       slug: (r.slug as string | null) ?? null,
@@ -96,19 +112,22 @@ export class NetworkService {
       followerCount: Number(r.follower_count ?? 0),
       listingCount: Number(r.listing_count ?? 0),
     };
+    return (await this.filterActiveRental([profile]))[0] ?? null;
   }
 
   async followed(userId: string): Promise<FollowedTenant[]> {
     const rows = (await this.dataSource.query(`SELECT * FROM network_followed_tenants($1)`, [
       userId,
     ])) as Record<string, unknown>[];
-    return rows.map((r) => ({
+    const followed = rows.map((r) => ({
       tenantId: String(r.tenant_id),
       name: String(r.name),
       slug: (r.slug as string | null) ?? null,
       listingCount: Number(r.listing_count ?? 0),
-      followedAt: r.followed_at instanceof Date ? r.followed_at.toISOString() : String(r.followed_at),
+      followedAt:
+        r.followed_at instanceof Date ? r.followed_at.toISOString() : String(r.followed_at),
     }));
+    return this.filterActiveRental(followed);
   }
 }
 

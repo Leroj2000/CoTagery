@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { LessThan, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { TenantContextService } from '../../core/tenancy/tenant-context.service';
 import { Asset } from './entities/asset.entity';
 import { AssetSpec, type SpecItem } from './entities/asset-spec.entity';

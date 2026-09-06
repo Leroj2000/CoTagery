@@ -14,6 +14,11 @@ interface Overview {
   scansByModule: { moduleType: string; count: number }[];
 }
 
+interface ModuleState {
+  moduleKey: string;
+  state: 'active' | 'inactive';
+}
+
 /** Stavy objednávek půjčovny, které vyžadují pozornost majitele (badge). */
 const RENTAL_PENDING = new Set(['awaiting_payment', 'paid', 'confirmed', 'picked_up', 'returned']);
 
@@ -57,13 +62,21 @@ function ActionTile({
 
 /** Admin dashboard – akční dlaždice + analytics přehled (EPIC-07) + rozcestník. */
 export default async function AdminDashboard() {
-  const [me, overview, rentalOrders] = await Promise.all([
+  const [me, overview, rentalOrders, modules] = await Promise.all([
     getMe(),
     apiFetch<Overview>('/analytics/overview'),
     apiFetch<{ status: string }[]>('/rental-orders').catch(() => [] as { status: string }[]),
+    apiFetch<ModuleState[]>('/modules').catch(() => [] as ModuleState[]),
   ]);
   const max = Math.max(...overview.scansByModule.map((x) => x.count), 1);
   const rentalPending = rentalOrders.filter((o) => RENTAL_PENDING.has(o.status)).length;
+  const inactiveModules = new Set(
+    modules.filter((m) => m.state === 'inactive').map((m) => m.moduleKey),
+  );
+  const visibleNavItems = NAV_ITEMS.filter(
+    (item) => item.href !== '/admin' && (!item.moduleKey || !inactiveModules.has(item.moduleKey)),
+  );
+  const rentalActive = !inactiveModules.has('rental');
 
   return (
     <div className="flex flex-col gap-8">
@@ -79,13 +92,15 @@ export default async function AdminDashboard() {
           title="Identifikovat"
           subtitle="Naskenuj QR / kód"
         />
-        <ActionTile
-          href="/admin/rental"
-          icon={<Store size={26} />}
-          title="Půjčovna"
-          subtitle="Objednávky a výpůjčky"
-          badge={rentalPending}
-        />
+        {rentalActive && (
+          <ActionTile
+            href="/admin/rental"
+            icon={<Store size={26} />}
+            title="Půjčovna"
+            subtitle="Objednávky a výpůjčky"
+            badge={rentalPending}
+          />
+        )}
         <ActionTile
           href="/admin/klicenka"
           icon={<KeyRound size={26} />}
@@ -109,7 +124,9 @@ export default async function AdminDashboard() {
                       style={{ width: `${(s.count / max) * 100}%` }}
                     />
                   </span>
-                  <span className="w-8 shrink-0 text-right font-semibold text-slate-900">{s.count}</span>
+                  <span className="w-8 shrink-0 text-right font-semibold text-slate-900">
+                    {s.count}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -118,7 +135,7 @@ export default async function AdminDashboard() {
 
         <Section title="Moduly" description="Rychlý přístup do sekcí administrace">
           <div className="grid gap-2 sm:grid-cols-2">
-            {NAV_ITEMS.filter((i) => i.href !== '/admin').map((item) => (
+            {visibleNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -128,7 +145,10 @@ export default async function AdminDashboard() {
                   <item.icon size={17} />
                 </span>
                 <span className="flex-1 text-sm font-medium text-slate-700">{item.label}</span>
-                <ArrowRight size={15} className="text-slate-300 transition group-hover:text-brand-500" />
+                <ArrowRight
+                  size={15}
+                  className="text-slate-300 transition group-hover:text-brand-500"
+                />
               </Link>
             ))}
           </div>

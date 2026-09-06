@@ -66,7 +66,14 @@ function Tree({ nodes, byParent, depth = 0, canManage, parentOptions, assets }: 
               assets={assets}
             />
           )}
-          <Tree nodes={byParent.get(n.id) ?? []} byParent={byParent} depth={depth + 1} canManage={canManage} parentOptions={parentOptions} assets={assets} />
+          <Tree
+            nodes={byParent.get(n.id) ?? []}
+            byParent={byParent}
+            depth={depth + 1}
+            canManage={canManage}
+            parentOptions={parentOptions}
+            assets={assets}
+          />
         </div>
       ))}
     </>
@@ -111,9 +118,15 @@ export default async function LocationsPage() {
 
       <Section title={`Hierarchie (${visible.length})`}>
         {roots.length === 0 ? (
-          <EmptyState>Zatím žádná místa.</EmptyState>
+          <EmptyState>Zatím žádná místa. Začněte formulářem „Nové místo“ výše.</EmptyState>
         ) : (
-          <Tree nodes={roots} byParent={byParent} canManage={canManage} parentOptions={parentOptions} assets={assetOpts} />
+          <Tree
+            nodes={roots}
+            byParent={byParent}
+            canManage={canManage}
+            parentOptions={parentOptions}
+            assets={assetOpts}
+          />
         )}
       </Section>
     </div>

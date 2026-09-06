@@ -2,6 +2,7 @@ import { Body, Controller, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../core/rbac/permissions.guard';
 import { RequirePermission } from '../../core/rbac/require-permission.decorator';
+import { RequireModule } from '../../core/rbac/require-module.decorator';
 import { TicketingService } from './ticketing.service';
 import { CreateEventDto, CreateTicketTypeDto, IssueTicketDto } from './dto/ticketing.dto';
 import type { Event } from './entities/event.entity';
@@ -10,6 +11,7 @@ import type { Ticket } from './entities/ticket.entity';
 
 @Controller('ticketing')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequireModule('ticketing')
 export class TicketingController {
   constructor(private readonly ticketing: TicketingService) {}
 

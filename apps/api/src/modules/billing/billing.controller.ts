@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@n
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../core/rbac/permissions.guard';
 import { RequirePermission } from '../../core/rbac/require-permission.decorator';
+import { RequireModule } from '../../core/rbac/require-module.decorator';
 import { BillingService, type CheckoutResult } from './billing.service';
 import { CancelSubscriptionDto, CheckoutDto } from './dto/billing.dto';
 import type { Subscription } from './entities/subscription.entity';
@@ -11,6 +12,7 @@ import type { PlatformUsageMeter } from './entities/platform-usage-meter.entity'
 /** Authed billing endpointy (EPIC-17). Webhook je zvlášť (public, bez JWT). */
 @Controller('billing')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequireModule('billing')
 export class BillingController {
   constructor(private readonly billing: BillingService) {}
 

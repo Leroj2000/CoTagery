@@ -13,6 +13,7 @@ import {
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../core/rbac/permissions.guard';
 import { RequirePermission } from '../../core/rbac/require-permission.decorator';
+import { RequireModule } from '../../core/rbac/require-module.decorator';
 import { RentalListingService } from './rental-listing.service';
 import { CreateListingDto, UpdateListingDto } from './dto/listing.dto';
 import type { RentalListing } from './entities/rental-listing.entity';
@@ -20,6 +21,7 @@ import type { RentalListing } from './entities/rental-listing.entity';
 /** Admin správa inzerátů půjčovny (EPIC-19 F1). Gate: rental.item.manage. */
 @Controller('rental-listings')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequireModule('rental')
 export class RentalListingController {
   constructor(private readonly listings: RentalListingService) {}
 

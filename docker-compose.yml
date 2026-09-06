@@ -26,13 +26,20 @@ x-api-env: &api-env
   MANUAL_FETCH_WEBHOOK_SECRET: ${MANUAL_FETCH_WEBHOOK_SECRET:-}
   # Interní adresa API pro callback z n8n (n8n běží v jiném stacku, viz síť n8n_default).
   MANUAL_CALLBACK_BASE_URL: ${MANUAL_CALLBACK_BASE_URL:-}
-  SMTP_HOST: ${SMTP_HOST:-}
-  SMTP_PORT: ${SMTP_PORT:-465}
+  # Lokálně výchozí Mailpit; v produkci přepiš skutečným SMTP providerem.
+  SMTP_HOST: ${SMTP_HOST:-mailpit}
+  SMTP_PORT: ${SMTP_PORT:-1025}
   SMTP_USER: ${SMTP_USER:-}
   SMTP_PASSWORD: ${SMTP_PASSWORD:-}
   SMTP_FROM: ${SMTP_FROM:-}
 
 services:
+  mailpit:
+    image: axllent/mailpit:v1.27
+    restart: unless-stopped
+    ports:
+      - '8025:8025'
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -43,7 +50,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tagery"]
+      test: ['CMD-SHELL', 'pg_isready -U tagery']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -52,7 +59,7 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -69,7 +76,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    restart: "no"
+    restart: 'no'
 
   api:
     build:
@@ -79,7 +86,7 @@ services:
     restart: unless-stopped
     environment: *api-env
     ports:
-      - "3001:3001"
+      - '3001:3001'
     volumes:
       # Perzistentní lokální úložiště médií (fotky věcí) – přežije rebuild/recreate.
       - storage:/app/.storage
@@ -108,7 +115,7 @@ services:
       # Přes plain http musí být false, jinak se httpOnly cookie nepošle.
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
     ports:
-      - "3000:3000"
+      - '3000:3000'
     depends_on:
       - api
 

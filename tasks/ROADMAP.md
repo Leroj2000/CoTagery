@@ -1,5 +1,10 @@
 # Tagery – Roadmapa a rozpad na EPICy
 
+> **Aktuální realizační priorita:** [Tagery Věci – roadmapa k funkčnímu MVP](MVP-ROADMAP.md).
+>
+> Tento soubor zůstává dlouhodobým katalogem platformových EPICů.
+> Historický `PICKUP.md` už v repozitáři není; aktuální stav a navazující práce jsou vedené zde a v `MVP-ROADMAP.md`.
+
 > TO BE plán. Odráží MVP prioritu z `docs/PRD.md` a `CONTEXT.md`.
 > **Číslování:** číslo EPICu = stabilní ID (pořadí vzniku). **Exekuční pořadí řídí závislosti**, ne číslo (viz sloupec „Závisí na"). Např. EPIC-02-FABRICATION vzniklo brzy, ale běží až po EPIC-04.
 > Legenda: ⬜ plánováno · 🟡 rozpracováno · ✅ hotovo
@@ -11,13 +16,13 @@
 | ID | Název | Popis | Stav |
 |---|---|---|---|
 | EPIC-00 | FOUNDATION | Monorepo, NestJS+Next.js skeleton, Docker, CI/CD, migrace | ✅ |
-| EPIC-01 | AUTH | JWT access+refresh, RBAC guard, OAuth2, invite | 🟡 |
+| EPIC-01 | AUTH | JWT access+refresh, reset, samoobslužná registrace a e-mailové pozvánky; OAuth2 post-MVP | ✅ |
 | EPIC-02 | FABRICATION | Export výrobních souborů (tisk/gravírka/3D) nad DataCarrier | 🟡 |
-| EPIC-03 | CORE-DOMAIN | Tenant, Location, User, Group, BaseTenantEntity, RLS | 🟡 |
-| EPIC-04 | DIGITAL-OBJECT | DigitalObject + DataCarrier, QR gen, NFC párování | 🟡 |
-| EPIC-05 | RESOLVER | `/r/{public_code}`, cache, async ScanEvent (ADR-0002) | 🟡 |
-| EPIC-06 | RBAC-ACL | ObjectPermission, enforcement matice | 🟡 |
-| EPIC-07 | ANALYTICS | ScanEvent agregace, dashboard | 🟡 |
+| EPIC-03 | CORE-DOMAIN | Tenant, Location, User, Group, BaseTenantEntity, RLS | ✅ |
+| EPIC-04 | DIGITAL-OBJECT | DigitalObject + DataCarrier, QR gen, NFC párování | ✅ |
+| EPIC-05 | RESOLVER | `/r/{public_code}`, cache, async ScanEvent (ADR-0002) | ✅ |
+| EPIC-06 | RBAC-ACL | ObjectPermission, enforcement matice | ✅ |
+| EPIC-07 | ANALYTICS | ScanEvent agregace, dashboard | ✅ |
 | EPIC-08 | PRODUCT | Modul Product | 🟡 |
 | EPIC-09 | TICKETING | Modul Ticketing + check-in | 🟡 |
 | EPIC-10 | RENTAL | Modul Rental (+ ověření nájemce, oboustranné hodnocení) | 🟡 |
@@ -29,9 +34,9 @@
 | EPIC-16 | MEMBERSHIP | Klubové/nákupní členství: tiery, platnost, benefity, karty | ⬜ |
 | EPIC-17 | BILLING | Sdílené předplatné (recurring přes PSP) – řídí platnost členství (ADR-0007) | ⬜ |
 | EPIC-18 | AUTHZ-V2 | Multi-org identita + permissions/scope/entitlement/policy/audit (fáze 0–4 hotové, e2e) | ✅ |
-| EPIC-19 | RENTAL-MARKETPLACE | Veřejná půjčovna: publikace Věcí + ceník + objednávka + platby (QR → Stripe Connect); rozšiřuje EPIC-10 | ⬜ |
+| EPIC-19 | RENTAL-MARKETPLACE | Veřejná půjčovna a objednávky jsou implementované, ale mimo základní MVP a výchozí stav | 🟡 |
 | EPIC-20 | PLATFORM-PLANS | SaaS plány firem, entitlementy a limity (config katalog → `organization_modules` + limity) | ⬜ |
-| EPIC-21 | MARKETPLACE-NETWORK | Síť/discovery nad půjčovnou: nájemce sleduje firmy (B2C) + feed inzerátů; staví na EPIC-19 | ⬜ |
+| EPIC-21 | MARKETPLACE-NETWORK | Opt-in, follow, feed a discovery implementované; post-MVP moderace zbývá | 🟡 |
 
 ---
 

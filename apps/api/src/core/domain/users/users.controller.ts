@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../rbac/permissions.guard';
 import { RequirePermission } from '../../rbac/require-permission.decorator';
@@ -19,7 +28,7 @@ export class UsersController {
 
   @Post()
   @RequirePermission('core.member.invite')
-  invite(@Body() dto: InviteUserDto): Promise<{ user: UserView; tempPassword: string }> {
+  invite(@Body() dto: InviteUserDto): Promise<{ user: UserView }> {
     return this.users.invite(dto);
   }
 

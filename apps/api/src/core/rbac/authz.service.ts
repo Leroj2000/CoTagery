@@ -31,7 +31,13 @@ export interface AuthzDecision {
  */
 /** Moduly, které lze per-organizace vypnout (core/asset/object/carrier jsou vždy on). */
 export const CONTROLLED_MODULES = new Set([
-  'product', 'membership', 'ticketing', 'gallery', 'rental', 'billing', 'access',
+  'product',
+  'membership',
+  'ticketing',
+  'gallery',
+  'rental',
+  'billing',
+  'access',
 ]);
 
 @Injectable()
@@ -113,6 +119,18 @@ export class AuthzService {
     }
     // Scope / policy: Fáze 2 (scope se řeší v dotazech) / Fáze 4. Zatím allow.
     return { allowed: true, reasonCode: 'ALLOWED', permission };
+  }
+
+  /** Stav modulu nezávislý na roli; používá se pro class-level module gate. */
+  async isModuleActive(user: RequestUser, moduleKey: string): Promise<boolean> {
+    if (!CONTROLLED_MODULES.has(moduleKey)) return true;
+    return !(await this.inactiveModules(user.tenantId)).has(moduleKey);
+  }
+
+  async assertModuleActive(user: RequestUser, moduleKey: string): Promise<void> {
+    if (!(await this.isModuleActive(user, moduleKey))) {
+      throw new ForbiddenException(`Modul není aktivní: ${moduleKey} (INACTIVE_MODULE)`);
+    }
   }
 
   /** Vyhodí ForbiddenException, pokud identita permission nemá. */

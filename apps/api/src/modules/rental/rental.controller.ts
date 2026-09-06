@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@n
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../core/rbac/permissions.guard';
 import { RequirePermission } from '../../core/rbac/require-permission.decorator';
+import { RequireModule } from '../../core/rbac/require-module.decorator';
 import { RentersService } from './renters.service';
 import { RentalService } from './rental.service';
 import {
@@ -18,6 +19,7 @@ import type { RentalReview } from './entities/rental-review.entity';
 
 @Controller()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequireModule('rental')
 export class RentalController {
   constructor(
     private readonly renters: RentersService,

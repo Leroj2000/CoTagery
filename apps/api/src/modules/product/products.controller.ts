@@ -2,12 +2,14 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@n
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../core/rbac/permissions.guard';
 import { RequirePermission } from '../../core/rbac/require-permission.decorator';
+import { RequireModule } from '../../core/rbac/require-module.decorator';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import type { Product } from './product.entity';
 
 @Controller('products')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequireModule('product')
 export class ProductsController {
   constructor(private readonly products: ProductsService) {}
 

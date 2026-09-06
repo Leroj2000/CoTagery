@@ -10,6 +10,17 @@ export interface ModuleState {
   state: 'active' | 'inactive';
 }
 
+/** Rozšíření mimo základní produkt Tagery Věci, vypnutá u nových organizací. */
+export const MVP_DEFAULT_INACTIVE_MODULES = [
+  'access',
+  'billing',
+  'gallery',
+  'membership',
+  'product',
+  'rental',
+  'ticketing',
+] as const;
+
 /** Správa entitlementů modulů organizace (EPIC-18 Fáze 3). Opt-out model. */
 @Injectable()
 export class ModulesService {
@@ -31,6 +42,13 @@ export class ModulesService {
       moduleKey,
       state: byKey.get(moduleKey) ?? 'active',
     }));
+  }
+
+  /** Ověří stav řízeného modulu v aktivní organizaci; core moduly jsou vždy aktivní. */
+  async isActive(moduleKey: string): Promise<boolean> {
+    if (!CONTROLLED_MODULES.has(moduleKey)) return true;
+    const row = await this.repo().findOne({ where: { moduleKey } });
+    return row?.state !== 'inactive';
   }
 
   /** Zapne/vypne modul pro aktivní org (upsert) + invaliduje authz cache. */

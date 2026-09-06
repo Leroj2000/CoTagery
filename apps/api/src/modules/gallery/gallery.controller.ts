@@ -14,6 +14,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../core/rbac/permissions.guard';
 import { RequirePermission } from '../../core/rbac/require-permission.decorator';
+import { RequireModule } from '../../core/rbac/require-module.decorator';
 import { GalleryService, type UploadedFileLike } from './gallery.service';
 import { CreateGalleryDto } from './dto/create-gallery.dto';
 import type { GalleryEvent } from './entities/gallery-event.entity';
@@ -21,6 +22,7 @@ import type { UploadItem } from './entities/upload-item.entity';
 
 @Controller('galleries')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequireModule('gallery')
 export class GalleryController {
   constructor(private readonly gallery: GalleryService) {}
 

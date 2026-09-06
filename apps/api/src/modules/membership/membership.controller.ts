@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@n
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../core/rbac/permissions.guard';
 import { RequirePermission } from '../../core/rbac/require-permission.decorator';
+import { RequireModule } from '../../core/rbac/require-module.decorator';
 import { MembershipService, type CardView } from './membership.service';
 import {
   CreateBenefitDto,
@@ -18,6 +19,7 @@ import type { MembershipBenefit } from './entities/membership-benefit.entity';
 
 @Controller('memberships')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequireModule('membership')
 export class MembershipController {
   constructor(private readonly memberships: MembershipService) {}
 
@@ -95,9 +97,7 @@ export class MembershipController {
   }
 
   @Get('cards/by-carrier/:carrierId')
-  async cardView(
-    @Param('carrierId', ParseUUIDPipe) carrierId: string,
-  ): Promise<CardView | null> {
+  async cardView(@Param('carrierId', ParseUUIDPipe) carrierId: string): Promise<CardView | null> {
     const card = await this.memberships.cardByCarrier(carrierId);
     return card ? this.memberships.cardView(card) : null;
   }

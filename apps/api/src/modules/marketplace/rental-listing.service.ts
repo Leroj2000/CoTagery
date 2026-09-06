@@ -8,13 +8,15 @@ import type { CreateListingDto, UpdateListingDto } from './dto/listing.dto';
 
 /** Diakritiku pryč, non-alnum → '-', trim. */
 function slugify(input: string): string {
-  return input
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80) || 'inzerat';
+  return (
+    input
+      .normalize('NFKD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 80) || 'inzerat'
+  );
 }
 
 export interface PublicCatalogItem {
@@ -58,7 +60,9 @@ export class RentalListingService {
   }
 
   private async assertAsset(assetId: string): Promise<Asset> {
-    const asset = await this.context.manager.getRepository(Asset).findOne({ where: { id: assetId } });
+    const asset = await this.context.manager
+      .getRepository(Asset)
+      .findOne({ where: { id: assetId } });
     if (!asset) throw new NotFoundException('Položka neexistuje');
     return asset;
   }
@@ -133,11 +137,27 @@ export class RentalListingService {
   }
 
   // --- Veřejné čtení (mimo tenant kontext, přes SECURITY DEFINER) ---
-  async publicCatalog(tenantSlug: string): Promise<PublicCatalogItem[]> {
-    const rows = await this.dataSource.query(
-      `SELECT * FROM public_rental_catalog($1)`,
+  async isPublicRentalTenantActive(tenantSlug: string): Promise<boolean> {
+    const rows = (await this.dataSource.query(
+      `SELECT is_public_rental_tenant_active($1) AS active`,
       [tenantSlug],
-    );
+    )) as { active: boolean }[];
+    return rows[0]?.active === true;
+  }
+
+  async isPublicRentalListingActive(listingId: string): Promise<boolean> {
+    const rows = (await this.dataSource.query(
+      `SELECT is_public_rental_listing_active($1) AS active`,
+      [listingId],
+    )) as { active: boolean }[];
+    return rows[0]?.active === true;
+  }
+
+  async publicCatalog(tenantSlug: string): Promise<PublicCatalogItem[]> {
+    if (!(await this.isPublicRentalTenantActive(tenantSlug))) return [];
+    const rows = await this.dataSource.query(`SELECT * FROM public_rental_catalog($1)`, [
+      tenantSlug,
+    ]);
     return (rows as Record<string, unknown>[]).map(mapCatalogRow);
   }
 
@@ -145,10 +165,11 @@ export class RentalListingService {
     tenantSlug: string,
     listingSlug: string,
   ): Promise<(PublicCatalogItem & { terms: string | null; tenantName: string }) | null> {
-    const rows = await this.dataSource.query(
-      `SELECT * FROM public_rental_listing($1, $2)`,
-      [tenantSlug, listingSlug],
-    );
+    if (!(await this.isPublicRentalTenantActive(tenantSlug))) return null;
+    const rows = await this.dataSource.query(`SELECT * FROM public_rental_listing($1, $2)`, [
+      tenantSlug,
+      listingSlug,
+    ]);
     const r = (rows as Record<string, unknown>[])[0];
     if (!r) return null;
     return {
@@ -159,10 +180,13 @@ export class RentalListingService {
   }
 
   async publicPhoto(listingId: string, idx: number): Promise<{ buffer: Buffer; mime: string }> {
-    const rows = await this.dataSource.query(
-      `SELECT * FROM public_rental_photo($1, $2)`,
-      [listingId, idx],
-    );
+    if (!(await this.isPublicRentalListingActive(listingId))) {
+      throw new NotFoundException('Fotka neexistuje');
+    }
+    const rows = await this.dataSource.query(`SELECT * FROM public_rental_photo($1, $2)`, [
+      listingId,
+      idx,
+    ]);
     const r = (rows as { file_key: string; mime: string }[])[0];
     if (!r) throw new NotFoundException('Fotka neexistuje');
     return { buffer: await this.storage.get(r.file_key), mime: r.mime };

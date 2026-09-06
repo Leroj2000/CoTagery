@@ -46,7 +46,9 @@ async function seedDemo(): Promise<void> {
     const groups = app.get(GroupsService);
     const tenant = app.get(TenantService);
 
-    const existing = await ctx.manager.getRepository(Member).findOne({ where: { email: 'jana@demo.cz' } });
+    const existing = await ctx.manager
+      .getRepository(Member)
+      .findOne({ where: { email: 'jana@demo.cz' } });
     if (existing) {
       console.log('Demo data už existují – přeskočeno.');
       return;
@@ -56,7 +58,12 @@ async function seedDemo(): Promise<void> {
     await tenant.update({ name: 'Demo Tenant', brandingDomain: 'tagy.demo.cz' });
 
     // Tiery + benefity
-    const basic = await memberships.createTier({ name: 'Basic', level: 1, price: '0', validityDays: 365 });
+    const basic = await memberships.createTier({
+      name: 'Basic',
+      level: 1,
+      price: '0',
+      validityDays: 365,
+    });
     const vip = await memberships.createTier({
       name: 'VIP',
       level: 10,
@@ -65,8 +72,16 @@ async function seedDemo(): Promise<void> {
       graceDays: 14,
       zoneKeys: ['vip'],
     });
-    await memberships.addBenefit(vip.id, { kind: 'discount_percent', value: '20', description: '20 % na vše' });
-    await memberships.addBenefit(vip.id, { kind: 'zone_access', targetKey: 'vip', description: 'Vstup do VIP zóny' });
+    await memberships.addBenefit(vip.id, {
+      kind: 'discount_percent',
+      value: '20',
+      description: '20 % na vše',
+    });
+    await memberships.addBenefit(vip.id, {
+      kind: 'zone_access',
+      targetKey: 'vip',
+      description: 'Vstup do VIP zóny',
+    });
 
     // Členové + členství
     const jana = await memberships.createMember({ name: 'Jana Nováková', email: 'jana@demo.cz' });
@@ -83,7 +98,11 @@ async function seedDemo(): Promise<void> {
 
     // Pool identifikátorů: 5 běžných + 3 self-aktivační (PIN)
     const pool = await carriers.generateBatch({ count: 5 });
-    const selfAct = await carriers.generateBatch({ count: 3, selfActivatable: true, moduleTemplate: 'contact' });
+    const selfAct = await carriers.generateBatch({
+      count: 3,
+      selfActivatable: true,
+      moduleTemplate: 'contact',
+    });
     console.log(
       'Self-aktivační identifikátory (kód/PIN k tisku):',
       selfAct.map((g) => `${g.carrier.publicCode}:${g.pin}`).join(', '),
@@ -92,7 +111,9 @@ async function seedDemo(): Promise<void> {
     // VIP karta pro Janu na jeden identifikátor z poolu
     const cardCarrierId = pool[0].carrier.id;
     await memberships.issueCard(janaMembership.id, { dataCarrierId: cardCarrierId });
-    const cardCarrier = await ctx.manager.getRepository(DataCarrier).findOne({ where: { id: cardCarrierId } });
+    const cardCarrier = await ctx.manager
+      .getRepository(DataCarrier)
+      .findOne({ where: { id: cardCarrierId } });
 
     // Přístupový bod + audit (sken VIP karty u brány)
     const gate = await access.create({ name: 'Hlavní brána', zoneKey: 'vip', direction: 'in' });
@@ -112,9 +133,13 @@ async function seedDemo(): Promise<void> {
     await billing.recordPaidInvoice(sub, false);
 
     // Uživatelé + skupina
-    const editor = await users.invite({ email: 'editor@demo.cz', name: 'Editor Demo', tenantRole: 'EDITOR' });
+    const editor = await users.invite({
+      email: 'editor@demo.cz',
+      name: 'Editor Demo',
+      tenantRole: 'EDITOR',
+    });
     await users.invite({ email: 'viewer@demo.cz', name: 'Viewer Demo', tenantRole: 'VIEWER' });
-    console.log('Pozvaný editor (dočasné heslo):', editor.tempPassword);
+    console.log('Pozvaný editor:', editor.user.email);
     const seedUser = { userId: editor.user.id, tenantId, tenantRole: 'OWNER' as const };
     const group = await groups.create(seedUser, { name: 'Zaměstnanci', type: 'user' });
     await groups.addMember(seedUser, group.id, { userId: editor.user.id });
@@ -123,7 +148,12 @@ async function seedDemo(): Promise<void> {
     const scanRepo = ctx.manager.getRepository(ScanEvent);
     const mkScans = (objectId: string, type: string, n: number): ScanEvent[] =>
       Array.from({ length: n }, () =>
-        scanRepo.create({ tenantId, digitalObjectId: objectId, carrierType: type, eventType: 'scan' }),
+        scanRepo.create({
+          tenantId,
+          digitalObjectId: objectId,
+          carrierType: type,
+          eventType: 'scan',
+        }),
       );
     await scanRepo.save([
       ...mkScans(kava.id, 'qr', 7),

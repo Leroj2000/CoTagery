@@ -5,6 +5,7 @@ import { DataSource } from 'typeorm';
 import { AuthService } from '../../core/auth/auth.service';
 import { TenantContextService } from '../../core/tenancy/tenant-context.service';
 import type { CreateTenantDto } from './dto/platform.dto';
+import { MVP_DEFAULT_INACTIVE_MODULES } from '../../core/rbac/modules.service';
 
 export interface TenantSummary {
   id: string;
@@ -72,10 +73,10 @@ export class PlatformService {
     const root = slugify(base);
     const taken = new Set<string>(
       (
-        (await this.dataSource.query(
-          `SELECT slug FROM tenants WHERE slug = $1 OR slug LIKE $2`,
-          [root, `${root}-%`],
-        )) as { slug: string }[]
+        (await this.dataSource.query(`SELECT slug FROM tenants WHERE slug = $1 OR slug LIKE $2`, [
+          root,
+          `${root}-%`,
+        ])) as { slug: string }[]
       ).map((r) => r.slug),
     );
     if (!taken.has(root)) return root;
@@ -119,6 +120,15 @@ export class PlatformService {
         `INSERT INTO role_assignments (tenant_id, membership_id, role_key, scope_type)
          VALUES ($1, $2, 'OWNER', 'ORGANIZATION')`,
         [tenantId, m[0].id],
+      );
+      // Nová firma začíná jako přehledné Tagery Věci. Rozšíření si vlastník
+      // zapne vědomě v nastavení; stávajícím firmám jejich stav neměníme.
+      await this.context.manager.query(
+        `INSERT INTO organization_modules (tenant_id, module_key, state)
+         SELECT $1, module_key, 'inactive'
+           FROM unnest($2::text[]) AS module_key
+         ON CONFLICT (tenant_id, module_key) DO NOTHING`,
+        [tenantId, [...MVP_DEFAULT_INACTIVE_MODULES]],
       );
     });
 

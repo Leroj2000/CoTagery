@@ -8,22 +8,22 @@ Implementace kompletního auth systému pro Tagery: JWT s refresh tokeny jako z�
 ### In scope
 - JWT access token (krátká životnost) + refresh token (dlouhá životnost)
 - Revokace tokenů (blacklist nebo rotation)
-- OAuth2 integrace: Google, Microsoft
-- SAML SSO pro enterprise tenanty
+- Samoobslužná registrace firmy a ověření e-mailu
 - Invite flow (pozvání uživatele do tenantu e-mailem)
 - Password reset flow
 
 ### Out of scope
 - 2FA / MFA (plánováno v dalším EPICu)
 - Biometrická autentizace
+- OAuth2, Microsoft a SAML SSO (post-MVP)
 
-## Stav: 🟡 TASK-01-JWT hotový (2026-08-06); OAuth2 + invite zbývají
+## Stav: ✅ základní MVP auth hotový (2026-09-06); federované přihlášení je post-MVP
 
 ## Acceptance kritéria
 - [x] Access token expiruje do 15 minut (expiresIn 900, ověřeno)
 - [x] Refresh token rotation při každém použití + reuse detekce (revokace řetězce)
-- [ ] OAuth2 login (Google) funkční – TASK-02
-- [ ] Invite e-mail odeslán a token platný 48h – TASK-03
+- [x] Registrace firmy + OWNER účet s ověřením e-mailu jednorázovým odkazem
+- [x] Invite e-mail odeslán a jednorázový token platný 24h
 - [x] `tenant_id` vždy v JWT payload (guard plní request.user)
 - [x] Revokace tokenu okamžitě účinná (logout + reuse)
 
@@ -33,5 +33,5 @@ Implementace kompletního auth systému pro Tagery: JWT s refresh tokeny jako z�
 
 ## Podúkoly
 - [x] TASK-01-JWT – JWT access + refresh token flow ✅
-- [ ] TASK-02-OAUTH – OAuth2 Google + Microsoft
-- [ ] TASK-03-INVITE – Invite flow a e-mailové šablony
+- [x] TASK-03-INVITE – Invite flow a e-mailové šablony
+- [ ] TASK-02-OAUTH – OAuth2 Google + Microsoft (post-MVP)

@@ -46,6 +46,7 @@ export class UsersService {
     private readonly context: TenantContextService,
     private readonly audit: AuditService,
     private readonly links: CategoryLinksService,
+    private readonly auth: AuthService,
   ) {}
 
   private repo(): Repository<User> {
@@ -95,12 +96,12 @@ export class UsersService {
     await this.links.set('user', userId, categoryIds);
   }
 
-  async invite(dto: InviteUserDto): Promise<{ user: UserView; tempPassword: string }> {
+  async invite(dto: InviteUserDto): Promise<{ user: UserView }> {
     const existing = await this.repo().findOne({ where: { email: dto.email } });
     if (existing) throw new BadRequestException('Uživatel s tímto e-mailem už existuje');
 
-    const tempPassword = randomBytes(9).toString('base64url');
-    const passwordHash = await AuthService.hashPassword(tempPassword);
+    // Náhodný neznámý secret drží účet nepřihlásitelný i při chybě status gate.
+    const passwordHash = await AuthService.hashPassword(randomBytes(32).toString('base64url'));
     const user = await this.repo().save(
       this.repo().create({
         tenantId: this.context.tenantId,
@@ -108,7 +109,7 @@ export class UsersService {
         name: dto.name,
         passwordHash,
         tenantRole: dto.tenantRole,
-        status: 'active',
+        status: 'pending',
       }),
     );
     // EPIC-18: členství + role_assignment v aktuální organizaci.
@@ -119,7 +120,16 @@ export class UsersService {
       targetId: user.id,
       after: { email: user.email, role: dto.tenantRole },
     });
-    return { user: toView(user), tempPassword };
+    const tenant = await this.context.manager.query(`SELECT name FROM tenants WHERE id = $1`, [
+      this.context.tenantId,
+    ]);
+    await this.auth.createInvitation(
+      user,
+      this.context.tenantId!,
+      String(tenant[0]?.name ?? 'organizace'),
+      this.context.manager,
+    );
+    return { user: toView(user) };
   }
 
   /** Založí (nebo srovná roli) membershipu identity v aktuální organizaci. */

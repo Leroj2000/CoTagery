@@ -17,7 +17,11 @@ import { RenterAuthService } from './renter-auth.service';
 import { computeQuote, type Quote } from './order-pricing';
 import { RentalOrder } from './entities/rental-order.entity';
 import { canTransition, OWNER_ACTIONS, type OwnerAction } from './order-status.logic';
-import { PAYMENT_ADAPTER, type PaymentAdapter, type PaymentInstruction } from './payment/payment.port';
+import {
+  PAYMENT_ADAPTER,
+  type PaymentAdapter,
+  type PaymentInstruction,
+} from './payment/payment.port';
 import type { RequestRenter } from './renter-jwt.guard';
 
 export interface RenterPaymentView extends PaymentInstruction {
@@ -151,10 +155,12 @@ export class RentalOrderService {
 
   /** Obsazené termíny věci daného inzerátu (pro kalendář, veřejné). */
   async availability(listingId: string): Promise<AvailabilityPeriod[]> {
-    const rows = await this.dataSource.query(
-      `SELECT * FROM public_listing_availability($1)`,
-      [listingId],
-    );
+    if (!(await this.listings.isPublicRentalListingActive(listingId))) {
+      throw new NotFoundException('Inzerát není dostupný');
+    }
+    const rows = await this.dataSource.query(`SELECT * FROM public_listing_availability($1)`, [
+      listingId,
+    ]);
     return (rows as { starts_at: unknown; ends_at: unknown }[]).map((r) => ({
       startsAt: iso(r.starts_at),
       endsAt: iso(r.ends_at),
@@ -164,7 +170,13 @@ export class RentalOrderService {
   /** Nájemce vytvoří objednávku (cross-tenant, přes SECURITY DEFINER). */
   async createOrder(
     renter: RequestRenter,
-    input: { tenantSlug: string; listingSlug: string; startsAt: string; endsAt: string; note?: string },
+    input: {
+      tenantSlug: string;
+      listingSlug: string;
+      startsAt: string;
+      endsAt: string;
+      note?: string;
+    },
   ): Promise<{ orderId: string; quote: Quote }> {
     const listing = await this.listings.publicListing(input.tenantSlug, input.listingSlug);
     if (!listing) throw new NotFoundException('Inzerát není dostupný');
@@ -342,7 +354,12 @@ export class RentalOrderService {
   /** Provede asset pohyb v tenant kontextu majitele; mapuje custody chybu na 400. */
   private async moveAsset(
     assetId: string,
-    mv: { type: 'loan' | 'return'; toType: 'person' | 'location'; toId: string | null; note?: string },
+    mv: {
+      type: 'loan' | 'return';
+      toType: 'person' | 'location';
+      toId: string | null;
+      note?: string;
+    },
     skipReturnPhoto = false,
   ): Promise<void> {
     try {
@@ -353,7 +370,9 @@ export class RentalOrderService {
       );
     } catch (err) {
       const msg = (err as Error).message ?? 'Pohyb položky selhal';
-      throw new BadRequestException(`Položku nelze ${mv.type === 'loan' ? 'předat' : 'vrátit'}: ${msg}`);
+      throw new BadRequestException(
+        `Položku nelze ${mv.type === 'loan' ? 'předat' : 'vrátit'}: ${msg}`,
+      );
     }
   }
 
@@ -377,7 +396,13 @@ export class RentalOrderService {
   }
 
   private priceOrThrow(
-    listing: { pricePerDay: string; depositAmount: string; currency: string; minDays: number; maxDays: number | null },
+    listing: {
+      pricePerDay: string;
+      depositAmount: string;
+      currency: string;
+      minDays: number;
+      maxDays: number | null;
+    },
     startsAt: string,
     endsAt: string,
   ): Quote {

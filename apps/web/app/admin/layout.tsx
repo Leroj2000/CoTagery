@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getMe, apiFetch } from '../lib/server-api';
 import { Logo } from '../ui/logo';
 import { AdminNav } from './nav';
+import { NAV_ITEMS } from './nav-items';
 import { LogoutButton } from './logout-button';
 import { OrgSwitcher } from './org-switcher';
 
@@ -18,13 +19,6 @@ interface ModuleState {
   moduleKey: string;
   state: 'active' | 'inactive';
 }
-
-/** Modul → navigační cesta (skrytí vypnutých modulů, EPIC-18 Fáze 3). */
-const MODULE_HREF: Record<string, string> = {
-  membership: '/admin/membership',
-  billing: '/admin/billing',
-  access: '/admin/access',
-};
 
 /** Iniciály pro avatar. */
 function initials(name: string): string {
@@ -50,9 +44,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   }
   const memberships = await apiFetch<Membership[]>('/auth/memberships').catch(() => []);
   const modules = await apiFetch<ModuleState[]>('/modules').catch(() => []);
-  const hiddenNav = modules
-    .filter((m) => m.state === 'inactive' && MODULE_HREF[m.moduleKey])
-    .map((m) => MODULE_HREF[m.moduleKey]);
+  const inactiveModules = new Set(
+    modules.filter((m) => m.state === 'inactive').map((m) => m.moduleKey),
+  );
+  const hiddenNav = NAV_ITEMS.filter(
+    (item) => item.moduleKey && inactiveModules.has(item.moduleKey),
+  ).map((item) => item.href);
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[264px_1fr]">

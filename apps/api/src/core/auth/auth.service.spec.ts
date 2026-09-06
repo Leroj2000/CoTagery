@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { JwtService } from '@nestjs/jwt';
 import type { DataSource, Repository } from 'typeorm';
@@ -7,14 +7,25 @@ import type { User } from './entities/user.entity';
 import type { RefreshToken } from './entities/refresh-token.entity';
 
 function build() {
-  const users = { findOne: jest.fn() } as unknown as Repository<User>;
+  const users = { findOne: jest.fn(), update: jest.fn() } as unknown as Repository<User>;
   const refreshTokens = {
     findOne: jest.fn(),
     save: jest.fn(),
     update: jest.fn(),
     create: jest.fn((x: unknown) => x),
   } as unknown as Repository<RefreshToken>;
-  const resetTokens = { findOne: jest.fn(), save: jest.fn(), update: jest.fn(), create: jest.fn((x: unknown) => x) };
+  const resetTokens = {
+    findOne: jest.fn(),
+    save: jest.fn(),
+    update: jest.fn(),
+    create: jest.fn((x: unknown) => x),
+  };
+  const actionTokens = {
+    findOne: jest.fn(),
+    save: jest.fn(),
+    update: jest.fn(),
+    create: jest.fn((x: unknown) => x),
+  };
   const mail = { sendPasswordReset: jest.fn() };
   // my_memberships() → prázdné = fallback na domovskou org uživatele.
   const dataSource = { query: jest.fn().mockResolvedValue([]) } as unknown as DataSource;
@@ -26,9 +37,19 @@ function build() {
   } as unknown as JwtService;
   const config = { get: jest.fn().mockReturnValue('15m') } as unknown as ConfigService;
   return {
-    svc: new AuthService(users, refreshTokens, resetTokens as never, dataSource, jwt, config, mail as never),
+    svc: new AuthService(
+      users,
+      refreshTokens,
+      resetTokens as never,
+      actionTokens as never,
+      dataSource,
+      jwt,
+      config,
+      mail as never,
+    ),
     users,
     refreshTokens,
+    actionTokens,
     jwt,
   };
 }
@@ -73,6 +94,20 @@ describe('AuthService', () => {
     expect(refreshTokens.update).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'u1' }),
       expect.objectContaining({ revokedAt: expect.any(Date) }),
+    );
+  });
+
+  it('ověřovací odkaz aktivuje účet právě jednou', async () => {
+    const { svc, users, actionTokens } = build();
+    actionTokens.findOne.mockResolvedValue({ id: 'a1', userId: 'u1' });
+    actionTokens.update
+      .mockResolvedValueOnce({ affected: 1 })
+      .mockResolvedValueOnce({ affected: 0 });
+
+    await svc.confirmEmail('dostatecne-dlouhy-overovaci-token');
+    expect(users.update).toHaveBeenCalledWith({ id: 'u1' }, { status: 'active' });
+    await expect(svc.confirmEmail('dostatecne-dlouhy-overovaci-token')).rejects.toBeInstanceOf(
+      BadRequestException,
     );
   });
 });

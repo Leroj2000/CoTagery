@@ -84,8 +84,17 @@ function LoginForm() {
         {busy && <Loader2 size={16} className="animate-spin" />}
         {busy ? 'Přihlašuji…' : 'Přihlásit se'}
       </button>
-      <a href="/forgot-password" className="text-center text-xs text-slate-500 hover:text-brand-700 hover:underline">
+      <a
+        href="/forgot-password"
+        className="text-center text-xs text-slate-500 hover:text-brand-700 hover:underline"
+      >
         Zapomenuté heslo?
+      </a>
+      <a
+        href="/register"
+        className="text-center text-sm font-medium text-brand-700 hover:underline"
+      >
+        Založit novou firmu
       </a>
     </form>
   );

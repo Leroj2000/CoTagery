@@ -6,6 +6,7 @@ import { ScanLoggerService } from './scan-logger.service';
 import { ModuleRegistry } from '../domain/module-handler';
 import { TenantContextService } from '../tenancy/tenant-context.service';
 import { isActiveResolution, isUnassigned } from './resolution';
+import { ModulesService } from '../rbac/modules.service';
 
 /** Minimální tvar Express Response (bez závislosti na typech express). */
 interface HttpResponse {
@@ -24,6 +25,7 @@ export class ResolverController {
     private readonly registry: ModuleRegistry,
     private readonly tenantContext: TenantContextService,
     private readonly config: ConfigService,
+    private readonly modules: ModulesService,
   ) {}
 
   @Get(':code')
@@ -72,13 +74,30 @@ export class ResolverController {
 
     if (!isActiveResolution(resolution)) {
       logScan();
-      res.status(410).json({ error: { code: 'INACTIVE', message: 'Kód není aktivní nebo vypršel' } });
+      res
+        .status(410)
+        .json({ error: { code: 'INACTIVE', message: 'Kód není aktivní nebo vypršel' } });
       return;
     }
 
     // Chce klient JSON (API/`?format=json`/`Accept: application/json`), nebo je to
     // prohlížeč (sken telefonem), kterému patří vyrenderovaná karta?
     const wantsJson = format === 'json' || (accept ?? '').includes('application/json');
+
+    // Vypnutý produktový modul nelze obejít přímým resolver URL. Kontrola běží
+    // v tenant kontextu vlastníka nosiče, stejně jako následný module handler.
+    const moduleActive = resolution.moduleType
+      ? await this.tenantContext.runInTenant(resolution.tenantId, () =>
+          this.modules.isActive(resolution.moduleType!),
+        )
+      : true;
+    if (!moduleActive) {
+      logScan();
+      res.status(410).json({
+        error: { code: 'MODULE_INACTIVE', message: 'Tento obsah není momentálně dostupný' },
+      });
+      return;
+    }
 
     // Modulový handler (pokud zaregistrován); jinak default níže.
     const handler = resolution.moduleType ? this.registry.get(resolution.moduleType) : undefined;

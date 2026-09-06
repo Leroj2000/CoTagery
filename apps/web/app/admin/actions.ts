@@ -67,7 +67,12 @@ export async function createTier(_p: ActionState, fd: FormData): Promise<ActionS
       price: str(fd, 'price') || '0',
       validityDays: num(fd, 'validityDays') ?? 365,
       graceDays: num(fd, 'graceDays') ?? 7,
-      zoneKeys: zones ? zones.split(',').map((z) => z.trim()).filter(Boolean) : [],
+      zoneKeys: zones
+        ? zones
+            .split(',')
+            .map((z) => z.trim())
+            .filter(Boolean)
+        : [],
     },
     '/admin/membership',
     'Tier vytvořen.',
@@ -213,6 +218,26 @@ export async function updateTenant(_p: ActionState, fd: FormData): Promise<Actio
   );
 }
 
+/** Zapne nebo vypne volitelný produktový modul organizace. */
+export async function setModuleState(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const moduleKey = str(fd, 'moduleKey');
+  const state = str(fd, 'state');
+  if (!moduleKey || !['active', 'inactive'].includes(state)) {
+    return { error: 'Neplatné nastavení modulu.' };
+  }
+  try {
+    await apiFetch(`/modules/${encodeURIComponent(moduleKey)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ state }),
+    });
+    revalidatePath('/admin', 'layout');
+    revalidatePath('/admin/settings');
+    return { ok: true, message: state === 'active' ? 'Modul zapnut.' : 'Modul vypnut.' };
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Změna modulu selhala.' };
+  }
+}
+
 /** Bankovní údaje firmy pro QR/převod platby v půjčovně (EPIC-19 F3). */
 export async function updateRentalPayment(_p: ActionState, fd: FormData): Promise<ActionState> {
   const rentalPayment = {
@@ -282,7 +307,15 @@ export async function createWebhook(_p: ActionState, fd: FormData): Promise<Acti
   const events = str(fd, 'events');
   return run(
     '/webhooks',
-    { url: str(fd, 'url'), events: events ? events.split(',').map((e) => e.trim()).filter(Boolean) : [] },
+    {
+      url: str(fd, 'url'),
+      events: events
+        ? events
+            .split(',')
+            .map((e) => e.trim())
+            .filter(Boolean)
+        : [],
+    },
     '/admin/webhooks',
     'Endpoint přidán.',
   );
@@ -323,7 +356,9 @@ export async function resolveIssue(_p: ActionState, fd: FormData): Promise<Actio
 
 export async function startInventorySubject(_p: ActionState, fd: FormData): Promise<ActionState> {
   const subject = str(fd, 'subject'); // "type:id"
-  const [subjectType, subjectId] = subject.includes(':') ? subject.split(':') : ['location', subject];
+  const [subjectType, subjectId] = subject.includes(':')
+    ? subject.split(':')
+    : ['location', subject];
   return run('/inventory', { subjectType, subjectId }, '/admin/inventory', 'Inventura spuštěna.');
 }
 
@@ -343,7 +378,13 @@ export async function renameCategory(_p: ActionState, fd: FormData): Promise<Act
 }
 
 export async function deleteCategory(_p: ActionState, fd: FormData): Promise<ActionState> {
-  return run(`/categories/${str(fd, 'id')}`, null, '/admin/categories', 'Kategorie smazána.', 'DELETE');
+  return run(
+    `/categories/${str(fd, 'id')}`,
+    null,
+    '/admin/categories',
+    'Kategorie smazána.',
+    'DELETE',
+  );
 }
 
 /** Najde kategorii podle názvu, nebo ji vytvoří. Vrací její id. */
@@ -475,7 +516,12 @@ export async function createReservation(_p: ActionState, fd: FormData): Promise<
 
 export async function setReservationStatus(_p: ActionState, fd: FormData): Promise<ActionState> {
   const action = str(fd, 'action'); // approve | reject | cancel
-  return run(`/reservations/${str(fd, 'id')}/${action}`, null, '/admin/reservations', 'Stav změněn.');
+  return run(
+    `/reservations/${str(fd, 'id')}/${action}`,
+    null,
+    '/admin/reservations',
+    'Stav změněn.',
+  );
 }
 
 // --- Asset nesting (§14) ---
@@ -623,7 +669,12 @@ export async function updateAsset(_p: ActionState, fd: FormData): Promise<Action
 
 // --- Inventura (Fáze C) ---
 export async function startInventory(_p: ActionState, fd: FormData): Promise<ActionState> {
-  return run('/inventory', { locationId: str(fd, 'locationId') }, '/admin/inventory', 'Inventura spuštěna.');
+  return run(
+    '/inventory',
+    { locationId: str(fd, 'locationId') },
+    '/admin/inventory',
+    'Inventura spuštěna.',
+  );
 }
 
 // Pozn.: sken a uzavření inventury řeší continuous-scan klient (BFF /api/inventory/*).
@@ -657,7 +708,13 @@ export async function adoptCarrier(_p: ActionState, fd: FormData): Promise<Actio
 }
 
 export async function archiveObject(_p: ActionState, fd: FormData): Promise<ActionState> {
-  return run(`/objects/${str(fd, 'objectId')}`, null, '/admin/objects', 'Objekt archivován.', 'DELETE');
+  return run(
+    `/objects/${str(fd, 'objectId')}`,
+    null,
+    '/admin/objects',
+    'Objekt archivován.',
+    'DELETE',
+  );
 }
 
 // --- Billing detail ---
@@ -689,7 +746,7 @@ export async function setUserStatus(_p: ActionState, fd: FormData): Promise<Acti
 
 export async function inviteUser(_p: ActionState, fd: FormData): Promise<ActionState> {
   try {
-    const res = await apiFetch<{ tempPassword: string }>('/users', {
+    await apiFetch<{ user: { id: string } }>('/users', {
       method: 'POST',
       body: JSON.stringify({
         email: str(fd, 'email'),
@@ -698,7 +755,7 @@ export async function inviteUser(_p: ActionState, fd: FormData): Promise<ActionS
       }),
     });
     revalidatePath('/admin/users');
-    return { ok: true, message: `Pozván. Dočasné heslo: ${res.tempPassword}` };
+    return { ok: true, message: 'Pozvánka s jednorázovým odkazem byla odeslána e-mailem.' };
   } catch (e) {
     return { error: e instanceof ApiError ? e.message : 'Neočekávaná chyba' };
   }

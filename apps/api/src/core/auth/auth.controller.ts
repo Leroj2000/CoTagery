@@ -1,4 +1,12 @@
-import { Body, Controller, Get, HttpCode, NotFoundException, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  NotFoundException,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuthService, type MembershipView, type TokenPair } from './auth.service';
@@ -9,6 +17,11 @@ import { ConfirmResetDto, RequestResetDto } from './dto/password-reset.dto';
 import { JwtAuthGuard, type RequestUser } from './jwt-auth.guard';
 import { CurrentUser } from './decorators';
 import { User } from './entities/user.entity';
+import {
+  AcceptInviteDto,
+  ConfirmAccountActionDto,
+  RegisterOrganizationDto,
+} from './dto/onboarding.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -20,6 +33,25 @@ export class AuthController {
   @Post('login')
   login(@Body() dto: LoginDto): Promise<TokenPair> {
     return this.auth.login(dto.email, dto.password);
+  }
+
+  @Post('register')
+  @HttpCode(201)
+  async register(@Body() dto: RegisterOrganizationDto): Promise<{ ok: true }> {
+    await this.auth.registerOrganization(dto);
+    return { ok: true };
+  }
+
+  @Post('verify-email')
+  async verifyEmail(@Body() dto: ConfirmAccountActionDto): Promise<{ ok: true }> {
+    await this.auth.confirmEmail(dto.token);
+    return { ok: true };
+  }
+
+  @Post('accept-invite')
+  async acceptInvite(@Body() dto: AcceptInviteDto): Promise<{ ok: true }> {
+    await this.auth.acceptInvitation(dto.token, dto.password);
+    return { ok: true };
   }
 
   @Post('refresh')
@@ -77,10 +109,7 @@ export class AuthController {
   /** Přepnutí aktivní organizace – vydá nové tokeny pro zvolené členství. */
   @Post('switch-org')
   @UseGuards(JwtAuthGuard)
-  switchOrg(
-    @CurrentUser() current: RequestUser,
-    @Body() dto: SwitchOrgDto,
-  ): Promise<TokenPair> {
+  switchOrg(@CurrentUser() current: RequestUser, @Body() dto: SwitchOrgDto): Promise<TokenPair> {
     return this.auth.switchOrg(current.userId, dto.organizationId);
   }
 }

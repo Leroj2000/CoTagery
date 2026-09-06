@@ -1,7 +1,9 @@
 # Tagery – Product Requirements Document (PRD)
 
 > Autoritativní specifikace produktu. Zdrojem pravdy pro *proč* a *co*. *Jak* žije v `docs/architecture/` a `docs/modules/`.
-> Verze: 0.2 · Stav: Draft k odsouhlasení · Vlastník: Product/Tech Lead
+> Verze: 0.3 · Stav: Aktivní produktový směr · Vlastník: Product/Tech Lead
+>
+> Realizační plán MVP: [`tasks/MVP-ROADMAP.md`](../tasks/MVP-ROADMAP.md)
 
 ---
 
@@ -25,18 +27,38 @@ Trh QR/NFC nástrojů je roztříštěný na jednoúčelové aplikace (marketing
 
 ## 3. Rozsah produktu
 
-### 3.1 In scope (produktová vize)
-Multi-tenant SaaS, 12 modulů nad společným jádrem: Product, Loyalty, Payment, Inventory, Trace, Membership, Ticketing, Rental, Shared Gallery, Time & Event Tracking, Automation, Contact. Plus průřezová schopnost **Access Control** (sdílí Ticketing + Membership). Detail v `docs/modules/` a `docs/reference/access-control.md`.
+### 3.1 In scope pro první MVP
 
-### 3.2 Out of scope (v1)
+První produkt je **Tagery Věci**: evidence, dohledání, předávání, servis a inventura
+firemního vybavení pomocí QR/NFC identifikátorů. Součástí je multi-tenant jádro,
+správa lidí a míst, role, pohybový ledger, tisk štítků, skenování a základní analytika.
+
+Původní modulární platforma zůstává dlouhodobou vizí. Product, Membership, Ticketing,
+Rental, Shared Gallery, Billing a Access Control jsou volitelná rozšíření a nejsou
+podmínkou vydání základního MVP.
+
+### 3.2 Out of scope základního MVP
 - Nativní mobilní aplikace (řešíme mobile-first web + PWA)
 - Vlastní hardware (podpora tisku/tagů řešíme jen datově)
 - Fakturační/billing systém tenantů (napojíme později, v0 manuálně)
-- Marketplace mezi tenanty (v1 je marketplace = B2B repository *uvnitř* tenantu)
+- Veřejný marketplace a síť půjčoven
+- Stripe Connect, KYC, karetní kauce a reputace nájemců
+- Moduly Ticketing, Gallery, Membership, Access, Time Tracking, Automation a Contact
+- SAML/SCIM, vlastní domény a nativní mobilní aplikace
 
 ## 4. Jádro produktu (shrnutí, detail v architektuře)
 
 `Tenant → Location → User` (+ `Group`) · `DigitalObject` (co to je + jaký modul) · `DataCarrier` (fyzický QR/NFC/hybrid nosič) · `ScanEvent` (log každé interakce) · **Resolver** `GET /r/{public_code}` (hot path). Viz `docs/architecture/README.md`.
+
+### Slovník MVP
+
+- **Položka** – uživatelský název fyzické věci; v kódu kanonicky `Asset`.
+- **Digitální objekt** – technická identita položky nebo modulového obsahu (`DigitalObject`).
+- **Identifikátor** – QR/NFC/hybridní nosič připojený k digitálnímu objektu (`DataCarrier`).
+- **Pohyb** – neměnný záznam předání, přesunu, vrácení nebo změny držby (`Movement`).
+
+Nové funkce nesmí vytvářet paralelní model fyzické věci. Podrobnosti stanovuje
+[ADR-0010](architecture/decisions/0010-canonical-asset-model.md).
 
 ## 5. Nefunkční požadavky (NFR)
 
