@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpException,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Post,
@@ -16,12 +18,25 @@ import {
 import { CreateOrderDto, RenterIssueDto } from './dto/order.dto';
 import { CurrentRenter, RenterJwtGuard, type RequestRenter } from './renter-jwt.guard';
 import type { Quote } from './order-pricing';
+import { RateLimitService } from '../../core/resolver/rate-limit.service';
 
 /** Objednávky nájemce (EPIC-19 F2/F3). Vyžaduje renter token (rozh. C). */
 @Controller('renter/orders')
 @UseGuards(RenterJwtGuard)
 export class RenterOrderController {
-  constructor(private readonly orders: RentalOrderService) {}
+  constructor(
+    private readonly orders: RentalOrderService,
+    private readonly rateLimit: RateLimitService,
+  ) {}
+
+  private async limit(key: string, count: number, seconds: number): Promise<void> {
+    if (!(await this.rateLimit.allow(`renter:${key}`, count, seconds))) {
+      throw new HttpException(
+        'Příliš mnoho požadavků. Zkuste to později.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
 
   @Get()
   myOrders(@CurrentRenter() renter: RequestRenter): Promise<RenterOrderView[]> {
@@ -29,10 +44,11 @@ export class RenterOrderController {
   }
 
   @Post()
-  create(
+  async create(
     @CurrentRenter() renter: RequestRenter,
     @Body() dto: CreateOrderDto,
   ): Promise<{ orderId: string; quote: Quote }> {
+    await this.limit(`orders:${renter.userId}`, 20, 60 * 60);
     return this.orders.createOrder(renter, dto);
   }
 
@@ -54,11 +70,12 @@ export class RenterOrderController {
   }
 
   @Post(':id/issue')
-  reportIssue(
+  async reportIssue(
     @CurrentRenter() renter: RequestRenter,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RenterIssueDto,
   ): Promise<{ issueId: string }> {
+    await this.limit(`issues:${renter.userId}`, 20, 60 * 60);
     return this.orders.createRenterIssue(renter.userId, id, dto.kind, dto.description);
   }
 }

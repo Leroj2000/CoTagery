@@ -12,6 +12,7 @@ x-api-env: &api-env
   # DB adresujeme jednoznačně názvem kontejneru, ať nekoliduje DNS. Stejně redis.
   DATABASE_URL: postgres://tagery:tagery@tagery-postgres-1:5432/tagery
   APP_DATABASE_URL: postgres://tagery_app:tagery_app@tagery-postgres-1:5432/tagery
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
   REDIS_URL: redis://tagery-redis-1:6379
   STORAGE_DRIVER: local
   STORAGE_LOCAL_PATH: /app/.storage

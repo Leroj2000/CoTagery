@@ -1,16 +1,11 @@
-import { notFound } from 'next/navigation';
 import { PrinterTestClient } from './printer-test-client';
 
 /**
- * Vývojová testovací stránka tisku (sekce 12 zadání). Je pod `/admin`, takže ji
- * chrání middleware (jen přihlášení uživatelé). Navíc ji v produkčním buildu
- * úplně vypínáme přes NODE_ENV, aby ji neviděli běžní produkční uživatelé.
+ * Diagnostická stránka tisku. Je pod `/admin`, takže ji chrání middleware a lze
+ * ji použít také nad produkčním buildem při fyzické akceptaci tiskárny.
  */
 export const dynamic = 'force-dynamic';
 
 export default function PrinterTestPage() {
-  if (process.env.NODE_ENV === 'production') {
-    notFound();
-  }
   return <PrinterTestClient />;
 }

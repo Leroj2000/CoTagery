@@ -141,6 +141,20 @@ export default async function SettingsPage() {
           ]}
         />
       </Section>
+
+      <Section
+        title="Diagnostika tisku"
+        description="Kontrola přímého Bluetooth tisku na NIIMBOT B1."
+      >
+        <Link
+          href="/admin/printer-test"
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          <Printer size={16} /> Otevřít test tiskárny
+        </Link>
+      </Section>
     </div>
   );
 }
+import Link from 'next/link';
+import { Printer } from 'lucide-react';

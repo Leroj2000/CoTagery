@@ -8,6 +8,7 @@
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "jest --passWithNoTests",
+    "test:rls": "node scripts/verify-rls.mjs",
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/core/database/data-source.ts",
     "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/core/database/data-source.ts",
     "seed": "ts-node -r tsconfig-paths/register src/database/seed.ts",

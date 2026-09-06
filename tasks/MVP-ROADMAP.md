@@ -130,11 +130,11 @@ pozvánka kolegy, nastavení hesla a přihlášení. Databázová migrace `19220
 
 **Cíl:** Produkt může bezpečně pracovat s daty prvních reálných zákazníků.
 
-- [ ] V produkci vyžadovat `APP_DATABASE_URL` s rolí podléhající RLS.
-- [ ] Přidat automatické cross-tenant testy ke všem MVP entitám a `SECURITY DEFINER` funkcím.
+- [x] V produkci vyžadovat `APP_DATABASE_URL` s rolí podléhající RLS.
+- [x] Přidat automatické cross-tenant testy ke všem MVP entitám a `SECURITY DEFINER` funkcím.
 - [ ] Dokončit a sjednotit permission enforcement; odstranit dočasné allow chování scope/policy.
-- [ ] Nastavit explicitní CORS allowlist a bezpečnostní HTTP hlavičky.
-- [ ] Přidat rate limiting na login, reset hesla, registraci a veřejné mutace.
+- [x] Nastavit explicitní CORS allowlist a bezpečnostní HTTP hlavičky.
+- [x] Přidat rate limiting na login, reset hesla, registraci a veřejné mutace.
 - [ ] Prověřit CSRF ochranu BFF/cookie operací.
 - [ ] Zavést limity velikosti, MIME kontrolu a bezpečné názvy nahrávaných souborů.
 - [ ] Provést kontrolu SSRF u webhooků a AI-fetch integrací.
@@ -142,6 +142,8 @@ pozvánka kolegy, nastavení hesla a přihlášení. Databázová migrace `19220
 - [ ] Definovat retenci a výmaz osobních údajů, médií a auditních dat.
 
 **Akceptace:** Automatický test prokáže, že uživatel firmy A nemůže číst ani měnit data firmy B.
+
+**Stav ověření 2026-09-06:** `test:rls` pod rolí `tagery_app` prošel nad 57 tenantovými tabulkami a zkontroloval bezpečný `search_path` 27 `SECURITY DEFINER` funkcí. Docker API prošlo startem, loginem, CORS testem s cizím originem a kontrolou bezpečnostních hlaviček.
 
 ### M4 – Spolehlivost a produkční infrastruktura
 

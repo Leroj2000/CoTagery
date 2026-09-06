@@ -24,6 +24,7 @@ export function PrinterTestClient() {
   const [copies, setCopies] = useState(1);
   const [debug, setDebugState] = useState(false);
   const [version, setVersion] = useState<string | null>(null);
+  const [checks, setChecks] = useState<Record<string, boolean>>({});
   const pngUrlRef = useRef<string | null>(null);
 
   const data: LabelData = useMemo(
@@ -43,6 +44,15 @@ export function PrinterTestClient() {
         .catch(() => undefined);
     }
   }, [debug, version]);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('tagery-printer-acceptance');
+      if (saved) setChecks(JSON.parse(saved) as Record<string, boolean>);
+    } catch {
+      // Diagnostika musí fungovat i při zakázaném localStorage.
+    }
+  }, []);
 
   const downloadPng = () => {
     if (!pngUrlRef.current) return;
@@ -70,10 +80,7 @@ export function PrinterTestClient() {
           </div>
         </Section>
 
-        <Section
-          title="Náhled a tisk"
-          description="Náhled je shodný s tiskovým obrazem"
-        >
+        <Section title="Náhled a tisk" description="Náhled je shodný s tiskovým obrazem">
           <div className="flex flex-col gap-4">
             <LabelPreview
               data={data}
@@ -99,7 +106,11 @@ export function PrinterTestClient() {
               </p>
             ) : (
               <>
-                <PrinterStatus state={printer.state} printer={printer.printer} progress={printer.progress} />
+                <PrinterStatus
+                  state={printer.state}
+                  printer={printer.printer}
+                  progress={printer.progress}
+                />
                 {printer.state === 'error' && printer.error && (
                   <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
                     <p>{printer.error}</p>
@@ -180,6 +191,50 @@ export function PrinterTestClient() {
           </div>
         </Section>
       </div>
+
+      <Section
+        title="Fyzická akceptace NIIMBOT B1"
+        description="Zaškrtni až po skutečném provedení. Stav se ukládá pouze v tomto prohlížeči."
+      >
+        <div className="space-y-2">
+          {[
+            ['connect', 'Chrome/Edge nabídl zařízení B1 a připojení uspělo.'],
+            ['identify', 'Aplikace identifikovala NIIMBOT B1; jiný model odmítla.'],
+            ['single', 'Tisk 1× dokončil jeden čitelný štítek 50 × 30 mm.'],
+            ['multiple', 'Tisk 3× dokončil přesně tři stejné štítky.'],
+            ['scan', 'QR z fyzického štítku lze načíst telefonem a vede na správnou položku.'],
+            [
+              'disconnect',
+              'Vypnutí tiskárny během operace zobrazilo srozumitelnou chybu a opakování fungovalo.',
+            ],
+            ['pdf', 'PDF fallback lze otevřít a vytisknout systémovým dialogem.'],
+          ].map(([id, label]) => (
+            <label
+              key={id}
+              className="flex items-start gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"
+            >
+              <input
+                type="checkbox"
+                checked={checks[id] === true}
+                onChange={(event) => {
+                  const next = { ...checks, [id]: event.target.checked };
+                  setChecks(next);
+                  try {
+                    window.localStorage.setItem('tagery-printer-acceptance', JSON.stringify(next));
+                  } catch {
+                    // Zaškrtnutí funguje i bez perzistence prohlížeče.
+                  }
+                }}
+                className="mt-0.5 rounded border-slate-300"
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-slate-500">
+          Splněno {Object.values(checks).filter(Boolean).length} ze 7 kontrol.
+        </p>
+      </Section>
     </div>
   );
 }
