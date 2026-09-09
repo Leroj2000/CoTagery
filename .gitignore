@@ -45,3 +45,4 @@ tmp/
 .storage/
 *.tsbuildinfo
 .claude/scheduled_tasks.lock
+.handoff/

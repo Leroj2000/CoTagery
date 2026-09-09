@@ -133,6 +133,7 @@ export class DataCarriersService {
       where: [
         ...list.map((c) => ({ publicCode: c })),
         ...list.map((c) => ({ externalCode: c })),
+        ...list.map((c) => ({ nfcUid: c })),
       ],
     });
   }

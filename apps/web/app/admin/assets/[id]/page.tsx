@@ -105,7 +105,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
   const canEdit = perms.has('asset.item.update');
   const canManagePhotos = perms.has('asset.media.manage');
   const photos = await apiFetch<{
-    items: { id: string; mime: string; position: number }[];
+    items: { id: string; mime: string; position: number; previewX: number; previewY: number; previewZoom: number }[];
     max: number;
   }>(`/assets/${id}/photos`).catch(() => ({ items: [], max: 5 }));
   const requireReturnPhoto = tenant.settings?.requireReturnPhoto === true;
@@ -175,11 +175,28 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
           icon={<Home size={16} />}
           label="Patří do"
           value={locName.get(asset.homeLocationId ?? '') ?? '—'}
+          action={
+            !asset.homeLocationId ? (
+              <Link href="#edit-asset" className="text-xs text-brand-700 hover:underline">
+                Nastav místo
+              </Link>
+            ) : undefined
+          }
         />
         <StateTile
           icon={asset.currentHolderType === 'person' ? <User size={16} /> : <MapPin size={16} />}
           label={asset.currentHolderType === 'person' ? 'Má ji' : 'Kde je'}
           value={label(asset.currentHolderType, asset.currentHolderId)}
+          action={
+            asset.currentHolderType !== 'person' && asset.currentHolderId == null ? (
+              <Link
+                href={`/admin/scan?code=${encodeURIComponent(carriers[0]?.publicCode ?? '')}`}
+                className="text-xs text-brand-700 hover:underline"
+              >
+                Přidat aktuální polohu
+              </Link>
+            ) : undefined
+          }
         />
         <StateTile
           icon={<CalendarClock size={16} />}
@@ -189,41 +206,44 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
       </div>
 
       {canEdit && (
-        <Section
-          title="Upravit položku"
-          description="Základní údaje (stav a držení se mění pohyby, ne zde)"
-        >
-          <ActionForm
-            action={updateAsset}
-            hidden={{ id: asset.id }}
-            submitLabel="Uložit změny"
-            fields={[
-              { name: 'name', label: 'Název', required: true, defaultValue: asset.name },
-              { name: 'category', label: 'Kategorie', defaultValue: asset.category ?? '' },
-              { name: 'manufacturer', label: 'Výrobce', defaultValue: asset.manufacturer ?? '' },
-              { name: 'model', label: 'Model', defaultValue: asset.model ?? '' },
-              {
-                name: 'serialNumber',
-                label: 'Sériové číslo',
-                defaultValue: asset.serialNumber ?? '',
-              },
-              {
-                name: 'inventoryNumber',
-                label: 'Inventární číslo',
-                defaultValue: asset.inventoryNumber ?? '',
-              },
-              {
-                name: 'homeLocationId',
-                label: 'Patří do (domov)',
-                defaultValue: asset.homeLocationId ?? '',
-                options: [
-                  { value: '', label: '— beze změny —' },
-                  ...pickLocations.map((l) => ({ value: l.id, label: l.label })),
-                ],
-              },
-            ]}
-          />
-        </Section>
+        <div id="edit-asset">
+          <Section
+            title="Upravit položku"
+            description="Základní údaje (stav a držení se mění pohyby, ne zde)"
+          >
+            <ActionForm
+              action={updateAsset}
+              hidden={{ id: asset.id }}
+              submitLabel="Uložit změny"
+              fields={[
+                { name: 'name', label: 'Název', required: true, defaultValue: asset.name },
+                { name: 'category', label: 'Kategorie', defaultValue: asset.category ?? '' },
+                { name: 'manufacturer', label: 'Výrobce', defaultValue: asset.manufacturer ?? '' },
+                { name: 'model', label: 'Model', defaultValue: asset.model ?? '' },
+                {
+                  name: 'serialNumber',
+                  label: 'Sériové číslo',
+                  defaultValue: asset.serialNumber ?? '',
+                },
+                {
+                  name: 'inventoryNumber',
+                  label: 'Inventární číslo',
+                  defaultValue: asset.inventoryNumber ?? '',
+                },
+                {
+                  name: 'homeLocationId',
+                  label: 'Patří do (domov)',
+                  defaultValue: asset.homeLocationId ?? '',
+                  options: [
+                    { value: '', label: '— beze změny —' },
+                    ...pickLocations.map((l) => ({ value: l.id, label: l.label })),
+                  ],
+                  after: { href: '/admin/locations', label: 'Přidej místo' },
+                },
+              ]}
+            />
+          </Section>
+        </div>
       )}
 
       {/* Last Observation – kde byla naposledy VIDĚNA (≠ evidence výše) */}
@@ -250,6 +270,24 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
                 {observations[0].actorName ? ` · ${observations[0].actorName}` : ''}
               </Badge>
             </div>
+            {observations[0].captureContext?.manualLocationId && (
+              <p className="mt-2 text-sm text-slate-600">
+                Poloha zadána ručně — výběr evidovaného místa.
+              </p>
+            )}
+            {observations[0].captureContext?.position && (
+              <p className="mt-2 text-sm text-slate-600">
+                Poloha skenu: {observations[0].captureContext.position.latitude.toFixed(6)},{' '}
+                {observations[0].captureContext.position.longitude.toFixed(6)}
+                {observations[0].captureContext.position.source === 'manual'
+                  ? ' · Zadáno ručně — bod na mapě'
+                  : ` (±${Math.round(observations[0].captureContext.position.accuracyMeters ?? 0)} m)`}
+                {' · '}
+                {observations[0].captureContext.technology ?? 'neurčeno'}
+                {' · čas polohy '}
+                {fmtDateTime(observations[0].captureContext.position.capturedAt)}
+              </p>
+            )}
             {observations.length > 1 && (
               <ul className="flex flex-col divide-y divide-slate-100 text-xs text-slate-500">
                 {observations.slice(1, 5).map((o) => (
@@ -257,6 +295,22 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
                     <span className="flex-1">
                       {fmtDateTime(o.observedAt)}
                       {o.locationName ? ` · ${o.locationName}` : ''}
+                      {o.captureContext?.manualLocationId && (
+                        <span className="block">Zadáno ručně — výběr evidovaného místa.</span>
+                      )}
+                      {o.captureContext?.position && (
+                        <span className="block">
+                          Poloha: {o.captureContext.position.latitude.toFixed(6)},{' '}
+                          {o.captureContext.position.longitude.toFixed(6)}
+                          {o.captureContext.position.source === 'manual'
+                            ? ' · Zadáno ručně — bod na mapě'
+                            : ` (±${Math.round(o.captureContext.position.accuracyMeters ?? 0)} m)`}
+                          {' · '}
+                          {o.captureContext.technology ?? 'neurčeno'}
+                          {' · čas polohy '}
+                          {fmtDateTime(o.captureContext.position.capturedAt)}
+                        </span>
+                      )}
                     </span>
                     <span className="text-slate-400">
                       {OBSERVATION_SOURCE[o.source] ?? o.source}
@@ -287,20 +341,23 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
       </Section>
 
       {canReturn && (
-        <Section
-          title="Vrátit položku"
-          description={
-            requireReturnPhoto
-              ? 'Politika tenanta vyžaduje foto stavu'
-              : 'Vrácení do assetu (foto volitelné)'
-          }
-        >
-          <ReturnForm assetId={asset.id} requirePhoto={requireReturnPhoto} />
-        </Section>
+        <div id="asset-return" className="scroll-mt-4">
+          <Section
+            title="Vrátit položku"
+            description={
+              requireReturnPhoto
+                ? 'Politika tenanta vyžaduje foto stavu'
+                : 'Vrácení do assetu (foto volitelné)'
+            }
+          >
+            <ReturnForm assetId={asset.id} requirePhoto={requireReturnPhoto} />
+          </Section>
+        </div>
       )}
 
       {otherActions.length > 0 && (
-        <Section title="Akce" description="Kontextové akce podle aktuálního stavu položky">
+        <div id="asset-actions" className="scroll-mt-4">
+          <Section title="Akce" description="Kontextové akce podle aktuálního stavu položky">
           {carriers.length === 0 && (
             <a
               href="#identifikator"
@@ -319,7 +376,8 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
             people={people.map((p) => ({ id: p.id, label: p.name }))}
             locations={pickLocations}
           />
-        </Section>
+          </Section>
+        </div>
       )}
 
       <div id="identifikator" className="scroll-mt-4">
@@ -649,10 +707,12 @@ function StateTile({
   icon,
   label,
   value,
+  action,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
+  action?: React.ReactNode;
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
@@ -661,6 +721,7 @@ function StateTile({
         {label}
       </div>
       <p className="mt-1 text-sm font-semibold text-slate-800">{value}</p>
+      {action && <div className="mt-2">{action}</div>}
     </div>
   );
 }

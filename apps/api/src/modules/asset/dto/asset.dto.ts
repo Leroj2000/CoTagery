@@ -3,11 +3,31 @@ import {
   IsBoolean,
   IsIn,
   IsOptional,
+  IsNumber,
   IsString,
   IsUUID,
   MaxLength,
+  Max,
+  Min,
   MinLength,
 } from 'class-validator';
+
+export class SetPhotoPreviewDto {
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  previewX!: number;
+
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  previewY!: number;
+
+  @IsNumber()
+  @Min(0.5)
+  @Max(3)
+  previewZoom!: number;
+}
 import type { HolderType, MovementType } from '../movement.logic';
 
 const MOVEMENT_TYPES: MovementType[] = [

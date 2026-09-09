@@ -1,0 +1,20 @@
+[Unit]
+Description=Private Telegram bridge for Tagery (read-only Codex branch)
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/var/lib/tagery-telegram/token
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/projects/tagery
+Environment=PATH=/root/.nvm/versions/node/v26.5.0/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/flock --nonblock /var/lib/tagery-telegram/service.lock /root/.nvm/versions/node/v26.5.0/bin/node /opt/tagery-telegram/bridge.mjs
+Restart=on-failure
+RestartSec=10
+UMask=0077
+KillMode=control-group
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

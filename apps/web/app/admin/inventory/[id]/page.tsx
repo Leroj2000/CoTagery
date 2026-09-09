@@ -45,7 +45,13 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
   const locationName = canReconcile ? subjectName : '';
 
   const assetRows = (list: Asset[]): (string | React.ReactNode)[][] =>
-    list.map((a) => [a.name, <StatusBadge key="s" status={a.status} />, a.manufacturer ?? '—']);
+    list.map((a) => [
+      <Link key="a" href={`/admin/assets/${a.id}`} className="text-brand-700 hover:underline">
+        {a.name}
+      </Link>,
+      <StatusBadge key="s" status={a.status} />,
+      a.manufacturer ?? '—',
+    ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -92,6 +98,15 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
               {detail.unexpected.length === 0 ? <EmptyState>—</EmptyState> : <Table head={['Položka', 'Stav', 'Výrobce']} rows={assetRows(detail.unexpected)} />}
             </Section>
           </div>
+          {(detail.missing.length > 0 || detail.unexpected.length > 0) && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              <p className="font-medium">Inventura vyžaduje řešení</p>
+              <p className="mt-1 text-amber-800">
+                Otevři detail položky z tabulky výše a zkontroluj její pohyb, místo nebo stav.
+                Nalezené položky jsou označené jako „Navíc“ a očekávané, které nebyly načtené, jako „Chybí“.
+              </p>
+            </div>
+          )}
         </>
       )}
     </div>

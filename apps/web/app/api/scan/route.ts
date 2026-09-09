@@ -1,5 +1,23 @@
 import { apiBase, getAccessToken } from '../../lib/session';
 
+export async function POST(req: Request): Promise<Response> {
+  const origin = req.headers.get('origin');
+  const expectedOrigin = new URL(process.env.PUBLIC_WEB_URL ?? req.url).origin;
+  if (origin && origin !== expectedOrigin) return new Response('Forbidden', { status: 403 });
+  const token = await getAccessToken();
+  if (!token) return new Response('Unauthorized', { status: 401 });
+  const res = await fetch(`${apiBase()}/api/v1/scan`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: await req.text(),
+    cache: 'no-store',
+  });
+  return new Response(await res.text(), {
+    status: res.status,
+    headers: { 'content-type': 'application/json' },
+  });
+}
+
 /**
  * BFF proxy pro Global Scan. API `/scan?code=` vyžaduje JWT (Bearer), který
  * drží server v httpOnly cookie – klientský scanner ho nemá. Tudy protéká

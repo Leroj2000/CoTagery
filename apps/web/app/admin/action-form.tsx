@@ -15,6 +15,7 @@ export interface Field {
   placeholder?: string;
   defaultValue?: string;
   options?: SelectOption[];
+  after?: { href: string; label: string };
 }
 
 const inputCls =
@@ -49,15 +50,22 @@ export function ActionForm({
               {f.required && <span className="text-brand-600"> *</span>}
             </label>
             {f.options ? (
-              <select
-                id={f.name}
-                name={f.name}
-                required={f.required}
-                defaultValue={f.defaultValue}
-                className={inputCls}
-              >
-                <SelectOptions options={f.options} />
-              </select>
+              <div className="flex items-center gap-2">
+                <select
+                  id={f.name}
+                  name={f.name}
+                  required={f.required}
+                  defaultValue={f.defaultValue}
+                  className={inputCls}
+                >
+                  <SelectOptions options={f.options} />
+                </select>
+                {f.after && (
+                  <a href={f.after.href} className="shrink-0 text-xs font-medium text-brand-700 hover:underline">
+                    {f.after.label}
+                  </a>
+                )}
+              </div>
             ) : (
               <input
                 id={f.name}

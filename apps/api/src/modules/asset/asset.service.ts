@@ -24,6 +24,7 @@ import { ServiceRecord } from './entities/service-record.entity';
 import { Reservation } from './entities/reservation.entity';
 import { Category } from './entities/category.entity';
 import { AssetObservation } from './entities/asset-observation.entity';
+import type { ScanDto } from './dto/scan.dto';
 import {
   applyMovement,
   availableActions,
@@ -44,6 +45,7 @@ import type {
   PerformMovementDto,
   UpdateAssetDto,
   WorkflowValidateDto,
+  SetPhotoPreviewDto,
 } from './dto/asset.dto';
 
 /** Jeden naskenovaný řádek workflow scanneru (validní nebo blocker). */
@@ -129,14 +131,24 @@ export class AssetService {
     return rows.map((r) => r.id);
   }
 
+  /** Ověří, zda má aktuální identita přístup k assetu v LOCATION_TREE scope. */
+  private async inScope(asset: Asset): Promise<boolean> {
+    const scope = this.context.scope;
+    if (scope.type !== 'LOCATION_TREE' || !scope.ref) return true;
+    if (!asset.homeLocationId) return false;
+    const ids = await this.locationSubtree(scope.ref);
+    return ids.includes(asset.homeLocationId);
+  }
+
   async get(id: string): Promise<Asset> {
     const asset = await this.repo(Asset).findOne({ where: { id } });
-    if (!asset) throw new NotFoundException('Asset neexistuje');
+    if (!asset || !(await this.inScope(asset))) throw new NotFoundException('Asset neexistuje');
     return asset;
   }
 
-  getByObject(objectId: string): Promise<Asset | null> {
-    return this.repo(Asset).findOne({ where: { digitalObjectId: objectId } });
+  async getByObject(objectId: string): Promise<Asset | null> {
+    const asset = await this.repo(Asset).findOne({ where: { digitalObjectId: objectId } });
+    return asset && (await this.inScope(asset)) ? asset : null;
   }
 
   /** Úprava základních polí věci (stav/holder se needitují – jsou z pohybů). */
@@ -232,7 +244,8 @@ export class AssetService {
     return this.repo(Asset).save(child);
   }
 
-  listMovements(assetId: string): Promise<Movement[]> {
+  async listMovements(assetId: string): Promise<Movement[]> {
+    await this.get(assetId);
     return this.repo(Movement).find({ where: { assetId }, order: { createdAt: 'DESC' } });
   }
 
@@ -254,6 +267,7 @@ export class AssetService {
       locationId?: string | null;
       actorUserId?: string | null;
       note?: string | null;
+      captureContext?: Omit<ScanDto, 'code'>;
     },
   ): Promise<void> {
     try {
@@ -266,10 +280,12 @@ export class AssetService {
           locationId: opts.locationId ?? null,
           actorUserId: opts.actorUserId ?? null,
           note: opts.note ?? null,
+          captureContext: opts.captureContext ?? null,
           observedAt: new Date(),
         }),
       );
-    } catch {
+    } catch (error) {
+      if (opts.captureContext) throw error;
       /* observability nesmí blokovat hlavní operaci */
     }
   }
@@ -285,6 +301,7 @@ export class AssetService {
       observedAt: string;
       locationName: string | null;
       actorName: string | null;
+      captureContext: Omit<ScanDto, 'code'> | null;
     }[]
   > {
     const rows = await this.repo(AssetObservation).find({
@@ -304,6 +321,7 @@ export class AssetService {
       observedAt: r.observedAt.toISOString(),
       locationName: r.locationId ? (locName.get(r.locationId) ?? null) : null,
       actorName: r.actorUserId ? (userName.get(r.actorUserId) ?? null) : null,
+      captureContext: r.captureContext,
     }));
   }
 
@@ -326,9 +344,24 @@ export class AssetService {
    * → věc + odvozený stav + kontextová akce. Tenant kontext (interní skener),
    * veřejný resolver se nepoužívá.
    */
-  async scanLookup(rawCode: string, actorUserId?: string): Promise<ScanResult> {
+  async scanLookup(
+    rawCode: string,
+    actorUserId?: string,
+    captureContext?: Omit<ScanDto, 'code'>,
+  ): Promise<ScanResult> {
     const code = rawCode.trim();
     if (!code) throw new BadRequestException('Prázdný kód');
+
+    if (captureContext?.manualLocationId && captureContext.position) {
+      throw new BadRequestException('Vyberte místo nebo souřadnice, nikoli obojí.');
+    }
+    if (
+      captureContext?.manualLocationId &&
+      !(await this.repo(Location).findOne({
+        where: { id: captureContext.manualLocationId },
+      }))
+    )
+      throw new BadRequestException('Vybrané místo není dostupné.');
 
     const carrier = await this.carriers.findByCode(code);
     if (!carrier) return { found: false, code };
@@ -371,7 +404,12 @@ export class AssetService {
     }
 
     // Last Observation: sken = věc byla právě VIDĚNA (nemění evidenci).
-    await this.recordObservation(asset.id, { source: 'scan', actorUserId });
+    await this.recordObservation(asset.id, {
+      source: 'scan',
+      actorUserId,
+      captureContext,
+      locationId: captureContext?.manualLocationId,
+    });
 
     const actions = this.actionsFor(asset);
     return {
@@ -1007,6 +1045,19 @@ export class AssetService {
     if (!chosen) throw new NotFoundException('Fotka neexistuje');
     await this.renumber([chosen, ...photos.filter((p) => p.id !== photoId)]);
     await this.syncMainPhoto(assetId);
+  }
+
+  /** Uloží ohnisko náhledu; soubor originálu se nemění. */
+  async setPhotoPreview(assetId: string, photoId: string, dto: SetPhotoPreviewDto): Promise<void> {
+    const photo = await this.repo(AssetPhoto).findOne({ where: { id: photoId, assetId } });
+    if (!photo) throw new NotFoundException('Fotka neexistuje');
+    if (!Number.isFinite(dto.previewX) || !Number.isFinite(dto.previewY)) {
+      throw new BadRequestException('Neplatné ohnisko náhledu');
+    }
+    photo.previewX = Math.max(0, Math.min(100, dto.previewX));
+    photo.previewY = Math.max(0, Math.min(100, dto.previewY));
+    photo.previewZoom = Math.max(0.5, Math.min(3, dto.previewZoom));
+    await this.repo(AssetPhoto).save(photo);
   }
 
   /** Smaže fotku z galerie (řádek + soubor), přečísluje a přesynchronizuje hlavní. */

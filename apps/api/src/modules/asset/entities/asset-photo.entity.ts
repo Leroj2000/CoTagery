@@ -20,4 +20,15 @@ export class AssetPhoto extends BaseTenantEntity {
 
   @Column({ type: 'integer', default: 0 })
   position!: number;
+
+  /** Focal point náhledu v procentech (0–100); originál zůstává nedotčený. */
+  @Column({ type: 'double precision', name: 'preview_x', default: 50 })
+  previewX!: number;
+
+  @Column({ type: 'double precision', name: 'preview_y', default: 50 })
+  previewY!: number;
+
+  /** Měřítko náhledu; 1 zobrazí celý obrázek, vyšší hodnoty přibližují. */
+  @Column({ type: 'double precision', name: 'preview_zoom', default: 1 })
+  previewZoom!: number;
 }

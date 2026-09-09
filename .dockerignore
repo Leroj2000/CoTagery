@@ -1,6 +1,7 @@
 .git
 .agents
 .codex
+.handoff
 .next
 **/.next
 node_modules

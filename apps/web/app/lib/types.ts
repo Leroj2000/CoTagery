@@ -97,6 +97,18 @@ export interface AssetSpec {
 }
 
 export interface Observation {
+  captureContext?: {
+    manualLocationId?: string;
+    technology?: string;
+    readerId?: string;
+    position?: {
+      latitude: number;
+      longitude: number;
+      accuracyMeters?: number;
+      capturedAt: string;
+      source: string;
+    };
+  } | null;
   id: string;
   source: string;
   observedAt: string;

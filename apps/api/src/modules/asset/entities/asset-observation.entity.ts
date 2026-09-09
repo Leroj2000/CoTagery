@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import type { ScanDto } from '../dto/scan.dto';
 
 /**
  * Pozorování věci (Last Observation) – „kde/kdy byla naposledy VIDĚNA
@@ -31,6 +32,9 @@ export class AssetObservation {
 
   @Column({ type: 'text', nullable: true })
   note!: string | null;
+
+  @Column({ type: 'jsonb', name: 'capture_context', nullable: true })
+  captureContext!: Omit<ScanDto, 'code'> | null;
 
   @Column({ type: 'timestamptz', name: 'observed_at' })
   observedAt!: Date;

@@ -30,6 +30,7 @@ import {
   ReportIssueDto,
   UpdateAssetDto,
   WorkflowValidateDto,
+  SetPhotoPreviewDto,
 } from './dto/asset.dto';
 import type { Asset } from './entities/asset.entity';
 import type { Movement } from './entities/movement.entity';
@@ -222,10 +223,20 @@ export class AssetController {
   @RequirePermission('asset.item.view')
   async photos(
     @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<{ items: { id: string; mime: string; position: number }[]; max: number }> {
+  ): Promise<{
+    items: { id: string; mime: string; position: number; previewX: number; previewY: number; previewZoom: number }[];
+    max: number;
+  }> {
     const [list, max] = await Promise.all([this.assets.listPhotos(id), this.assets.photoLimit()]);
     return {
-      items: list.map((p) => ({ id: p.id, mime: p.mime, position: p.position })),
+      items: list.map((p) => ({
+        id: p.id,
+        mime: p.mime,
+        position: p.position,
+        previewX: p.previewX,
+        previewY: p.previewY,
+        previewZoom: p.previewZoom,
+      })),
       max,
     };
   }
@@ -263,6 +274,17 @@ export class AssetController {
     @Param('photoId', ParseUUIDPipe) photoId: string,
   ): Promise<void> {
     return this.assets.setMainPhoto(id, photoId);
+  }
+
+  @Patch(':id/photos/:photoId/preview')
+  @RequirePermission('asset.media.manage')
+  @HttpCode(204)
+  setPhotoPreview(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('photoId', ParseUUIDPipe) photoId: string,
+    @Body() dto: SetPhotoPreviewDto,
+  ): Promise<void> {
+    return this.assets.setPhotoPreview(id, photoId, dto);
   }
 
   @Delete(':id/photos/:photoId')

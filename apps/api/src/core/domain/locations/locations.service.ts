@@ -48,8 +48,26 @@ export class LocationsService {
     return this.context.manager.getRepository(Location);
   }
 
-  list(): Promise<Location[]> {
+  async list(): Promise<Location[]> {
+    const scope = this.context.scope;
+    if (scope.type === 'LOCATION_TREE' && scope.ref) {
+      const ids = await this.subtree(scope.ref);
+      if (ids.length === 0) return [];
+      return this.repo().find({ where: ids.map((id) => ({ id })), order: { createdAt: 'ASC' } });
+    }
     return this.repo().find({ order: { createdAt: 'ASC' } });
+  }
+
+  private async subtree(rootId: string): Promise<string[]> {
+    const rows: { id: string }[] = await this.context.manager.query(
+      `WITH RECURSIVE sub AS (
+         SELECT id FROM locations WHERE id = $1
+         UNION ALL
+         SELECT l.id FROM locations l JOIN sub ON l.parent_id = sub.id
+       ) SELECT id FROM sub`,
+      [rootId],
+    );
+    return rows.map((r) => r.id);
   }
 
   create(dto: CreateLocationDto): Promise<Location> {
@@ -63,6 +81,10 @@ export class LocationsService {
   async get(id: string): Promise<Location> {
     const location = await this.repo().findOne({ where: { id } });
     if (!location) throw new NotFoundException('Lokace neexistuje');
+    const scope = this.context.scope;
+    if (scope.type === 'LOCATION_TREE' && scope.ref && !(await this.subtree(scope.ref)).includes(id)) {
+      throw new NotFoundException('Lokace neexistuje');
+    }
     return location;
   }
 

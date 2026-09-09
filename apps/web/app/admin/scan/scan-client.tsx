@@ -21,9 +21,11 @@ import {
 import type { ScanResult } from '../../lib/types';
 import { StatusBadge, Badge, Mono } from '../ui';
 import { useBarcodeScanner } from './use-scanner';
+import { captureScanPosition } from '../../lib/scan-position';
+import { ManualPosition, type ManualCapture } from './manual-position';
 
 const ACTION_LABEL: Record<string, string> = {
-  loan: 'Předat',
+  loan: 'Půjčit',
   assign: 'Přidělit',
   move: 'Přesunout',
   return: 'Vrátit',
@@ -40,8 +42,21 @@ function fmtDate(iso: string | null): string {
   return iso ? new Date(iso).toLocaleDateString('cs-CZ') : '—';
 }
 
-export function ScanClient() {
-  const [code, setCode] = useState('');
+export function ScanClient({
+  initialCode = '',
+  locations,
+  locationsAvailable,
+}: {
+  initialCode?: string;
+  locations: { id: string; name: string }[];
+  locationsAvailable: boolean;
+}) {
+  const [code, setCode] = useState(initialCode);
+  const [includePosition, setIncludePosition] = useState(true);
+  const [pending, setPending] = useState<{ code: string; technology: string } | null>(null);
+  const busyRef = useRef(false);
+  const [technology, setTechnology] = useState('unknown');
+  const [positionMessage, setPositionMessage] = useState('');
   const [result, setResult] = useState<ScanResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,22 +66,61 @@ export function ScanClient() {
   const [camFlash, setCamFlash] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const lookup = useCallback(async (raw: string) => {
-    const c = raw.trim();
-    if (!c) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/scan?code=${encodeURIComponent(c)}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(res.status === 401 ? 'Nepřihlášeno' : 'Chyba skenu');
-      setResult((await res.json()) as ScanResult);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Neočekávaná chyba');
+  const lookup = useCallback(
+    async (
+      raw: string,
+      capture = true,
+      manual?: ManualCapture,
+      selectedTechnology = technology,
+    ) => {
+      const c = raw.trim();
+      if (!c || busyRef.current || (capture && pending)) return;
+      busyRef.current = true;
+      setLoading(true);
+      setError(null);
       setResult(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      try {
+        let reason = 'Poloha není dostupná.';
+        const position =
+          includePosition && capture
+            ? await captureScanPosition((message) => {
+                reason = message;
+              })
+            : undefined;
+        if (includePosition && capture && !position) {
+          setPositionMessage(reason);
+          setPending({ code: c, technology: selectedTechnology });
+          return;
+        }
+        const res = await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ code: c, technology: selectedTechnology, position, ...manual }),
+          cache: 'no-store',
+        });
+        if (!res.ok) throw new Error(res.status === 401 ? 'Nepřihlášeno' : 'Chyba skenu');
+        const scanned = (await res.json()) as ScanResult;
+        setResult(scanned);
+        setPending(null);
+        setPositionMessage(
+          scanned.found && scanned.asset
+            ? manual
+              ? 'Poloha uložena — zadáno ručně.'
+              : position
+                ? `Poloha přiložena, přesnost ±${Math.round(position.accuracyMeters)} m.`
+                : 'Sken uložen bez polohy.'
+            : 'Poloha nebyla uložena — kód nevede na evidovanou položku.',
+        );
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Neočekávaná chyba');
+        setResult(null);
+      } finally {
+        busyRef.current = false;
+        setLoading(false);
+      }
+    },
+    [includePosition, technology, pending],
+  );
 
   /** One-tap „Vrátit domů" přímo ze skenu → pohyb + obnova karty. */
   const quickReturn = useCallback(
@@ -83,7 +137,7 @@ export function ScanClient() {
         });
         if (!res.ok) throw new Error('Vrácení se nepodařilo');
         setFlash('Vráceno domů ✓');
-        await lookup(scannedCode);
+        await lookup(scannedCode, false);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Neočekávaná chyba');
       } finally {
@@ -133,7 +187,9 @@ export function ScanClient() {
                 <Check size={26} className="text-emerald-400" />
               </span>
               <p className="text-sm font-medium">Kód načten</p>
-              <p className="max-w-[80%] truncate font-mono text-xs text-emerald-400/80">{camFlash}</p>
+              <p className="max-w-[80%] truncate font-mono text-xs text-emerald-400/80">
+                {camFlash}
+              </p>
             </div>
           )}
           {!camOn && !camFlash && (
@@ -155,6 +211,7 @@ export function ScanClient() {
           ) : (
             <button
               onClick={beginScan}
+              disabled={loading || !!pending}
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700 sm:w-auto sm:justify-start"
             >
               <Camera size={16} /> {camFlash ? 'Skenovat další' : 'Skenovat kamerou'}
@@ -163,7 +220,8 @@ export function ScanClient() {
         </div>
         {!camSupported && (
           <p className="mt-2 text-xs text-amber-600">
-            Kamera není v tomto prohlížeči dostupná (chybí HTTPS nebo přístup ke kameře). Použij ruční zadání nebo HW čtečku níže.
+            Kamera není v tomto prohlížeči dostupná (chybí HTTPS nebo přístup ke kameře). Použij
+            ruční zadání nebo HW čtečku níže.
           </p>
         )}
 
@@ -194,7 +252,65 @@ export function ScanClient() {
             Najít
           </button>
         </form>
+        <div className="mt-3 flex flex-col gap-2 text-sm text-slate-600">
+          <label>
+            Typ identifikátoru{' '}
+            <select
+              value={technology}
+              onChange={(e) => setTechnology(e.target.value)}
+              className="rounded border p-1"
+            >
+              <option value="unknown">Neurčeno</option>
+              <option value="qr">QR</option>
+              <option value="barcode">Čárový kód</option>
+              <option value="nfc">NFC</option>
+              <option value="rfid">RFID</option>
+              <option value="manual">Ruční zadání</option>
+            </select>
+          </label>
+          <details>
+            <summary>Nastavení polohy skeneru</summary>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={includePosition}
+                disabled={loading || !!pending}
+                onChange={(e) => setIncludePosition(e.target.checked)}
+              />{' '}
+              Automaticky získávat polohu při skenu (pro toto otevření skeneru)
+            </label>
+          </details>
+          <p className="text-xs">
+            Při skenu se poloha zařízení ukládá do interní historie položky. Prohlížeč může požádat
+            o svolení a zapamatovat si ho. Bez dostupné polohy ji můžete zadat ručně nebo sken
+            dokončit bez ní.
+          </p>
+          {positionMessage && (
+            <p role="status" className="text-xs">
+              {positionMessage}
+            </p>
+          )}
+        </div>
       </div>
+
+      {pending && (
+        <ManualPosition
+          key={pending.code}
+          locations={locations}
+          locationsAvailable={locationsAvailable}
+          busy={loading}
+          onSubmit={(value) => {
+            void lookup(pending.code, false, value, pending.technology);
+          }}
+          onSkip={() => {
+            void lookup(pending.code, false, undefined, pending.technology);
+          }}
+          onCancel={() => {
+            setPending(null);
+            setPositionMessage('Sken zrušen; žádné pozorování nebylo uloženo.');
+          }}
+        />
+      )}
 
       {(error || camError) && (
         <p className="flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-700">
@@ -234,8 +350,8 @@ function ResultCard({
         <div>
           <p className="font-medium">Kód nenalezen</p>
           <p className="mt-0.5 text-amber-700">
-            Kód <Mono>{result.code}</Mono> není v tomto tenantu evidovaný (ani jako náš identifikátor, ani jako
-            adoptovaný alias).
+            Kód <Mono>{result.code}</Mono> není v tomto tenantu evidovaný (ani jako náš
+            identifikátor, ani jako adoptovaný alias).
           </p>
         </div>
       </div>
@@ -250,9 +366,16 @@ function ResultCard({
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
         <p className="text-sm font-medium text-slate-800">Kód rozpoznán</p>
         <p className="mt-1 text-sm text-slate-500">
-          {carrier && <>Identifikátor <Mono>{carrier.publicCode}</Mono>. </>}
+          {carrier && (
+            <>
+              Identifikátor <Mono>{carrier.publicCode}</Mono>.{' '}
+            </>
+          )}
           {object ? (
-            <>Vede na objekt typu <Badge tone="slate">{object.moduleType}</Badge>, není to evidovaná položka.</>
+            <>
+              Vede na objekt typu <Badge tone="slate">{object.moduleType}</Badge>, není to evidovaná
+              položka.
+            </>
           ) : (
             <>Zatím nepřiřazený kód z poolu.</>
           )}
@@ -261,12 +384,17 @@ function ResultCard({
     );
   }
 
-  const primaryLabel = primaryAction ? ACTION_LABEL[primaryAction] ?? primaryAction : null;
+  const primaryLabel = primaryAction ? (ACTION_LABEL[primaryAction] ?? primaryAction) : null;
   // One-tap „Vrátit domů": jen když je věc vratná, má domov a politika nevyžaduje foto.
   const canQuickReturn =
     primaryAction === 'return' && !!asset.homeLocationId && !result.requireReturnPhoto;
-  const returnBlockedByPhoto =
-    primaryAction === 'return' && !!result.requireReturnPhoto;
+  const returnBlockedByPhoto = primaryAction === 'return' && !!result.requireReturnPhoto;
+  const availableActions = asset.actions ?? [];
+  const secondaryActions = availableActions.filter(
+    (action) => action !== primaryAction && !(action === 'return' && canQuickReturn),
+  );
+  const actionHref = (action: string) =>
+    `/admin/assets/${asset.id}#${action === 'return' ? 'asset-return' : 'asset-actions'}`;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
@@ -323,13 +451,22 @@ function ResultCard({
         ) : (
           primaryLabel && (
             <Link
-              href={`/admin/assets/${asset.id}`}
+              href={actionHref(primaryAction ?? '')}
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 sm:w-auto"
             >
               {primaryLabel} <ArrowRight size={16} />
             </Link>
           )
         )}
+        {secondaryActions.map((action) => (
+          <Link
+            key={action}
+            href={actionHref(action)}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:w-auto"
+          >
+            {ACTION_LABEL[action] ?? action} <ArrowRight size={15} />
+          </Link>
+        ))}
         <Link
           href={`/admin/assets/${asset.id}`}
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:w-auto"
@@ -337,7 +474,9 @@ function ResultCard({
           Detail položky
         </Link>
         {returnBlockedByPhoto && (
-          <span className="text-center text-xs text-amber-600 sm:text-left">Vrácení vyžaduje foto → otevři detail</span>
+          <span className="text-center text-xs text-amber-600 sm:text-left">
+            Vrácení vyžaduje foto → otevři detail
+          </span>
         )}
       </div>
     </div>
