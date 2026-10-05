@@ -32,6 +32,35 @@ function isPrefetch(req: NextRequest): boolean {
   );
 }
 
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+/**
+ * CSRF ochrana BFF route handlerů (`/api/*`): mutace jedou přes httpOnly cookie,
+ * které prohlížeč přiloží i při cross-site requestu (SameSite=Lax chrání jen
+ * top-level navigaci, ne `fetch`/formulář z jiného originu). Pro nebezpečné
+ * metody proto explicitně ověříme, že request vznikl na stejném originu – přes
+ * `Sec-Fetch-Site` (moderní prohlížeče), s fallbackem na `Origin` vs. `Host`.
+ * Request bez obou signálů (ne-browser klient) zamítáme – bezpečný default.
+ */
+function isSameOriginRequest(req: NextRequest): boolean {
+  const secFetchSite = req.headers.get('sec-fetch-site');
+  if (secFetchSite) return secFetchSite === 'same-origin' || secFetchSite === 'none';
+
+  const origin = req.headers.get('origin');
+  if (!origin) return false;
+  try {
+    return new URL(origin).host === req.headers.get('host');
+  } catch {
+    return false;
+  }
+}
+
+function csrfRejected(req: NextRequest): NextResponse | null {
+  if (SAFE_METHODS.has(req.method)) return null;
+  if (isSameOriginRequest(req)) return null;
+  return NextResponse.json({ error: 'CSRF: požadavek odmítnut (cizí origin)' }, { status: 403 });
+}
+
 /**
  * Chrání /admin/*. Přístupový token má krátkou životnost (cookie zmizí ~s exp);
  * když chybí, ale je refresh token, middleware tiše obnoví session (rotace) a
@@ -44,6 +73,12 @@ function isPrefetch(req: NextRequest): boolean {
  *    refresh token vícekrát a spustil serverovou reuse-detekci → odhlášení.
  */
 export async function middleware(req: NextRequest): Promise<NextResponse> {
+  if (req.nextUrl.pathname.startsWith('/api/')) {
+    const rejected = csrfRejected(req);
+    if (rejected) return rejected;
+    return NextResponse.next();
+  }
+
   const access = req.cookies.get(ACCESS_COOKIE)?.value;
   if (access) return NextResponse.next();
 
@@ -90,5 +125,5 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/platform/:path*'],
+  matcher: ['/admin/:path*', '/platform/:path*', '/api/:path*'],
 };
