@@ -21,7 +21,13 @@ export const REQUIRE_ROLE_KEY = 'require_role';
 export const RequireRole = (role: TenantRole): CustomDecorator =>
   SetMetadata(REQUIRE_ROLE_KEY, role);
 
-/** Ověří, že role uživatele (z JWT, po JwtAuthGuard) splňuje požadavek. */
+/**
+ * Ověří, že role uživatele (z JWT, po JwtAuthGuard) splňuje požadavek.
+ * Fail-closed (M3 security hardening): endpoint bez `@RequireRole` je zamítnut –
+ * tento guard se používá výhradně společně s `@RequireRole`, jinak hrozí, že se
+ * anotace na mutačním endpointu omylem zapomene a request tiše projde jen na
+ * základě platné autentizace.
+ */
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
@@ -31,10 +37,12 @@ export class RolesGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    if (!required) return true; // bez anotace = jen JwtAuthGuard
 
     const user = context.switchToHttp().getRequest<{ user?: RequestUser }>().user;
     if (!user) throw new UnauthorizedException('Chybí autentizace');
+    if (!required) {
+      throw new ForbiddenException('Endpoint vyžaduje @RequireRole.');
+    }
     if (!roleMeets(user.tenantRole, required)) {
       throw new ForbiddenException(`Vyžadována role alespoň ${required}`);
     }
