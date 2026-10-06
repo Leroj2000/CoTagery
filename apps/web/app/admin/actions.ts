@@ -364,13 +364,18 @@ export async function startInventorySubject(_p: ActionState, fd: FormData): Prom
 
 // --- Kategorie věcí ---
 export async function createCategory(_p: ActionState, fd: FormData): Promise<ActionState> {
-  return run('/categories', { name: str(fd, 'name') }, '/admin/categories', 'Kategorie vytvořena.');
+  return run(
+    '/categories',
+    { name: str(fd, 'name'), equipmentKind: str(fd, 'equipmentKind') || 'general' },
+    '/admin/categories',
+    'Kategorie vytvořena.',
+  );
 }
 
 export async function renameCategory(_p: ActionState, fd: FormData): Promise<ActionState> {
   return run(
     `/categories/${str(fd, 'id')}`,
-    { name: str(fd, 'name') },
+    { name: str(fd, 'name'), equipmentKind: str(fd, 'equipmentKind') || 'general' },
     '/admin/categories',
     'Přejmenováno.',
     'PATCH',
@@ -484,6 +489,58 @@ export async function addService(_p: ActionState, fd: FormData): Promise<ActionS
     },
     `/admin/assets/${assetId}`,
     'Servisní záznam přidán.',
+  );
+}
+
+export async function addMeterReading(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const assetId = str(fd, 'assetId');
+  return run(
+    `/maintenance/assets/${assetId}/readings`,
+    { value: num(fd, 'value') },
+    `/admin/assets/${assetId}`,
+    'Stav měřidla uložen.',
+  );
+}
+
+export async function deleteMeterReading(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const assetId = str(fd, 'assetId');
+  return run(
+    `/maintenance/assets/${assetId}/readings/${str(fd, 'readingId')}`,
+    null,
+    `/admin/assets/${assetId}`,
+    'Odečet smazán.',
+    'DELETE',
+  );
+}
+
+export async function updateMaintenanceRule(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const assetId = str(fd, 'assetId');
+  return run(
+    `/maintenance/assets/${assetId}/rules/${str(fd, 'code')}`,
+    {
+      intervalUnits: num(fd, 'intervalUnits'),
+      intervalMonths: num(fd, 'intervalMonths') ?? null,
+      description: str(fd, 'description'),
+    },
+    `/admin/assets/${assetId}`,
+    'Servisní interval uložen.',
+    'PATCH',
+  );
+}
+
+export async function completeMaintenance(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const assetId = str(fd, 'assetId');
+  return run(
+    `/maintenance/assets/${assetId}/services`,
+    {
+      planCode: str(fd, 'planCode'),
+      meterValue: num(fd, 'meterValue'),
+      performedAt: str(fd, 'performedAt'),
+      provider: str(fd, 'provider') || undefined,
+      note: str(fd, 'note') || undefined,
+    },
+    `/admin/assets/${assetId}`,
+    'Prohlídka zaznamenána.',
   );
 }
 
@@ -627,7 +684,7 @@ export async function createLocation(_p: ActionState, fd: FormData): Promise<Act
       }
     }
     revalidatePath('/admin/locations');
-    return { ok: true, message: `Místo vytvořeno.${extra}` };
+    return { ok: true, message: `Místo vytvořeno.${extra}`, href: `/admin/locations/${loc.id}` };
   } catch (e) {
     return { error: e instanceof ApiError ? e.message : 'Neočekávaná chyba' };
   }
@@ -650,8 +707,9 @@ export async function updatePerson(_p: ActionState, fd: FormData): Promise<Actio
 }
 
 export async function updateLocation(_p: ActionState, fd: FormData): Promise<ActionState> {
-  return run(
-    `/locations/${str(fd, 'id')}`,
+  const id = str(fd, 'id');
+  const result = await run(
+    `/locations/${id}`,
     {
       name: str(fd, 'name'),
       type: str(fd, 'type') || undefined,
@@ -662,15 +720,20 @@ export async function updateLocation(_p: ActionState, fd: FormData): Promise<Act
     'Místo upraveno.',
     'PATCH',
   );
+  if (result?.ok) revalidatePath(`/admin/locations/${id}`);
+  return result;
 }
 
 export async function updateAsset(_p: ActionState, fd: FormData): Promise<ActionState> {
   const id = str(fd, 'id');
+  const categoryId = str(fd, 'categoryId');
   return run(
     `/assets/${id}`,
     {
       name: str(fd, 'name'),
-      category: str(fd, 'category') || '',
+      ...(fd.has('categoryId') && categoryId !== '__keep__'
+        ? { categoryId: categoryId || null }
+        : {}),
       manufacturer: str(fd, 'manufacturer') || '',
       model: str(fd, 'model') || '',
       serialNumber: str(fd, 'serialNumber') || '',
@@ -698,10 +761,11 @@ export async function startInventory(_p: ActionState, fd: FormData): Promise<Act
 // --- Object detail ---
 export async function addCarrierToObject(_p: ActionState, fd: FormData): Promise<ActionState> {
   const objectId = str(fd, 'objectId');
+  const assetId = str(fd, 'assetId');
   return run(
     `/objects/${objectId}/carriers`,
     { carrierType: str(fd, 'carrierType') || 'qr' },
-    `/admin/objects/${objectId}`,
+    assetId ? `/admin/assets/${assetId}` : `/admin/objects/${objectId}`,
     'Identifikátor přidán.',
   );
 }
