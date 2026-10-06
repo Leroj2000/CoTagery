@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { IsIn } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from './permissions.guard';
-import { RequirePermission } from './require-permission.decorator';
+import { AllowAuthenticatedOnly, RequirePermission } from './require-permission.decorator';
 import { ModulesService, type ModuleState } from './modules.service';
 
 class SetModuleDto {
@@ -18,6 +18,7 @@ export class ModulesController {
 
   /** Řízené moduly + stav pro aktivní org (čte kdokoli přihlášený – pro skrytí v navigaci). */
   @Get()
+  @AllowAuthenticatedOnly()
   list(): Promise<ModuleState[]> {
     return this.modules.list();
   }

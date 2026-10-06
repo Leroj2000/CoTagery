@@ -15,7 +15,7 @@ import { JwtAuthGuard, type RequestUser } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators';
 import { AclService } from './acl.service';
 import { PermissionsGuard } from './permissions.guard';
-import { RequirePermission } from './require-permission.decorator';
+import { AllowAuthenticatedOnly, RequirePermission } from './require-permission.decorator';
 import { GrantPermissionDto } from './dto/grant-permission.dto';
 import type { ObjectPermission } from './entities/object-permission.entity';
 
@@ -25,6 +25,7 @@ export class RbacController {
   constructor(private readonly acl: AclService) {}
 
   @Get('objects/:id/permissions')
+  @AllowAuthenticatedOnly()
   list(@Param('id', ParseUUIDPipe) id: string): Promise<ObjectPermission[]> {
     return this.acl.list(id);
   }
@@ -47,6 +48,7 @@ export class RbacController {
 
   /** Ověří, zda aktuální uživatel má na objektu dané oprávnění. */
   @Get('objects/:id/access-check')
+  @AllowAuthenticatedOnly()
   async accessCheck(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('permission') permission: ObjectPermissionLevel,

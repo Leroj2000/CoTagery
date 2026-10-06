@@ -16,7 +16,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../rbac/permissions.guard';
-import { RequirePermission } from '../../rbac/require-permission.decorator';
+import { AllowAuthenticatedOnly, RequirePermission } from '../../rbac/require-permission.decorator';
 import { PeopleService, type PersonView } from './people.service';
 import { CreatePersonDto, SetCategoriesDto, UpdatePersonDto } from './dto/people.dto';
 import type { Person } from '../entities/person.entity';
@@ -48,6 +48,7 @@ export class PeopleController {
   constructor(private readonly people: PeopleService) {}
 
   @Get()
+  @AllowAuthenticatedOnly()
   list(): Promise<PersonView[]> {
     return this.people.list();
   }
@@ -96,6 +97,7 @@ export class PeopleController {
 
   /** Vrátí soubor profilové fotky osoby (tenant-scoped přes RLS). */
   @Get(':id/photo')
+  @AllowAuthenticatedOnly()
   async photo(@Param('id', ParseUUIDPipe) id: string): Promise<StreamableFile> {
     const { buffer, mime } = await this.people.getPhotoFile(id);
     return new StreamableFile(buffer, { type: mime });

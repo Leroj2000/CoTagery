@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../core/rbac/permissions.guard';
-import { RequirePermission } from '../../core/rbac/require-permission.decorator';
+import { AllowAuthenticatedOnly, RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { WalletService, type WalletView } from './wallet.service';
 import { CreateWalletCodeDto } from './dto/wallet.dto';
 import type { WalletCode } from './entities/wallet-code.entity';
@@ -26,16 +26,19 @@ export class WalletController {
   constructor(private readonly wallet: WalletService) {}
 
   @Get()
+  @AllowAuthenticatedOnly()
   list(): Promise<WalletView> {
     return this.wallet.list();
   }
 
   @Post('codes')
+  @AllowAuthenticatedOnly()
   createPersonal(@Body() dto: CreateWalletCodeDto): Promise<WalletCode> {
     return this.wallet.create(dto, false);
   }
 
   @Delete('codes/:id')
+  @AllowAuthenticatedOnly()
   deletePersonal(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.wallet.deletePersonal(id);
   }

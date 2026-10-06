@@ -13,7 +13,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../core/rbac/permissions.guard';
-import { RequirePermission } from '../../core/rbac/require-permission.decorator';
+import { AllowAuthenticatedOnly, RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { RequireModule } from '../../core/rbac/require-module.decorator';
 import { GalleryService, type UploadedFileLike } from './gallery.service';
 import { CreateGalleryDto } from './dto/create-gallery.dto';
@@ -48,11 +48,13 @@ export class GalleryController {
   }
 
   @Get(':id')
+  @AllowAuthenticatedOnly()
   get(@Param('id', ParseUUIDPipe) id: string): Promise<GalleryEvent> {
     return this.gallery.get(id);
   }
 
   @Get(':id/uploads')
+  @AllowAuthenticatedOnly()
   listUploads(@Param('id', ParseUUIDPipe) id: string): Promise<UploadItem[]> {
     return this.gallery.listUploads(id);
   }

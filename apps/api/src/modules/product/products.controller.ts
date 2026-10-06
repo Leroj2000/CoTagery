@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../core/rbac/permissions.guard';
-import { RequirePermission } from '../../core/rbac/require-permission.decorator';
+import { AllowAuthenticatedOnly, RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { RequireModule } from '../../core/rbac/require-module.decorator';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -20,6 +20,7 @@ export class ProductsController {
   }
 
   @Get('by-object/:objectId')
+  @AllowAuthenticatedOnly()
   getByObject(@Param('objectId', ParseUUIDPipe) objectId: string): Promise<Product | null> {
     return this.products.getByObject(objectId);
   }

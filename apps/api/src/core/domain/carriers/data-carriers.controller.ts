@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../rbac/permissions.guard';
-import { RequirePermission } from '../../rbac/require-permission.decorator';
+import { AllowAuthenticatedOnly, RequirePermission } from '../../rbac/require-permission.decorator';
 import { DataCarriersService } from './data-carriers.service';
 import { QrService } from './qr.service';
 import { ClaimCarrierDto, GenerateBatchDto, NfcPairDto } from './dto/carrier.dto';
@@ -42,12 +42,14 @@ export class DataCarriersController {
   }
 
   @Get('unassigned')
+  @AllowAuthenticatedOnly()
   listUnassigned(): Promise<DataCarrier[]> {
     return this.carriers.listUnassigned();
   }
 
   /** ID objektů s přiřazeným identifikátorem – pro UI upozornění „věc bez identifikátoru". */
   @Get('assigned-object-ids')
+  @AllowAuthenticatedOnly()
   assignedObjectIds(): Promise<string[]> {
     return this.carriers.assignedObjectIds();
   }
@@ -59,11 +61,13 @@ export class DataCarriersController {
   }
 
   @Get(':id')
+  @AllowAuthenticatedOnly()
   get(@Param('id', ParseUUIDPipe) id: string): Promise<DataCarrier> {
     return this.carriers.get(id);
   }
 
   @Get(':id/qr')
+  @AllowAuthenticatedOnly()
   async qrImage(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('format') format?: string,

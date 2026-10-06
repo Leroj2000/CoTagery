@@ -2,7 +2,7 @@ import { Body, Controller, Get, Ip, Param, Post, UseGuards } from '@nestjs/commo
 import { IsOptional, IsString, Length, MaxLength } from 'class-validator';
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../core/rbac/permissions.guard';
-import { RequirePermission } from '../../core/rbac/require-permission.decorator';
+import { AllowAuthenticatedOnly, RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { FoundService } from './found.service';
 import type { FoundReport } from './entities/found-report.entity';
 
@@ -40,6 +40,7 @@ export class FoundReportsController {
   constructor(private readonly found: FoundService) {}
 
   @Get()
+  @AllowAuthenticatedOnly()
   list(): Promise<FoundReport[]> {
     return this.found.list();
   }

@@ -12,6 +12,7 @@ import {
 import { JwtAuthGuard, type RequestUser } from '../../auth/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators';
 import { PermissionsGuard } from '../../rbac/permissions.guard';
+import { AllowAuthenticatedOnly } from '../../rbac/require-permission.decorator';
 import { GroupsService } from './groups.service';
 import { CreateGroupDto, AddGroupMemberDto } from './dto/groups.dto';
 import type { Group } from '../entities/group.entity';
@@ -24,6 +25,8 @@ import type { GroupMember } from '../entities/group-member.entity';
  */
 @Controller('groups')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+// Zápis gatuje service podle typu skupiny; guard tu jen vyžaduje autentizaci.
+@AllowAuthenticatedOnly()
 export class GroupsController {
   constructor(private readonly groups: GroupsService) {}
 
