@@ -26,6 +26,21 @@ interface UploadedFileLike {
   mimetype: string;
 }
 
+/** Profilová fotka osoby: jen obrázky, max 8 MB (upload limit + MIME allowlist). */
+const MAX_AVATAR_BYTES = 8 * 1024 * 1024;
+
+function imageOnlyFilter(
+  _req: unknown,
+  file: { mimetype: string },
+  callback: (error: Error | null, acceptFile: boolean) => void,
+): void {
+  if (!file.mimetype.startsWith('image/')) {
+    callback(new BadRequestException('Nepodporovaný typ souboru (povoleny jen obrázky)'), false);
+    return;
+  }
+  callback(null, true);
+}
+
 /** Osoby (Party) – lidé bez nutnosti účtu (dokument §12). */
 @Controller('people')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -65,7 +80,12 @@ export class PeopleController {
   /** Nahraje/nahradí profilovou fotku osoby (multipart, pole „file"). */
   @Post(':id/photo')
   @RequirePermission('core.person.manage')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_AVATAR_BYTES },
+      fileFilter: imageOnlyFilter,
+    }),
+  )
   async setPhoto(
     @Param('id', ParseUUIDPipe) id: string,
     @UploadedFile() file?: UploadedFileLike,

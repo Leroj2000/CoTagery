@@ -30,6 +30,21 @@ interface UploadedFileLike {
   mimetype: string;
 }
 
+/** Foto/video z časové galerie věci: obrázky nebo video, max 20 MB na soubor. */
+const MAX_MEDIA_BYTES = 20 * 1024 * 1024;
+
+function imageOrVideoFilter(
+  _req: unknown,
+  file: { mimetype: string },
+  callback: (error: Error | null, acceptFile: boolean) => void,
+): void {
+  if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('video/')) {
+    callback(new BadRequestException('Nepodporovaný typ souboru (povoleny jen obrázky a video)'), false);
+    return;
+  }
+  callback(null, true);
+}
+
 class ReturnWithPhotoDto {
   @IsOptional()
   @IsUUID()
@@ -72,7 +87,12 @@ export class MediaController {
    */
   @Post('assets/:id/return')
   @RequirePermission('asset.movement.perform')
-  @UseInterceptors(FilesInterceptor('files', 10))
+  @UseInterceptors(
+    FilesInterceptor('files', 10, {
+      limits: { fileSize: MAX_MEDIA_BYTES },
+      fileFilter: imageOrVideoFilter,
+    }),
+  )
   async returnWithPhotos(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ReturnWithPhotoDto,
@@ -109,7 +129,12 @@ export class MediaController {
 
   @Post('assets/:id/media')
   @RequirePermission('asset.media.manage')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_MEDIA_BYTES },
+      fileFilter: imageOrVideoFilter,
+    }),
+  )
   async upload(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() fields: AddMediaFieldsDto,

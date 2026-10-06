@@ -19,6 +19,7 @@ import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../core/rbac/permissions.guard';
 import { RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { ManualsService } from './manuals.service';
+import { isAllowedManualMime, MANUAL_MAX_BYTES } from './manuals.logic';
 import type { AssetManual } from './entities/asset-manual.entity';
 
 interface UploadedFileLike {
@@ -40,6 +41,19 @@ interface FetchAiResponse {
   configured: boolean;
 }
 
+/** Upload limit + MIME filter manuálu – stejná pravidla jako validace v service (jediný zdroj pravdy). */
+function manualFileFilter(
+  _req: unknown,
+  file: { mimetype: string },
+  callback: (error: Error | null, acceptFile: boolean) => void,
+): void {
+  if (!isAllowedManualMime(file.mimetype)) {
+    callback(new BadRequestException('Nepodporovaný typ souboru (povoleno PDF a obrázky)'), false);
+    return;
+  }
+  callback(null, true);
+}
+
 /**
  * Manuály a návody k položce: upload souboru / fotka z kamery / spuštění AI
  * stažení. Vše tenant-scoped (RLS), soubory přes StoragePort. Endpointy pod
@@ -58,7 +72,12 @@ export class ManualsController {
 
   @Post('assets/:id/manuals')
   @RequirePermission('asset.media.manage')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MANUAL_MAX_BYTES },
+      fileFilter: manualFileFilter,
+    }),
+  )
   async upload(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UploadManualDto,

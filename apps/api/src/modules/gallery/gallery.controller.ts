@@ -20,6 +20,21 @@ import { CreateGalleryDto } from './dto/create-gallery.dto';
 import type { GalleryEvent } from './entities/gallery-event.entity';
 import type { UploadItem } from './entities/upload-item.entity';
 
+/** Upload do galerie (foto/video z akce): max 20 MB na soubor. */
+const MAX_GALLERY_UPLOAD_BYTES = 20 * 1024 * 1024;
+
+function imageOrVideoFilter(
+  _req: unknown,
+  file: { mimetype: string },
+  callback: (error: Error | null, acceptFile: boolean) => void,
+): void {
+  if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('video/')) {
+    callback(new BadRequestException('Nepodporovaný typ souboru (povoleny jen obrázky a video)'), false);
+    return;
+  }
+  callback(null, true);
+}
+
 @Controller('galleries')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequireModule('gallery')
@@ -44,7 +59,12 @@ export class GalleryController {
 
   @Post(':id/uploads')
   @RequirePermission('gallery.item.manage')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_GALLERY_UPLOAD_BYTES },
+      fileFilter: imageOrVideoFilter,
+    }),
+  )
   upload(
     @Param('id', ParseUUIDPipe) id: string,
     @UploadedFile() file?: UploadedFileLike,
