@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { In, LessThanOrEqual, Repository } from 'typeorm';
+import { Brackets, In, LessThanOrEqual, Repository } from 'typeorm';
 import sharp from 'sharp';
 import { TenantContextService } from '../../core/tenancy/tenant-context.service';
 import { STORAGE, type StoragePort } from '../../core/storage/storage.port';
@@ -106,6 +106,7 @@ export class AssetService {
   async list(): Promise<Asset[]> {
     // EPIC-18 Fáze 2: LOCATION_TREE scope → jen věci s domovem v subtree.
     const scope = this.context.scope;
+    if (scope.type !== 'ORGANIZATION' && (scope.type !== 'LOCATION_TREE' || !scope.ref)) return [];
     if (scope.type === 'LOCATION_TREE' && scope.ref) {
       const ids = await this.locationSubtree(scope.ref);
       if (ids.length === 0) return [];
@@ -118,12 +119,93 @@ export class AssetService {
     return this.repo(Asset).find({ order: { createdAt: 'DESC' }, take: 500 });
   }
 
+  /** Všechny dostupné vozidlové/strojní položky pro souhrn údržby (bez limitu seznamu). */
+  async maintenanceCandidates(): Promise<Asset[]> {
+    const scope = this.context.scope;
+    if (scope.type !== 'ORGANIZATION' && (scope.type !== 'LOCATION_TREE' || !scope.ref)) return [];
+    const query = this.repo(Asset)
+      .createQueryBuilder('a')
+      .innerJoin(Category, 'c', 'c.id=a.categoryId')
+      .where("c.equipment_kind IN ('vehicle','machine')");
+    if (scope.type === 'LOCATION_TREE' && scope.ref) {
+      const ids = await this.locationSubtree(scope.ref);
+      if (!ids.length) return [];
+      query.andWhere('a.homeLocationId IN (:...ids)', { ids });
+    }
+    return query.getMany();
+  }
+
   /** ID lokace + všech jejích potomků (location strom, ADR – Location.parentId). */
+  async search(text: string, locationId?: string): Promise<{ items: Asset[]; total: number }> {
+    if (typeof text !== 'string') throw new BadRequestException('Vyhledávání musí být text.');
+    const q = text.trim().slice(0, 200);
+    const query = this.repo(Asset).createQueryBuilder('a');
+    const scope = this.context.scope;
+    if (scope.type !== 'ORGANIZATION') {
+      if (scope.type !== 'LOCATION_TREE' || !scope.ref) return { items: [], total: 0 };
+      const ids = await this.locationSubtree(scope.ref);
+      if (!ids.length) return { items: [], total: 0 };
+      query.andWhere('a.homeLocationId IN (:...scopeIds)', { scopeIds: ids });
+    }
+    if (locationId) {
+      const ids = await this.locationSubtree(locationId);
+      if (!ids.length) return { items: [], total: 0 };
+      query.andWhere(
+        new Brackets((b) =>
+          b
+            .where('a.homeLocationId IN (:...placeIds)')
+            .orWhere("(a.currentHolderType='location' AND a.currentHolderId IN (:...placeIds))"),
+        ),
+        { placeIds: ids },
+      );
+    }
+    if (q) {
+      const places = await this.repo(Location).find();
+      const byId = new Map(places.map((p) => [p.id, p]));
+      const lower = q.toLocaleLowerCase('cs');
+      const placeIds = places
+        .filter((place) => {
+          const names: string[] = [];
+          const seen = new Set<string>();
+          let p: Location | undefined = place;
+          while (p && !seen.has(p.id)) {
+            seen.add(p.id);
+            names.unshift(p.name);
+            p = p.parentId ? byId.get(p.parentId) : undefined;
+          }
+          return names.join(' → ').toLocaleLowerCase('cs').includes(lower);
+        })
+        .map((p) => p.id);
+      // Escape wildcard characters: the user searches for text, not a SQL pattern.
+      const like = `%${q.replace(/[\\%_]/g, '\\$&')}%`;
+      query.andWhere(
+        new Brackets((b) => {
+          b.where(
+            "concat_ws(' ',a.name,a.inventoryNumber,a.serialNumber,a.category,a.manufacturer,a.model) ILIKE :like",
+            { like },
+          ).orWhere(
+            "(a.currentHolderType='person' AND a.currentHolderId IN (SELECT id FROM people WHERE name ILIKE :like))",
+            { like },
+          );
+          if (placeIds.length)
+            b.orWhere('a.homeLocationId IN (:...placeIdsSearch)', {
+              placeIdsSearch: placeIds,
+            }).orWhere(
+              "(a.currentHolderType='location' AND a.currentHolderId IN (:...placeIdsSearch))",
+              { placeIdsSearch: placeIds },
+            );
+        }),
+      );
+    }
+    const [items, total] = await query.orderBy('a.createdAt', 'DESC').take(500).getManyAndCount();
+    return { items, total };
+  }
+
   private async locationSubtree(rootId: string): Promise<string[]> {
     const rows: { id: string }[] = await this.context.manager.query(
       `WITH RECURSIVE sub AS (
          SELECT id FROM locations WHERE id = $1
-         UNION ALL
+         UNION
          SELECT l.id FROM locations l JOIN sub ON l.parent_id = sub.id
        ) SELECT id FROM sub`,
       [rootId],
@@ -134,7 +216,8 @@ export class AssetService {
   /** Ověří, zda má aktuální identita přístup k assetu v LOCATION_TREE scope. */
   private async inScope(asset: Asset): Promise<boolean> {
     const scope = this.context.scope;
-    if (scope.type !== 'LOCATION_TREE' || !scope.ref) return true;
+    if (scope.type === 'ORGANIZATION') return true;
+    if (scope.type !== 'LOCATION_TREE' || !scope.ref) return false;
     if (!asset.homeLocationId) return false;
     const ids = await this.locationSubtree(scope.ref);
     return ids.includes(asset.homeLocationId);
@@ -151,11 +234,79 @@ export class AssetService {
     return asset && (await this.inScope(asset)) ? asset : null;
   }
 
+  /** Personal view: identity is resolved server-side, never supplied by the client. */
+  async mine(userId: string) {
+    const people: { id: string }[] = await this.context.manager.query(
+      `SELECT p.id FROM people p JOIN users u ON u.id=$1
+       WHERE p.user_id=$1 OR (p.user_id IS NULL AND lower(p.email)=lower(u.email))`,
+      [userId],
+    );
+    if (people.length !== 1) return { linked: false, assets: [], pending: [], requests: [] };
+    const personId = people[0].id;
+    const [held, pending, requests] = await Promise.all([
+      this.repo(Asset).find({
+        where: { currentHolderType: 'person', currentHolderId: personId },
+        order: { name: 'ASC' },
+      }),
+      this.repo(Movement).find({
+        where: { toType: 'person', toId: personId, confirmation: 'pending' },
+        order: { createdAt: 'DESC' },
+      }),
+      this.repo(Reservation).find({
+        where: { requestedById: personId },
+        order: { createdAt: 'DESC' },
+        take: 100,
+      }),
+    ]);
+    const visible = new Map<string, Asset>();
+    const ids = [
+      ...new Set([
+        ...held.map((a) => a.id),
+        ...pending.map((m) => m.assetId),
+        ...requests.map((r) => r.assetId),
+      ]),
+    ];
+    if (ids.length)
+      for (const asset of await this.repo(Asset).find({ where: { id: In(ids) } })) {
+        if (await this.inScope(asset)) visible.set(asset.id, asset);
+      }
+    return {
+      linked: true,
+      assets: held.filter((a) => visible.has(a.id)),
+      pending: pending
+        .filter((m) => visible.has(m.assetId))
+        .map((m) => ({ ...m, assetName: visible.get(m.assetId)!.name })),
+      requests: requests
+        .filter((r) => visible.has(r.assetId))
+        .map((r) => ({ ...r, assetName: visible.get(r.assetId)!.name })),
+    };
+  }
+
   /** Úprava základních polí věci (stav/holder se needitují – jsou z pohybů). */
+  private async assertStorageLocation(id?: string | null): Promise<void> {
+    if (!id) return;
+    const place = await this.repo(Location).findOne({ where: { id } });
+    if (!place) throw new NotFoundException('Místo neexistuje');
+  }
+
   async update(id: string, dto: UpdateAssetDto): Promise<Asset> {
     const asset = await this.get(id);
+    if (dto.homeLocationId) await this.assertStorageLocation(dto.homeLocationId);
     if (dto.name !== undefined) asset.name = dto.name;
-    if (dto.category !== undefined) asset.category = dto.category || null;
+    if (dto.categoryId !== undefined) {
+      if (dto.categoryId === null) {
+        asset.categoryId = null;
+        asset.category = null;
+      } else {
+        const category = await this.repo(Category).findOne({ where: { id: dto.categoryId } });
+        if (!category) throw new NotFoundException('Kategorie neexistuje');
+        asset.categoryId = category.id;
+        asset.category = category.name;
+      }
+    } else if (dto.category !== undefined) {
+      asset.category = dto.category || null;
+      asset.categoryId = null;
+    }
     if (dto.manufacturer !== undefined) asset.manufacturer = dto.manufacturer || null;
     if (dto.model !== undefined) asset.model = dto.model || null;
     if (dto.serialNumber !== undefined) asset.serialNumber = dto.serialNumber || null;
@@ -167,6 +318,7 @@ export class AssetService {
 
   /** Založí asset + jeho DigitalObject (nosič se přidá zvlášť přes /objects). */
   async create(dto: CreateAssetDto): Promise<Asset> {
+    await this.assertStorageLocation(dto.homeLocationId);
     // Kategorie z číselníku: přednost má categoryId (doplní denorm. název).
     const categoryId: string | null = dto.categoryId ?? null;
     let categoryName: string | null = dto.category ?? null;
@@ -348,6 +500,7 @@ export class AssetService {
     rawCode: string,
     actorUserId?: string,
     captureContext?: Omit<ScanDto, 'code'>,
+    record = true,
   ): Promise<ScanResult> {
     const code = rawCode.trim();
     if (!code) throw new BadRequestException('Prázdný kód');
@@ -404,12 +557,13 @@ export class AssetService {
     }
 
     // Last Observation: sken = věc byla právě VIDĚNA (nemění evidenci).
-    await this.recordObservation(asset.id, {
-      source: 'scan',
-      actorUserId,
-      captureContext,
-      locationId: captureContext?.manualLocationId,
-    });
+    if (record)
+      await this.recordObservation(asset.id, {
+        source: 'scan',
+        actorUserId,
+        captureContext,
+        locationId: captureContext?.manualLocationId,
+      });
 
     const actions = this.actionsFor(asset);
     return {
@@ -426,8 +580,18 @@ export class AssetService {
 
   /** Rozřeší jména držitele / domovské lokace / odpovědné osoby pro scan kartu. */
   private async resolveContext(asset: Asset): Promise<ScanResult['context']> {
-    const locName = async (id: string | null): Promise<string | null> =>
-      id ? ((await this.repo(Location).findOne({ where: { id } }))?.name ?? null) : null;
+    const locName = async (id: string | null): Promise<string | null> => {
+      if (!id) return null;
+      const rows: { name: string }[] = await this.context.manager.query(
+        `WITH RECURSIVE path AS (
+        SELECT id, name, parent_id, 0 AS depth, ARRAY[id] AS seen FROM locations WHERE id=$1
+        UNION ALL SELECT l.id,l.name,l.parent_id,p.depth+1,p.seen || l.id FROM locations l
+        JOIN path p ON l.id=p.parent_id WHERE NOT l.id=ANY(p.seen)
+      ) SELECT name FROM path ORDER BY depth DESC`,
+        [id],
+      );
+      return rows.map((r) => r.name).join(' → ') || null;
+    };
     const personName = async (id: string | null): Promise<string | null> =>
       id ? ((await this.repo(Person).findOne({ where: { id } }))?.name ?? null) : null;
     const assetName = async (id: string | null): Promise<string | null> =>
@@ -530,6 +694,7 @@ export class AssetService {
       dueAt: asset.dueAt,
     };
 
+    if (dto.toType === 'location') await this.assertStorageLocation(dto.toId);
     let after: AssetState;
     try {
       after = applyMovement(before, {

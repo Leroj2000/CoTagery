@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   StreamableFile,
   UploadedFiles,
   UseGuards,
@@ -39,6 +40,7 @@ import type { Issue } from './entities/issue.entity';
 import type { MovementType } from './movement.logic';
 import { CurrentUser } from '../../core/auth/decorators';
 import type { RequestUser } from '../../core/auth/jwt-auth.guard';
+import { AuthzService } from '../../core/rbac/authz.service';
 
 /** Minimální tvar nahraného souboru (bez závislosti na typech express/multer). */
 interface UploadedFileLike {
@@ -49,7 +51,10 @@ interface UploadedFileLike {
 @Controller('assets')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class AssetController {
-  constructor(private readonly assets: AssetService) {}
+  constructor(
+    private readonly assets: AssetService,
+    private readonly authz: AuthzService,
+  ) {}
 
   @Get()
   @RequirePermission('asset.item.view')
@@ -64,6 +69,21 @@ export class AssetController {
   }
 
   // --- CSV export / import (musí být před :id kvůli route matchingu) ---
+  @Get('mine')
+  @RequirePermission('asset.scan.use')
+  mine(@CurrentUser() user: RequestUser) {
+    return this.assets.mine(user.userId);
+  }
+
+  @Get('search')
+  @RequirePermission('asset.item.view')
+  search(
+    @Query('q') q = '',
+    @Query('location', new ParseUUIDPipe({ optional: true })) location?: string,
+  ) {
+    return this.assets.search(q, location);
+  }
+
   @Get('export')
   @RequirePermission('asset.item.view')
   @Header('content-type', 'text/csv; charset=utf-8')
@@ -111,9 +131,17 @@ export class AssetController {
 
   @Get(':id')
   @RequirePermission('asset.item.view')
-  async get(@Param('id', ParseUUIDPipe) id: string): Promise<Asset & { actions: MovementType[] }> {
+  async get(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: RequestUser,
+  ): Promise<Asset & { actions: MovementType[] }> {
     const asset = await this.assets.get(id);
-    return { ...asset, actions: this.assets.actionsFor(asset) };
+    return {
+      ...asset,
+      actions: (await this.authz.can(user, 'asset.movement.perform')).allowed
+        ? this.assets.actionsFor(asset)
+        : [],
+    };
   }
 
   @Patch(':id')
@@ -221,10 +249,15 @@ export class AssetController {
   // --- Galerie fotek věci (více fotek, hlavní = pozice 0) ---
   @Get(':id/photos')
   @RequirePermission('asset.item.view')
-  async photos(
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<{
-    items: { id: string; mime: string; position: number; previewX: number; previewY: number; previewZoom: number }[];
+  async photos(@Param('id', ParseUUIDPipe) id: string): Promise<{
+    items: {
+      id: string;
+      mime: string;
+      position: number;
+      previewX: number;
+      previewY: number;
+      previewZoom: number;
+    }[];
     max: number;
   }> {
     const [list, max] = await Promise.all([this.assets.listPhotos(id), this.assets.photoLimit()]);

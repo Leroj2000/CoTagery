@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ClipboardCheck } from 'lucide-react';
 import { apiFetch } from '../../lib/server-api';
+import { locationPath } from '../../lib/location-path';
 import type { InventoryCheck, Location, Person, Asset } from '../../lib/types';
 import { PageHeader, Section, Table, Badge, EmptyState } from '../ui';
 import { ActionForm } from '../action-form';
@@ -12,14 +13,19 @@ function fmtDateTime(iso: string): string {
   return new Date(iso).toLocaleString('cs-CZ');
 }
 
-export default async function InventoryPage() {
+export default async function InventoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ location?: string }>;
+}) {
+  const { location } = await searchParams;
   const [checks, locations, people, assets] = await Promise.all([
     apiFetch<InventoryCheck[]>('/inventory'),
     apiFetch<Location[]>('/locations'),
     apiFetch<Person[]>('/people'),
     apiFetch<Asset[]>('/assets'),
   ]);
-  const locName = new Map(locations.map((l) => [l.id, l.name]));
+  const locName = new Map(locations.map((l) => [l.id, locationPath(l.id, locations)]));
   const perName = new Map(people.map((p) => [p.id, p.name]));
   const assetName = new Map(assets.map((a) => [a.id, a.name]));
   const subjectName = (c: InventoryCheck): string => {
@@ -32,9 +38,7 @@ export default async function InventoryPage() {
 
   // Subjekt inventury: místo / osoba / kontejner (zakódováno "type:id").
   const subjectOptions = [
-    ...locations
-      .filter((l) => l.cellRow == null)
-      .map((l) => ({ value: `location:${l.id}`, label: `📍 ${l.name}` })),
+    ...locations.filter((l) => l.type !== 'access_point').map((l) => ({ value: `location:${l.id}`, label: `📍 ${locName.get(l.id)}` })),
     ...people.map((p) => ({ value: `person:${p.id}`, label: `👤 ${p.name}` })),
     ...assets
       .filter((a) => a.canContainAssets)
@@ -56,7 +60,17 @@ export default async function InventoryPage() {
           <ActionForm
             action={startInventorySubject}
             submitLabel="Spustit"
-            fields={[{ name: 'subject', label: 'Co inventarizuješ?', required: true, options: subjectOptions }]}
+            fields={[
+              {
+                name: 'subject',
+                label: 'Co inventarizuješ?',
+                required: true,
+                options: subjectOptions,
+                defaultValue: locations.some((l) => l.id === location)
+                  ? `location:${location}`
+                  : undefined,
+              },
+            ]}
           />
         )}
       </Section>
@@ -68,14 +82,38 @@ export default async function InventoryPage() {
           <Table
             head={['Kdy', 'Subjekt', 'Stav', 'Nalezeno', 'Chybí', 'Navíc']}
             rows={checks.map((c) => [
-              <Link key="d" href={`/admin/inventory/${c.id}`} className="text-brand-700 hover:underline">
+              <Link
+                key="d"
+                href={`/admin/inventory/${c.id}`}
+                className="text-brand-700 hover:underline"
+              >
                 {fmtDateTime(c.createdAt)}
               </Link>,
               subjectName(c),
-              c.status === 'open' ? <Badge tone="amber">probíhá</Badge> : <Badge tone="green">uzavřeno</Badge>,
+              c.status === 'open' ? (
+                <Badge tone="amber">probíhá</Badge>
+              ) : (
+                <Badge tone="green">uzavřeno</Badge>
+              ),
               c.status === 'closed' ? c.foundCount : '—',
-              c.status === 'closed' ? (c.missingCount > 0 ? <Badge tone="red">{c.missingCount}</Badge> : 0) : '—',
-              c.status === 'closed' ? (c.unexpectedCount > 0 ? <Badge tone="amber">{c.unexpectedCount}</Badge> : 0) : '—',
+              c.status === 'closed' ? (
+                c.missingCount > 0 ? (
+                  <Badge tone="red">{c.missingCount}</Badge>
+                ) : (
+                  0
+                )
+              ) : (
+                '—'
+              ),
+              c.status === 'closed' ? (
+                c.unexpectedCount > 0 ? (
+                  <Badge tone="amber">{c.unexpectedCount}</Badge>
+                ) : (
+                  0
+                )
+              ) : (
+                '—'
+              ),
             ])}
           />
         )}

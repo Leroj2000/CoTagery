@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useRef, useState } from 'react';
 import {
   Loader2,
@@ -51,6 +52,7 @@ export function ScanClient({
   locations: { id: string; name: string }[];
   locationsAvailable: boolean;
 }) {
+  const router = useRouter();
   const [code, setCode] = useState(initialCode);
   const [includePosition, setIncludePosition] = useState(true);
   const [pending, setPending] = useState<{ code: string; technology: string } | null>(null);
@@ -72,21 +74,37 @@ export function ScanClient({
       capture = true,
       manual?: ManualCapture,
       selectedTechnology = technology,
+      refreshOnly = false,
     ) => {
       const c = raw.trim();
       if (!c || busyRef.current || (capture && pending)) return;
+      try {
+        const url = new URL(c, window.location.origin);
+        const match = url.origin === window.location.origin && url.pathname.match(/^\/admin\/locations\/([\da-f-]{36})$/i);
+        if (match && locations.some((place) => place.id === match[1])) { router.push(`/admin/locations/${match[1]}`); return; }
+      } catch { /* Ordinary identifier, not a location URL. */ }
       busyRef.current = true;
       setLoading(true);
       setError(null);
       setResult(null);
+      setFlash(null);
       try {
         let reason = 'Poloha není dostupná.';
-        const position =
+        const positionPromise =
           includePosition && capture
-            ? await captureScanPosition((message) => {
+            ? captureScanPosition((message) => {
                 reason = message;
               })
-            : undefined;
+            : Promise.resolve(undefined);
+        if (capture || refreshOnly) {
+          const preview = await fetch(`/api/scan?code=${encodeURIComponent(c)}`, { cache: 'no-store' });
+          if (!preview.ok) throw new Error('Identifikátor se nepodařilo ověřit. Zkus to znovu.');
+          const identified = await preview.json() as ScanResult;
+          setResult(identified);
+          if (refreshOnly || !identified.asset) { setPositionMessage(refreshOnly ? 'Zobrazen aktuální stav; nové pozorování nevzniklo.' : 'Kód nevede na dostupnou položku; pozorování nevzniklo.'); return; }
+          setPositionMessage('Položka rozpoznána. Dokončuji záznam pozorování…');
+        }
+        const position = await positionPromise;
         if (includePosition && capture && !position) {
           setPositionMessage(reason);
           setPending({ code: c, technology: selectedTechnology });
@@ -113,13 +131,13 @@ export function ScanClient({
         );
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Neočekávaná chyba');
-        setResult(null);
+        setPositionMessage('Uložení pozorování není potvrzené.');
       } finally {
         busyRef.current = false;
         setLoading(false);
       }
     },
-    [includePosition, technology, pending],
+    [includePosition, technology, pending, locations, router],
   );
 
   /** One-tap „Vrátit domů" přímo ze skenu → pohyb + obnova karty. */
@@ -136,15 +154,15 @@ export function ScanClient({
           cache: 'no-store',
         });
         if (!res.ok) throw new Error('Vrácení se nepodařilo');
+        await lookup(scannedCode, false, undefined, technology, true);
         setFlash('Vráceno domů ✓');
-        await lookup(scannedCode, false);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Neočekávaná chyba');
       } finally {
         setActing(false);
       }
     },
-    [lookup],
+    [lookup, technology],
   );
 
   const {
@@ -326,7 +344,7 @@ export function ScanClient({
       {result && (
         <ResultCard
           result={result}
-          acting={acting}
+          acting={acting || loading || !!pending}
           onQuickReturn={(assetId) => quickReturn(assetId, result.code)}
         />
       )}
@@ -394,10 +412,10 @@ function ResultCard({
     (action) => action !== primaryAction && !(action === 'return' && canQuickReturn),
   );
   const actionHref = (action: string) =>
-    `/admin/assets/${asset.id}#${action === 'return' ? 'asset-return' : 'asset-actions'}`;
+    `/admin/assets/${asset.id}?action=${encodeURIComponent(action)}#${action === 'return' ? 'asset-return' : 'asset-actions'}`;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
+    <div className="feedback-enter overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
       <div className="flex items-center gap-4 border-b border-slate-100 p-5">
         {asset.photoKey ? (
           <img
@@ -490,7 +508,7 @@ function Ctx({ icon, label, value }: { icon: React.ReactNode; label: string; val
         <span className="text-slate-400">{icon}</span>
         {label}
       </div>
-      <p className="mt-1 truncate text-sm font-semibold text-slate-800">{value}</p>
+      <p className="mt-1 break-words text-sm font-semibold text-slate-800">{value}</p>
     </div>
   );
 }

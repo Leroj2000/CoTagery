@@ -42,17 +42,19 @@ export function MovementForm({
   actions,
   people,
   locations,
+  initialType,
 }: {
   assetId: string;
   actions: string[];
   people: Opt[];
   locations: Opt[];
+  initialType?: string;
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     performAssetMovement,
     null,
   );
-  const [type, setType] = useState(actions[0] ?? '');
+  const [type, setType] = useState(initialType && actions.includes(initialType) ? initialType : actions[0] ?? '');
   const [sel, setSel] = useState('');
   const [cellId, setCellId] = useState('');
   const [cellLabel, setCellLabel] = useState('');

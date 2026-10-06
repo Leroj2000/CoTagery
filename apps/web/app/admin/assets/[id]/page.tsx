@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Package, Home, MapPin, User, CalendarClock, Box, Clock, QrCode, Eye } from 'lucide-react';
 import { apiFetch, ApiError, getMyPermissions } from '../../../lib/server-api';
+import { locationPath } from '../../../lib/location-path';
 import type {
   Asset,
   Movement,
@@ -10,6 +11,8 @@ import type {
   Location,
   DataCarrier,
   ServiceRecord,
+  Category,
+  MaintenanceSummary,
 } from '../../../lib/types';
 import { Section, StatusBadge, Badge, Mono, PageHeader, Table, EmptyState } from '../../ui';
 import { ActionForm } from '../../action-form';
@@ -21,6 +24,7 @@ import { AssetSpecs } from '../asset-specs';
 import { MediaTimeline } from '../media-timeline';
 import { ReturnForm } from '../return-form';
 import { PrintLabelButton } from '../printing/print-label-button';
+import { MaintenancePanel } from './maintenance-panel';
 import type { AssetMedia, AssetManual, AssetSpec, Tenant, Observation } from '../../../lib/types';
 import {
   addCarrierToObject,
@@ -74,8 +78,15 @@ function fmtDate(iso: string | null): string {
   return iso ? new Date(iso).toLocaleDateString('cs-CZ') : '—';
 }
 
-export default async function AssetDetail({ params }: { params: Promise<{ id: string }> }) {
+export default async function AssetDetail({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ action?: string }>;
+}) {
   const { id } = await params;
+  const { action } = await searchParams;
 
   let asset: Asset;
   try {
@@ -95,6 +106,10 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
       apiFetch<ServiceRecord[]>(`/assets/${id}/services`),
     ],
   );
+  const [categories, maintenance] = await Promise.all([
+    apiFetch<Category[]>('/categories'),
+    apiFetch<MaintenanceSummary>(`/maintenance/assets/${id}`),
+  ]);
   const issues = await apiFetch<Issue[]>(`/assets/${id}/issues`);
   const media = await apiFetch<AssetMedia[]>(`/assets/${id}/media`);
   const manuals = await apiFetch<AssetManual[]>(`/assets/${id}/manuals`).catch(() => []);
@@ -105,30 +120,36 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
   const canEdit = perms.has('asset.item.update');
   const canManagePhotos = perms.has('asset.media.manage');
   const photos = await apiFetch<{
-    items: { id: string; mime: string; position: number; previewX: number; previewY: number; previewZoom: number }[];
+    items: {
+      id: string;
+      mime: string;
+      position: number;
+      previewX: number;
+      previewY: number;
+      previewZoom: number;
+    }[];
     max: number;
   }>(`/assets/${id}/photos`).catch(() => ({ items: [], max: 5 }));
   const requireReturnPhoto = tenant.settings?.requireReturnPhoto === true;
   const actions = asset.actions ?? [];
   const canReturn = actions.includes('return');
   const otherActions = actions.filter((a) => a !== 'return');
+  const qrCarrier = carriers.find(
+    (carrier) =>
+      carrier.status === 'active' &&
+      (carrier.carrierType === 'qr' || carrier.carrierType === 'hybrid'),
+  );
 
   const personName = new Map(people.map((p) => [p.id, p.name]));
-  // Buňku mřížky zobraz jako „Rodič › B2"; ostatní místa názvem.
-  const locById = new Map(locations.map((l) => [l.id, l]));
-  const locName = new Map(
-    locations.map((l): readonly [string, string] => {
-      if (l.cellRow != null && l.parentId) {
-        const parent = locById.get(l.parentId);
-        return [l.id, parent ? `${parent.name} › ${l.name}` : l.name];
-      }
-      return [l.id, l.name];
-    }),
-  );
+  const locName = new Map(locations.map((l) => [l.id, locationPath(l.id, locations)]));
   // Místa pro výběr umístění (bez buněk; regál/skříň se rozbalí maticí).
   const pickLocations = locations
-    .filter((l) => l.cellRow == null)
-    .map((l) => ({ id: l.id, label: l.name, grid: l.type === 'rack' || l.type === 'cabinet' }));
+    .filter((l) => l.cellRow == null && l.type !== 'access_point')
+    .map((l) => ({
+      id: l.id,
+      label: locationPath(l.id, locations),
+      grid: l.type === 'rack' || l.type === 'cabinet',
+    }));
   const assetName = new Map(allAssets.map((a) => [a.id, a.name]));
   // Kandidáti na vložení: nekontejnerové/volné věci mimo tuto věc a její obsah.
   const contentIds = new Set(contents.map((c) => c.id));
@@ -161,13 +182,83 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
-      {/* Galerie fotek věci (první = hlavní, zobrazuje se v seznamu) */}
-      <PhotoGallery
-        assetId={asset.id}
-        photos={photos.items}
-        max={photos.max}
-        canManage={canManagePhotos}
-      />
+      {/* Fotky a hlavní QR identifikátor jsou společně viditelné hned na začátku detailu. */}
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(260px,320px)]">
+        <PhotoGallery
+          assetId={asset.id}
+          photos={photos.items}
+          max={photos.max}
+          canManage={canManagePhotos}
+        />
+        <Section
+          title={
+            <span className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <QrCode size={15} />
+              </span>
+              QR identifikátor
+            </span>
+          }
+          description="Rychlé načtení položky"
+          action={qrCarrier ? <Badge tone="green">Aktivní</Badge> : undefined}
+        >
+          {qrCarrier ? (
+            <div className="flex flex-col gap-3">
+              <div className="flex justify-center rounded-xl bg-slate-50 p-3 ring-1 ring-inset ring-slate-100">
+                <Image
+                  src={`/api/qr/${qrCarrier.id}`}
+                  alt={`QR kód položky ${asset.name}`}
+                  width={156}
+                  height={156}
+                  unoptimized
+                  className="rounded-lg border border-slate-200 bg-white p-1 shadow-sm"
+                />
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                    Kód štítku
+                  </p>
+                  <Mono>{qrCarrier.publicCode}</Mono>
+                </div>
+                <PrintLabelButton
+                  carrierId={qrCarrier.id}
+                  data={{
+                    qrValue: qrCarrier.resolverUrl ?? qrCarrier.publicCode,
+                    itemName: asset.name,
+                    assetCode: asset.inventoryNumber ?? qrCarrier.publicCode,
+                    subtitle: asset.category ?? undefined,
+                  }}
+                />
+              </div>
+              <Link
+                href="#identifikator"
+                className="text-center text-xs font-medium text-brand-700 hover:underline"
+              >
+                Spravovat identifikátory →
+              </Link>
+            </div>
+          ) : (
+            <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-brand-200 bg-brand-50/40 p-5 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-brand-600 shadow-sm ring-1 ring-brand-100">
+                <QrCode size={25} aria-hidden="true" />
+              </span>
+              <div>
+                <p className="text-sm font-medium text-slate-700">Chybí QR identifikátor</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Přidej ho pro rychlé skenování položky.
+                </p>
+              </div>
+              <Link
+                href="#identifikator"
+                className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700"
+              >
+                Vytvořit QR kód
+              </Link>
+            </div>
+          )}
+        </Section>
+      </div>
 
       {/* Stav: patří do ≠ kde je ≠ kdo má */}
       <div className="grid gap-3 sm:grid-cols-3">
@@ -177,7 +268,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
           value={locName.get(asset.homeLocationId ?? '') ?? '—'}
           action={
             !asset.homeLocationId ? (
-              <Link href="#edit-asset" className="text-xs text-brand-700 hover:underline">
+              <Link href="#homeLocationId" className="text-xs text-brand-700 hover:underline">
                 Nastav místo
               </Link>
             ) : undefined
@@ -206,7 +297,10 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
       </div>
 
       {canEdit && (
-        <div id="edit-asset">
+        <details id="edit-asset" open={!asset.homeLocationId}>
+          <summary className="cursor-pointer rounded-xl border border-slate-200 bg-white p-4 text-sm font-semibold text-brand-700">
+            Upravit údaje položky
+          </summary>
           <Section
             title="Upravit položku"
             description="Základní údaje (stav a držení se mění pohyby, ne zde)"
@@ -217,7 +311,22 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
               submitLabel="Uložit změny"
               fields={[
                 { name: 'name', label: 'Název', required: true, defaultValue: asset.name },
-                { name: 'category', label: 'Kategorie', defaultValue: asset.category ?? '' },
+                {
+                  name: 'categoryId',
+                  label: 'Kategorie',
+                  defaultValue: asset.categoryId ?? (asset.category ? '__keep__' : ''),
+                  options: [
+                    ...(asset.category && !asset.categoryId
+                      ? [{ value: '__keep__', label: `Ponechat volný text: ${asset.category}` }]
+                      : []),
+                    { value: '', label: '— bez kategorie —' },
+                    ...categories.map((category) => ({
+                      value: category.id,
+                      label: `${category.name}${category.equipmentKind === 'vehicle' ? ' · vozidlo' : category.equipmentKind === 'machine' ? ' · stroj' : ''}`,
+                    })),
+                  ],
+                  after: { href: '/admin/categories', label: 'Spravovat kategorie' },
+                },
                 { name: 'manufacturer', label: 'Výrobce', defaultValue: asset.manufacturer ?? '' },
                 { name: 'model', label: 'Model', defaultValue: asset.model ?? '' },
                 {
@@ -236,14 +345,16 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
                   defaultValue: asset.homeLocationId ?? '',
                   options: [
                     { value: '', label: '— beze změny —' },
-                    ...pickLocations.map((l) => ({ value: l.id, label: l.label })),
+                    ...locations
+                      .filter((l) => l.type !== 'access_point')
+                      .map((l) => ({ value: l.id, label: locationPath(l.id, locations) })),
                   ],
                   after: { href: '/admin/locations', label: 'Přidej místo' },
                 },
               ]}
             />
           </Section>
-        </div>
+        </details>
       )}
 
       {/* Last Observation – kde byla naposledy VIDĚNA (≠ evidence výše) */}
@@ -358,54 +469,45 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
       {otherActions.length > 0 && (
         <div id="asset-actions" className="scroll-mt-4">
           <Section title="Akce" description="Kontextové akce podle aktuálního stavu položky">
-          {carriers.length === 0 && (
-            <a
-              href="#identifikator"
-              className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800 transition hover:bg-amber-100"
-            >
-              <QrCode size={15} className="mt-0.5 shrink-0" />
-              <span>
-                <span className="font-medium">Položka nemá identifikátor.</span> Vydat ji můžeš i
-                tak – nebo nejdřív přidej QR/NFC identifikátor níže.
-              </span>
-            </a>
-          )}
-          <MovementForm
-            assetId={asset.id}
-            actions={otherActions}
-            people={people.map((p) => ({ id: p.id, label: p.name }))}
-            locations={pickLocations}
-          />
+            {carriers.length === 0 && (
+              <a
+                href="#identifikator"
+                className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800 transition hover:bg-amber-100"
+              >
+                <QrCode size={15} className="mt-0.5 shrink-0" />
+                <span>
+                  <span className="font-medium">Položka nemá identifikátor.</span> Vydat ji můžeš i
+                  tak – nebo nejdřív přidej QR/NFC identifikátor níže.
+                </span>
+              </a>
+            )}
+            <MovementForm
+              key={action ?? 'default'}
+              initialType={action}
+              assetId={asset.id}
+              actions={otherActions}
+              people={people.map((p) => ({ id: p.id, label: p.name }))}
+              locations={pickLocations}
+            />
           </Section>
         </div>
       )}
 
       <div id="identifikator" className="scroll-mt-4">
-        <Section
-          title="Identifikátor (QR)"
-          description="Štítek na položce – stabilní identifikátor"
-        >
+        <Section title="Identifikátory" description="Správa QR a NFC identifikátorů položky">
           <div className="flex flex-col gap-4">
-            {carriers.length === 0 ? (
+            {!qrCarrier && (
               <div className="flex flex-col gap-3">
-                <EmptyState>Položka zatím nemá identifikátor.</EmptyState>
+                <p className="text-sm text-slate-600">Přidej QR identifikátor k této položce.</p>
                 <ActionForm
                   action={addCarrierToObject}
-                  hidden={{ objectId: asset.digitalObjectId }}
+                  hidden={{ objectId: asset.digitalObjectId, assetId: asset.id, carrierType: 'qr' }}
                   submitLabel="Přidat QR identifikátor"
-                  fields={[
-                    {
-                      name: 'carrierType',
-                      label: 'Typ',
-                      options: [
-                        { value: 'qr', label: 'QR' },
-                        { value: 'nfc', label: 'NFC' },
-                      ],
-                    },
-                  ]}
+                  fields={[]}
                 />
               </div>
-            ) : (
+            )}
+            {carriers.length > 0 && (
               <div className="flex flex-wrap gap-4">
                 {carriers.map((c) => (
                   <div
@@ -611,32 +713,36 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
         </div>
       </Section>
 
+      <MaintenancePanel assetId={asset.id} summary={maintenance} canEdit={canEdit} />
+
       <Section
         title="Servis a revize"
         description="Servis, revize, kalibrace – s termínem příští kontroly (§17)"
       >
         <div className="flex flex-col gap-4">
-          {services.length === 0 ? (
+          {services.filter((s) => !s.planCode).length === 0 ? (
             <EmptyState>Žádné servisní záznamy.</EmptyState>
           ) : (
             <Table
               head={['Typ', 'Provedeno', 'Příští termín', 'Kdo', 'Cena']}
-              rows={services.map((s) => [
-                <Badge key="k" tone="slate">
-                  {SERVICE_LABELS[s.kind] ?? s.kind}
-                </Badge>,
-                fmtDate(s.performedAt),
-                s.nextDueAt ? (
-                  <span key="d" className="inline-flex items-center gap-1">
-                    <Clock size={13} className="text-amber-500" />
-                    {fmtDate(s.nextDueAt)}
-                  </span>
-                ) : (
-                  '—'
-                ),
-                s.provider ?? '—',
-                s.cost ? `${s.cost}` : '—',
-              ])}
+              rows={services
+                .filter((s) => !s.planCode)
+                .map((s) => [
+                  <Badge key="k" tone="slate">
+                    {SERVICE_LABELS[s.kind] ?? s.kind}
+                  </Badge>,
+                  fmtDate(s.performedAt),
+                  s.nextDueAt ? (
+                    <span key="d" className="inline-flex items-center gap-1">
+                      <Clock size={13} className="text-amber-500" />
+                      {fmtDate(s.nextDueAt)}
+                    </span>
+                  ) : (
+                    '—'
+                  ),
+                  s.provider ?? '—',
+                  s.cost ? `${s.cost}` : '—',
+                ])}
             />
           )}
           <ActionForm

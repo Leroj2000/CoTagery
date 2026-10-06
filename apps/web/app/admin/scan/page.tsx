@@ -3,6 +3,7 @@ import { PageHeader } from '../ui';
 import { ScanClient } from './scan-client';
 import { apiFetch } from '../../lib/server-api';
 import type { Location } from '../../lib/types';
+import { locationPath } from '../../lib/location-path';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,13 +17,13 @@ export default async function ScanPage({
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
       <PageHeader
-        title="Sken"
-        description="Naskenuj QR / čárový kód (náš i adoptovaný) → položka, stav a co s ní teď udělat."
+        title="Identifikovat"
+        description="Zjisti, co držíš v ruce a kde věc patří. Načtení samo nepotvrzuje převzetí ani vstup."
         icon={<ScanLine size={18} />}
       />
       <ScanClient
         initialCode={code ?? ''}
-        locations={locations?.map(({ id, name }) => ({ id, name })) ?? []}
+        locations={locations?.map(({ id }) => ({ id, name: locationPath(id, locations) })) ?? []}
         locationsAvailable={locations !== null}
       />
     </div>

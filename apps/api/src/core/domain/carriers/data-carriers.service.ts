@@ -185,7 +185,7 @@ export class DataCarriersService {
 
   /** Přiřadí předgenerovaný kód k objektu (claim). */
   async claim(publicCode: string, objectId: string): Promise<DataCarrier> {
-    const carrier = await this.carriers().findOne({ where: { publicCode } });
+    const carrier = await this.carriers().findOne({ where: { publicCode }, lock: { mode: 'pessimistic_write' } });
     if (!carrier) throw new NotFoundException('Kód neexistuje');
     if (carrier.digitalObjectId) {
       throw new BadRequestException('Kód už je přiřazený');

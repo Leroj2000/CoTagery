@@ -5,6 +5,7 @@ import { WebhookService } from '../../core/webhooks/webhook.service';
 import { DataCarriersService } from '../../core/domain/carriers/data-carriers.service';
 import { AssetService } from '../asset/asset.service';
 import { Asset } from '../asset/entities/asset.entity';
+import { Location } from '../../core/domain/entities/location.entity';
 import { InventoryCheck } from './entities/inventory-check.entity';
 import { InventoryScan } from './entities/inventory-scan.entity';
 import { classifyScan, computeResult, type InventoryResult } from './inventory.logic';
@@ -41,6 +42,10 @@ export class InventoryService {
     const subjectType = dto.subjectType ?? 'location';
     const subjectId = dto.subjectId ?? dto.locationId;
     if (!subjectId) throw new BadRequestException('Chybí subjectId / locationId');
+    if (subjectType === 'location') {
+      const place = await this.repo(Location).findOne({ where: { id: subjectId } });
+      if (!place) throw new NotFoundException('Místo neexistuje');
+    }
 
     const expected = await this.repo(Asset).find({
       where: { currentHolderType: subjectType, currentHolderId: subjectId },
@@ -73,15 +78,19 @@ export class InventoryService {
     if (!assetId && dto.publicCode) {
       // Interní skener: pozná náš public_code i adoptovaný externí kód (alias).
       const carrier = await this.carriers.findByCode(dto.publicCode);
-      if (!carrier?.digitalObjectId) throw new NotFoundException('Identifikátor nenalezen nebo nepřiřazený');
-      const asset = await this.repo(Asset).findOne({ where: { digitalObjectId: carrier.digitalObjectId } });
+      if (!carrier?.digitalObjectId)
+        throw new NotFoundException('Identifikátor nenalezen nebo nepřiřazený');
+      const asset = await this.repo(Asset).findOne({
+        where: { digitalObjectId: carrier.digitalObjectId },
+      });
       if (!asset) throw new NotFoundException('K identifikátoru není přiřazený asset');
       assetId = asset.id;
     }
     if (!assetId) throw new BadRequestException('Chybí assetId nebo publicCode');
 
     // Last Observation: každý fyzický sken = věc VIDĚNA na místě inventury.
-    const locationId = check.locationId ?? (check.subjectType === 'location' ? check.subjectId : null);
+    const locationId =
+      check.locationId ?? (check.subjectType === 'location' ? check.subjectId : null);
     await this.assets.recordObservation(assetId, { source: 'inventory', locationId, actorUserId });
 
     const scans = this.repo(InventoryScan);
@@ -89,9 +98,7 @@ export class InventoryService {
     if (existing) return existing;
 
     const result = classifyScan(new Set(check.expectedAssetIds), assetId);
-    return scans.save(
-      scans.create({ tenantId: this.context.tenantId, checkId, assetId, result }),
-    );
+    return scans.save(scans.create({ tenantId: this.context.tenantId, checkId, assetId, result }));
   }
 
   /**
@@ -113,7 +120,11 @@ export class InventoryService {
     }
 
     // Reálný pohyb (neměnný ledger + webhook) přes stejnou service jako běžný přesun.
-    await this.assets.performMovement(assetId, { type: 'move', toType: 'location', toId: locationId });
+    await this.assets.performMovement(assetId, {
+      type: 'move',
+      toType: 'location',
+      toId: locationId,
+    });
     return this.detail(checkId);
   }
 
@@ -123,7 +134,10 @@ export class InventoryService {
     if (check.status === 'closed') return this.detail(checkId);
 
     const scans = await this.repo(InventoryScan).find({ where: { checkId } });
-    const result = computeResult(new Set(check.expectedAssetIds), scans.map((s) => s.assetId));
+    const result = computeResult(
+      new Set(check.expectedAssetIds),
+      scans.map((s) => s.assetId),
+    );
 
     check.status = 'closed';
     check.closedAt = new Date();
@@ -158,7 +172,8 @@ export class InventoryService {
     const ids = [...new Set([...result.found, ...result.missing, ...result.unexpected])];
     const assets = ids.length ? await this.repo(Asset).find({ where: { id: In(ids) } }) : [];
     const byId = new Map(assets.map((a) => [a.id, a]));
-    const pick = (list: string[]): Asset[] => list.map((id) => byId.get(id)).filter((a): a is Asset => !!a);
+    const pick = (list: string[]): Asset[] =>
+      list.map((id) => byId.get(id)).filter((a): a is Asset => !!a);
 
     return {
       check,
