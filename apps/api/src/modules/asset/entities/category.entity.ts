@@ -11,4 +11,7 @@ export class Category extends BaseTenantEntity {
   /** Volitelná barva (hex) pro odlišení v UI. */
   @Column({ type: 'text', nullable: true })
   color!: string | null;
+
+  @Column({ type: 'text', name: 'equipment_kind', default: 'general' })
+  equipmentKind!: 'general' | 'vehicle' | 'machine';
 }

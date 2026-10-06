@@ -101,6 +101,10 @@ export class UpdateAssetDto {
   category?: string;
 
   @IsOptional()
+  @IsUUID()
+  categoryId?: string | null;
+
+  @IsOptional()
   @IsString()
   @MaxLength(200)
   manufacturer?: string;
@@ -163,6 +167,10 @@ export class CreateCategoryDto {
   @IsString()
   @MaxLength(20)
   color?: string;
+
+  @IsOptional()
+  @IsIn(['general', 'vehicle', 'machine'])
+  equipmentKind?: 'general' | 'vehicle' | 'machine';
 }
 
 export class UpdateCategoryDto {
@@ -170,6 +178,10 @@ export class UpdateCategoryDto {
   @MinLength(1)
   @MaxLength(120)
   name!: string;
+
+  @IsOptional()
+  @IsIn(['general', 'vehicle', 'machine'])
+  equipmentKind?: 'general' | 'vehicle' | 'machine';
 }
 
 export class PerformMovementDto {

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Bell, Clock, Wrench } from 'lucide-react';
 import { apiFetch } from '../../lib/server-api';
-import type { Attention, Person, Location } from '../../lib/types';
+import type { Attention, Person, Location, MaintenanceDue } from '../../lib/types';
 import { PageHeader, Section, Table, Badge, EmptyState } from '../ui';
 import { ActionButton } from '../action-button';
 import { confirmMovement, resolveIssue } from '../actions';
@@ -20,10 +20,11 @@ function fmtDate(iso: string | null): string {
 }
 
 export default async function AttentionPage() {
-  const [att, people, locations] = await Promise.all([
+  const [att, people, locations, maintenanceDue] = await Promise.all([
     apiFetch<Attention>('/assets/attention'),
     apiFetch<Person[]>('/people'),
     apiFetch<Location[]>('/locations'),
+    apiFetch<MaintenanceDue[]>('/maintenance/due'),
   ]);
   const personName = new Map(people.map((p) => [p.id, p.name]));
   const locName = new Map(locations.map((l) => [l.id, l.name]));
@@ -31,7 +32,11 @@ export default async function AttentionPage() {
     !id ? '—' : t === 'person' ? (personName.get(id) ?? '—') : (locName.get(id) ?? '—');
 
   const total =
-    att.overdue.length + att.pendingConfirmations.length + att.openIssues.length + att.dueServices.length;
+    att.overdue.length +
+    att.pendingConfirmations.length +
+    att.openIssues.length +
+    att.dueServices.length +
+    maintenanceDue.length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -52,7 +57,11 @@ export default async function AttentionPage() {
           <Table
             head={['Položka', 'Má ji', 'Vrátit do']}
             rows={att.overdue.map((a) => [
-              <Link key="n" href={`/admin/assets/${a.id}`} className="font-medium text-brand-700 hover:underline">
+              <Link
+                key="n"
+                href={`/admin/assets/${a.id}`}
+                className="font-medium text-brand-700 hover:underline"
+              >
                 {a.name}
               </Link>,
               holderLabel(a.currentHolderType, a.currentHolderId),
@@ -99,10 +108,16 @@ export default async function AttentionPage() {
           <Table
             head={['Položka', 'Typ', 'Popis', 'Akce']}
             rows={att.openIssues.map((i) => [
-              <Link key="n" href={`/admin/assets/${i.assetId}`} className="font-medium text-brand-700 hover:underline">
+              <Link
+                key="n"
+                href={`/admin/assets/${i.assetId}`}
+                className="font-medium text-brand-700 hover:underline"
+              >
                 zobrazit
               </Link>,
-              <Badge key="k" tone="red">{ISSUE_LABELS[i.kind] ?? i.kind}</Badge>,
+              <Badge key="k" tone="red">
+                {ISSUE_LABELS[i.kind] ?? i.kind}
+              </Badge>,
               i.description,
               <ActionButton
                 key="r"
@@ -131,6 +146,51 @@ export default async function AttentionPage() {
               </span>,
               fmtDate(s.nextDueAt),
               s.provider ?? '—',
+            ])}
+          />
+        )}
+      </Section>
+
+      <Section
+        title="Servis vozidel a strojů"
+        description="Blížící se nebo překročený interval; případně chybějící odečet"
+        action={
+          <Badge
+            tone={maintenanceDue.some((item) => item.plan.status === 'overdue') ? 'red' : 'amber'}
+          >
+            {maintenanceDue.length}
+          </Badge>
+        }
+      >
+        {maintenanceDue.length === 0 ? (
+          <EmptyState>Žádný servis v prodlení ani blízko hranice.</EmptyState>
+        ) : (
+          <Table
+            head={['Položka', 'Prohlídka', 'Hranice', 'Stav']}
+            rows={maintenanceDue.map((item) => [
+              <Link
+                key="asset"
+                href={`/admin/assets/${item.assetId}`}
+                className="font-medium text-brand-700 hover:underline"
+              >
+                {item.assetName}
+              </Link>,
+              item.plan.title,
+              [
+                item.plan.nextMeter == null
+                  ? ''
+                  : `${new Intl.NumberFormat('cs-CZ').format(item.plan.nextMeter)} ${item.unit}`,
+                item.plan.nextDueAt ? fmtDate(item.plan.nextDueAt) : '',
+              ]
+                .filter(Boolean)
+                .join(' / '),
+              <Badge key="status" tone={item.plan.status === 'overdue' ? 'red' : 'amber'}>
+                {item.plan.status === 'overdue'
+                  ? 'Po termínu'
+                  : item.plan.status === 'need_reading'
+                    ? 'Doplňte odečet'
+                    : 'Blíží se'}
+              </Badge>,
             ])}
           />
         )}

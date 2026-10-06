@@ -24,7 +24,20 @@ export default async function CategoriesPage() {
         <ActionForm
           action={createCategory}
           submitLabel="Přidat kategorii"
-          fields={[{ name: 'name', label: 'Název', required: true, placeholder: 'Elektrické nářadí' }]}
+          fields={[
+            { name: 'name', label: 'Název', required: true, placeholder: 'Elektrické nářadí' },
+            {
+              name: 'equipmentKind',
+              label: 'Druh údržby',
+              required: true,
+              defaultValue: 'general',
+              options: [
+                { value: 'general', label: 'Běžná kategorie' },
+                { value: 'vehicle', label: 'Vozidlo — kilometry' },
+                { value: 'machine', label: 'Stroj — motohodiny' },
+              ],
+            },
+          ]}
         />
       </Section>
 
@@ -33,10 +46,10 @@ export default async function CategoriesPage() {
           <EmptyState>Zatím žádné kategorie.</EmptyState>
         ) : (
           <Table
-            head={['Název', 'Přejmenovat', 'Akce']}
+            head={['Název', 'Druh údržby a úprava', 'Akce']}
             rows={categories.map((c) => [
               c.name,
-              <RenameCategory key="r" id={c.id} current={c.name} />,
+              <RenameCategory key="r" id={c.id} current={c.name} equipmentKind={c.equipmentKind} />,
               <ActionButton
                 key="d"
                 action={deleteCategory}

@@ -6,6 +6,7 @@ export interface Asset {
   digitalObjectId: string;
   name: string;
   category: string | null;
+  categoryId: string | null;
   manufacturer: string | null;
   model: string | null;
   serialNumber: string | null;
@@ -42,6 +43,7 @@ export interface Category {
   id: string;
   name: string;
   color: string | null;
+  equipmentKind: 'general' | 'vehicle' | 'machine';
 }
 
 export interface ServiceRecord {
@@ -53,6 +55,42 @@ export interface ServiceRecord {
   provider: string | null;
   cost: string | null;
   note: string | null;
+  planCode: string | null;
+  meterValue: number | null;
+}
+
+export interface MeterReading {
+  id: string;
+  value: number;
+  observedAt: string;
+}
+
+export interface MaintenancePlan {
+  code: string;
+  title: string;
+  description: string;
+  intervalUnits: number;
+  intervalMonths: number | null;
+  lastService: ServiceRecord | null;
+  nextMeter: number | null;
+  nextDueAt: string | null;
+  status: 'not_started' | 'need_reading' | 'ok' | 'soon' | 'overdue';
+}
+
+export interface MaintenanceSummary {
+  kind: 'general' | 'vehicle' | 'machine';
+  unit: 'km' | 'mth' | null;
+  currentReading: MeterReading | null;
+  readings: MeterReading[];
+  plans: MaintenancePlan[];
+  history: ServiceRecord[];
+}
+
+export interface MaintenanceDue {
+  assetId: string;
+  assetName: string;
+  unit: 'km' | 'mth';
+  plan: MaintenancePlan;
 }
 
 export interface AssetMedia {
