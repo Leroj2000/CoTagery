@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Pencil, X, Loader2 } from 'lucide-react';
 import type { ActionState } from '../action-form';
 import { updateLocation } from '../actions';
@@ -11,8 +12,10 @@ import {
   typeOptionsFor,
 } from './location-types';
 
-const selCls = 'rounded border border-slate-300 px-2 py-1 text-xs focus:border-brand-500 focus:outline-none';
-const inpCls = 'w-36 rounded border border-slate-300 px-2 py-1 text-xs focus:border-brand-500 focus:outline-none';
+const selCls =
+  'rounded border border-slate-300 px-2 py-1 text-xs focus:border-brand-500 focus:outline-none';
+const inpCls =
+  'w-36 rounded border border-slate-300 px-2 py-1 text-xs focus:border-brand-500 focus:outline-none';
 
 /**
  * Inline editace místa s dvoukrokovým výběrem typu (kategorie → typ). Mřížku
@@ -31,16 +34,20 @@ export function EditLocationForm({
   type: string;
   address: string | null;
   parentId: string | null;
-  parentOptions: { value: string; label: string }[];
+  parentOptions: { value: string; label: string; type?: string }[];
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState<ActionState, FormData>(updateLocation, null);
   const [category, setCategory] = useState(categoryOfType(type));
   const [curType, setCurType] = useState(type);
 
   useEffect(() => {
-    if (state?.ok) setOpen(false);
-  }, [state?.ok]);
+    if (state?.ok) {
+      setOpen(false);
+      router.refresh();
+    }
+  }, [state?.ok, router]);
 
   if (!open) {
     return (
@@ -74,24 +81,28 @@ export function EditLocationForm({
           }}
           className={selCls}
         >
-          {LOCATION_CATEGORIES.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
-          ))}
+          {LOCATION_CATEGORIES.filter((c) => type !== 'access_point' || c.value === 'access').map(
+            (c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ),
+          )}
         </select>
       </label>
 
-      <label className="flex flex-col gap-0.5 text-[11px] text-slate-500">
-        Typ
-        <select value={curType} onChange={(e) => setCurType(e.target.value)} className={selCls}>
-          {typeOptionsFor(category, type).map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      {type !== 'access_point' && (
+        <label className="flex flex-col gap-0.5 text-[11px] text-slate-500">
+          Typ
+          <select value={curType} onChange={(e) => setCurType(e.target.value)} className={selCls}>
+            {typeOptionsFor(category, type).map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <label className="flex flex-col gap-0.5 text-[11px] text-slate-500">
         Adresa
@@ -100,9 +111,19 @@ export function EditLocationForm({
 
       <label className="flex flex-col gap-0.5 text-[11px] text-slate-500">
         Nadřazené
-        <select name="parentId" defaultValue={parentId ?? ''} className={selCls}>
+        <select
+          name="parentId"
+          defaultValue={parentId ?? ''}
+          required={type === 'access_point'}
+          className={selCls}
+        >
           {parentOptions
-            .filter((o) => o.value !== id)
+            .filter(
+              (o) =>
+                o.value !== id &&
+                (type !== 'access_point' ||
+                  (o.value && !['box', 'shelf', 'rack', 'cabinet', 'cell'].includes(o.type ?? ''))),
+            )
             .map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import Link from 'next/link';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { createLocation } from '../actions';
 import type { ActionState } from '../action-form';
@@ -20,7 +21,7 @@ const TYPES = LOCATION_TYPES_BY_CATEGORY;
 export function NewLocationForm({
   parentOptions,
 }: {
-  parentOptions: { value: string; label: string }[];
+  parentOptions: { value: string; label: string; type?: string }[];
 }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(createLocation, null);
   const [category, setCategory] = useState('place');
@@ -29,6 +30,7 @@ export function NewLocationForm({
   const [cols, setCols] = useState(3);
 
   const isStorage = category === 'storage';
+  const parents = parentOptions;
 
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -72,7 +74,7 @@ export function NewLocationForm({
 
         <Field label="Nadřazené místo">
           <select name="parentId" className={inputCls} defaultValue="">
-            {parentOptions.map((o) => (
+            {parents.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
@@ -142,9 +144,16 @@ export function NewLocationForm({
         </p>
       )}
       {state?.ok && (
-        <p className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          <CheckCircle2 size={15} /> {state.message}
-        </p>
+        <div className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          <p className="flex items-center gap-1.5">
+            <CheckCircle2 size={15} /> {state.message}
+          </p>
+          {state.href && (
+            <Link href={state.href} className="mt-1 inline-block font-semibold underline">
+              Otevřít detail →
+            </Link>
+          )}
+        </div>
       )}
 
       <div>

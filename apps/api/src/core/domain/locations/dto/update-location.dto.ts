@@ -1,6 +1,6 @@
 import { IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
-const LOCATION_TYPES = ['store', 'venue', 'warehouse', 'office', 'home', 'rack', 'cabinet'] as const;
+import { LOCATION_TYPES } from './create-location.dto';
 
 export class UpdateLocationDto {
   @IsOptional()

@@ -7,6 +7,10 @@ export const LOCATION_CATEGORIES = [
 
 export const LOCATION_TYPES_BY_CATEGORY: Record<string, { value: string; label: string }[]> = {
   place: [
+    { value: 'city', label: 'Město' },
+    { value: 'street', label: 'Ulice' },
+    { value: 'building', label: 'Budova' },
+    { value: 'room', label: 'Místnost' },
     { value: 'warehouse', label: 'Sklad' },
     { value: 'store', label: 'Prodejna' },
     { value: 'venue', label: 'Místo konání' },
@@ -14,6 +18,8 @@ export const LOCATION_TYPES_BY_CATEGORY: Record<string, { value: string; label: 
     { value: 'home', label: 'Domov' },
   ],
   storage: [
+    { value: 'box', label: 'Úložný box' },
+    { value: 'shelf', label: 'Police' },
     { value: 'rack', label: 'Regál' },
     { value: 'cabinet', label: 'Skříň' },
   ],
@@ -23,7 +29,7 @@ export const LOCATION_TYPES_BY_CATEGORY: Record<string, { value: string; label: 
 export const GRID_TYPES = new Set(['rack', 'cabinet']);
 
 export function categoryOfType(type: string): string {
-  return GRID_TYPES.has(type) ? 'storage' : 'place';
+  return ['rack', 'cabinet', 'box', 'shelf'].includes(type) ? 'storage' : 'place';
 }
 
 /** Typy pro danou kategorii; zachová i neznámý (legacy) aktuální typ. */

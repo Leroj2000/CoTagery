@@ -1,4 +1,7 @@
 import { MapPin } from 'lucide-react';
+import Link from 'next/link';
+import { locationPath } from '../../lib/location-path';
+import { LOCATION_TYPES_BY_CATEGORY } from './location-types';
 import { apiFetch, getMyPermissions } from '../../lib/server-api';
 import type { Asset, Location } from '../../lib/types';
 import { PageHeader, Section, Badge, EmptyState } from '../ui';
@@ -8,15 +11,7 @@ import { EditLocationForm } from './edit-location-form';
 
 export const dynamic = 'force-dynamic';
 
-const LOCATION_TYPES = [
-  { value: 'warehouse', label: 'Sklad', group: 'Místa' },
-  { value: 'store', label: 'Prodejna', group: 'Místa' },
-  { value: 'venue', label: 'Místo konání', group: 'Místa' },
-  { value: 'office', label: 'Kancelář', group: 'Místa' },
-  { value: 'home', label: 'Domov', group: 'Místa' },
-  { value: 'rack', label: 'Regál', group: 'Úložné prostory' },
-  { value: 'cabinet', label: 'Skříň', group: 'Úložné prostory' },
-];
+const LOCATION_TYPES = Object.values(LOCATION_TYPES_BY_CATEGORY).flat();
 
 const TYPE_LABEL = new Map(LOCATION_TYPES.map((t) => [t.value, t.label]));
 /** Typy s mřížkovým rozdělením na sekce. */
@@ -27,7 +22,7 @@ interface TreeProps {
   byParent: Map<string | null, Location[]>;
   depth?: number;
   canManage: boolean;
-  parentOptions: { value: string; label: string }[];
+  parentOptions: { value: string; label: string; type?: string }[];
   assets: { id: string; name: string }[];
 }
 
@@ -43,7 +38,12 @@ function Tree({ nodes, byParent, depth = 0, canManage, parentOptions, assets }: 
           >
             {depth > 0 && <span className="text-slate-300">└</span>}
             <MapPin size={14} className="text-slate-400" />
-            <span className="text-sm font-medium text-slate-700">{n.name}</span>
+            <Link
+              href={`/admin/locations/${n.id}`}
+              className="py-2 text-sm font-medium text-brand-700 hover:underline"
+            >
+              {n.name}
+            </Link>
             <Badge tone="slate">{TYPE_LABEL.get(n.type) ?? n.type}</Badge>
             {canManage && (
               <span className="ml-auto">
@@ -96,10 +96,12 @@ export default async function LocationsPage() {
     const key = l.parentId ?? null;
     byParent.set(key, [...(byParent.get(key) ?? []), l]);
   }
-  const roots = byParent.get(null) ?? [];
+  const roots = visible.filter((l) => !l.parentId || !visible.some((p) => p.id === l.parentId));
   const parentOptions = [
     { value: '', label: '— žádná (kořen) —' },
-    ...visible.map((l) => ({ value: l.id, label: l.name })),
+    ...visible
+      .filter((l) => l.type !== 'access_point')
+      .map((l) => ({ value: l.id, label: locationPath(l.id, locations), type: l.type })),
   ];
 
   return (

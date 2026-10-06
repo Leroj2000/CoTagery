@@ -50,6 +50,7 @@ export class LocationsService {
 
   async list(): Promise<Location[]> {
     const scope = this.context.scope;
+    if (scope.type !== 'ORGANIZATION' && (scope.type !== 'LOCATION_TREE' || !scope.ref)) return [];
     if (scope.type === 'LOCATION_TREE' && scope.ref) {
       const ids = await this.subtree(scope.ref);
       if (ids.length === 0) return [];
@@ -62,7 +63,7 @@ export class LocationsService {
     const rows: { id: string }[] = await this.context.manager.query(
       `WITH RECURSIVE sub AS (
          SELECT id FROM locations WHERE id = $1
-         UNION ALL
+         UNION
          SELECT l.id FROM locations l JOIN sub ON l.parent_id = sub.id
        ) SELECT id FROM sub`,
       [rootId],
@@ -70,9 +71,18 @@ export class LocationsService {
     return rows.map((r) => r.id);
   }
 
-  create(dto: CreateLocationDto): Promise<Location> {
+  async create(dto: CreateLocationDto): Promise<Location> {
+    if (!dto.name.trim()) throw new BadRequestException('Vyplň název místa.');
+    if (dto.parentId) {
+      const parent = await this.get(dto.parentId);
+      if (parent.type === 'cell')
+        throw new BadRequestException('Pod buňku nelze zakládat další místa.');
+    }
+    if (this.context.scope.type !== 'ORGANIZATION' && !dto.parentId)
+      throw new BadRequestException('Nové místo musí být ve svěřeném stromu.');
     const location = this.repo().create({
       ...dto,
+      name: dto.name.trim(),
       tenantId: this.context.tenantId, // z JWT kontextu, nikdy z těla requestu
     });
     return this.repo().save(location);
@@ -82,16 +92,37 @@ export class LocationsService {
     const location = await this.repo().findOne({ where: { id } });
     if (!location) throw new NotFoundException('Lokace neexistuje');
     const scope = this.context.scope;
-    if (scope.type === 'LOCATION_TREE' && scope.ref && !(await this.subtree(scope.ref)).includes(id)) {
+    if (
+      scope.type !== 'ORGANIZATION' &&
+      (scope.type !== 'LOCATION_TREE' ||
+        !scope.ref ||
+        !(await this.subtree(scope.ref)).includes(id))
+    ) {
       throw new NotFoundException('Lokace neexistuje');
     }
     return location;
   }
 
   async update(id: string, dto: UpdateLocationDto): Promise<Location> {
+    // Serialize reparenting: two simultaneous moves must not introduce a cycle.
+    await this.context.manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+      `locations:${this.context.tenantId}`,
+    ]);
     const location = await this.get(id);
     if (dto.parentId === id) throw new BadRequestException('Lokace nemůže být rodičem sama sobě');
-    if (dto.name !== undefined) location.name = dto.name;
+    if (dto.parentId) {
+      const parent = await this.get(dto.parentId);
+      if (parent.type === 'cell')
+        throw new BadRequestException('Pod buňku nelze místo přeřadit.');
+      if ((await this.subtree(id)).includes(dto.parentId))
+        throw new BadRequestException('Místo nelze vložit do vlastního podřízeného místa.');
+    }
+    if (dto.parentId === null && this.context.scope.type !== 'ORGANIZATION')
+      throw new BadRequestException('Místo musí zůstat ve svěřeném stromu.');
+    if (dto.name !== undefined) {
+      if (!dto.name.trim()) throw new BadRequestException('Vyplň název místa.');
+      location.name = dto.name.trim();
+    }
     if (dto.type !== undefined) location.type = dto.type;
     if (dto.address !== undefined) location.address = dto.address || null;
     if (dto.timezone) location.timezone = dto.timezone;
@@ -143,9 +174,7 @@ export class LocationsService {
     // Smaž prázdné buňky mimo rozsah, dogeneruj chybějící, ulož rozměry.
     if (outOfBounds.length > 0) await repo.remove(outOfBounds);
     const present = new Set(
-      gridCells
-        .filter((c) => !outOfBounds.includes(c))
-        .map((c) => `${c.cellRow}:${c.cellCol}`),
+      gridCells.filter((c) => !outOfBounds.includes(c)).map((c) => `${c.cellRow}:${c.cellCol}`),
     );
     const toCreate: Location[] = [];
     for (let r = 1; r <= dto.rows; r++) {

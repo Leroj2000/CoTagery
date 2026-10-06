@@ -8,7 +8,21 @@ export class Location extends BaseTenantEntity {
   name!: string;
 
   @Column({ type: 'text', default: 'store' })
-  type!: 'store' | 'venue' | 'warehouse' | 'office' | 'home' | 'rack' | 'cabinet' | 'cell';
+  type!:
+    | 'city'
+    | 'street'
+    | 'building'
+    | 'room'
+    | 'box'
+    | 'shelf'
+    | 'store'
+    | 'venue'
+    | 'warehouse'
+    | 'office'
+    | 'home'
+    | 'rack'
+    | 'cabinet'
+    | 'cell';
 
   @Column({ type: 'text', nullable: true })
   address!: string | null;

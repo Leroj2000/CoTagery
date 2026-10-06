@@ -107,8 +107,7 @@ export function LocationGrid({
     }
   }
 
-  const cellAt = (r: number, c: number) =>
-    grid?.cells.find((x) => x.row === r && x.col === c);
+  const cellAt = (r: number, c: number) => grid?.cells.find((x) => x.row === r && x.col === c);
 
   return (
     <div className="ml-6 mt-1">
@@ -197,7 +196,10 @@ export function LocationGrid({
                 <div className="min-w-56 flex-1 rounded-lg border border-slate-200 bg-white p-3">
                   <div className="mb-2 flex items-center justify-between">
                     <p className="text-sm font-semibold text-slate-800">Sekce {selected.label}</p>
-                    <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600">
+                    <button
+                      onClick={() => setSelected(null)}
+                      className="text-slate-400 hover:text-slate-600"
+                    >
                       <X size={15} />
                     </button>
                   </div>
