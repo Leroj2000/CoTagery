@@ -16,8 +16,11 @@ x-api-env: &api-env
   REDIS_URL: redis://tagery-redis-1:6379
   STORAGE_DRIVER: local
   STORAGE_LOCAL_PATH: /app/.storage
-  JWT_SECRET: ${JWT_SECRET:-demo-secret-change-me-min-16-chars}
-  BILLING_WEBHOOK_SECRET: ${BILLING_WEBHOOK_SECRET:-whsec_demo}
+  # Žádný vestavěný default (M3 hardening): bez vlastní hodnoty v .env má compose
+  # spadnout hned se srozumitelnou chybou, ne tiše naběhnout se známým secretem.
+  # Nastav v .env (viz .env.example) – i pro lokální demo vygeneruj vlastní hodnotu.
+  JWT_SECRET: ${JWT_SECRET:?JWT_SECRET musí být nastaven v .env (min. 16 znaků) – viz .env.example}
+  BILLING_WEBHOOK_SECRET: ${BILLING_WEBHOOK_SECRET:?BILLING_WEBHOOK_SECRET musí být nastaven v .env – viz .env.example}
   # Veřejná URL resolveru (do QR/NFC). Za HTTPS proxy: https://app.tagery.tech (→ /r/CODE).
   PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://${PUBLIC_HOST:-localhost}:3001}
   PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-http://localhost:3000}
