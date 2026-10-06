@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
-import { getMe, apiFetch } from '../lib/server-api';
+import { getMe, apiFetch, getMyPermissions } from '../lib/server-api';
 import { Logo } from '../ui/logo';
 import { AdminNav } from './nav';
 import { NAV_ITEMS } from './nav-items';
 import { LogoutButton } from './logout-button';
 import { OrgSwitcher } from './org-switcher';
+import { MobileNav } from './mobile-nav';
 
 interface Membership {
   membershipId: string;
@@ -44,11 +45,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   }
   const memberships = await apiFetch<Membership[]>('/auth/memberships').catch(() => []);
   const modules = await apiFetch<ModuleState[]>('/modules').catch(() => []);
+  const permissions = await getMyPermissions();
   const inactiveModules = new Set(
     modules.filter((m) => m.state === 'inactive').map((m) => m.moduleKey),
   );
   const hiddenNav = NAV_ITEMS.filter(
-    (item) => item.moduleKey && inactiveModules.has(item.moduleKey),
+    (item) => (item.moduleKey && inactiveModules.has(item.moduleKey)) || (item.permission && !permissions.has(item.permission)),
   ).map((item) => item.href);
 
   return (
@@ -99,11 +101,13 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         </header>
 
         {/* Mobilní navigace */}
-        <div className="border-b border-slate-200 bg-white px-3 py-2 lg:hidden">
-          <AdminNav orientation="horizontal" hidden={hiddenNav} />
-        </div>
+        <details className="border-b border-slate-200 bg-white px-5 py-3 lg:hidden">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-700">Pracovní prostor a moduly</summary>
+          <div className="max-h-[60vh] overflow-y-auto py-3"><AdminNav hidden={hiddenNav} /></div>
+        </details>
 
-        <main className="mx-auto w-full max-w-7xl flex-1 p-5 sm:p-6 lg:p-8">{children}</main>
+        <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-28 sm:p-6 sm:pb-28 lg:p-8">{children}</main>
+        <MobileNav hidden={hiddenNav} />
       </div>
     </div>
   );

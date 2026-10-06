@@ -4,16 +4,19 @@ import { useActionState } from 'react';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { SelectOptions, type SelectOption } from './select-options';
 
-export type ActionState = { ok?: boolean; error?: string; message?: string } | null;
+export type ActionState = { ok?: boolean; error?: string; message?: string; href?: string } | null;
 export type ServerAction = (prev: ActionState, formData: FormData) => Promise<ActionState>;
 
 export interface Field {
   name: string;
   label: string;
-  type?: 'text' | 'number' | 'email' | 'url' | 'datetime-local';
+  type?: 'text' | 'number' | 'email' | 'url' | 'date' | 'datetime-local';
   required?: boolean;
   placeholder?: string;
   defaultValue?: string;
+  min?: number;
+  max?: number;
+  step?: number;
   options?: SelectOption[];
   after?: { href: string; label: string };
 }
@@ -61,7 +64,10 @@ export function ActionForm({
                   <SelectOptions options={f.options} />
                 </select>
                 {f.after && (
-                  <a href={f.after.href} className="shrink-0 text-xs font-medium text-brand-700 hover:underline">
+                  <a
+                    href={f.after.href}
+                    className="shrink-0 text-xs font-medium text-brand-700 hover:underline"
+                  >
                     {f.after.label}
                   </a>
                 )}
@@ -74,6 +80,9 @@ export function ActionForm({
                 required={f.required}
                 placeholder={f.placeholder}
                 defaultValue={f.defaultValue}
+                min={f.min}
+                max={f.max}
+                step={f.step}
                 className={inputCls}
               />
             )}

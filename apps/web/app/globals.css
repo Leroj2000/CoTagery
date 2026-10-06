@@ -13,10 +13,26 @@
 }
 
 @layer components {
+  .action-primary {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-50;
+  }
+  .action-secondary {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50;
+  }
+  .field-input {
+    @apply min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100;
+  }
   /* Jemný značkový gradient pro hlavičky / prázdné stavy. */
   .bg-brand-radial {
     background: radial-gradient(120% 120% at 0% 0%, #eef2ff 0%, #ffffff 45%);
   }
+}
+
+@keyframes arrival { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.feedback-enter { animation: arrival 180ms ease-out; }
+:focus-visible { outline: 3px solid #818cf8; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
 
 /* Decentní scrollbar */
