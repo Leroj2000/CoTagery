@@ -47,6 +47,7 @@ import type {
   WorkflowValidateDto,
   SetPhotoPreviewDto,
 } from './dto/asset.dto';
+import { reverseGeocode } from './reverse-geocode';
 
 /** Jeden naskenovaný řádek workflow scanneru (validní nebo blocker). */
 export interface WorkflowItem {
@@ -454,6 +455,8 @@ export class AssetService {
       locationName: string | null;
       actorName: string | null;
       captureContext: Omit<ScanDto, 'code'> | null;
+      addressLabel: string | null;
+      addressResolvedAt: string | null;
     }[]
   > {
     const rows = await this.repo(AssetObservation).find({
@@ -474,7 +477,37 @@ export class AssetService {
       locationName: r.locationId ? (locName.get(r.locationId) ?? null) : null,
       actorName: r.actorUserId ? (userName.get(r.actorUserId) ?? null) : null,
       captureContext: r.captureContext,
+      addressLabel: r.addressLabel,
+      addressResolvedAt: r.addressResolvedAt?.toISOString() ?? null,
     }));
+  }
+
+  /** Přeloží GPS bod pozorování na adresu a výsledek trvale uloží jako cache. */
+  async resolveObservationAddress(
+    assetId: string,
+    observationId: string,
+  ): Promise<{ addressLabel: string | null; addressResolvedAt: string | null }> {
+    const repo = this.repo(AssetObservation);
+    const observation = await repo.findOne({ where: { id: observationId, assetId } });
+    if (!observation) throw new NotFoundException('Záznam polohy nebyl nalezen');
+    if (observation.addressLabel) {
+      return {
+        addressLabel: observation.addressLabel,
+        addressResolvedAt: observation.addressResolvedAt?.toISOString() ?? null,
+      };
+    }
+
+    const position = observation.captureContext?.position;
+    if (!position) throw new BadRequestException('Záznam neobsahuje GPS polohu');
+
+    const addressLabel = await reverseGeocode(position.latitude, position.longitude);
+    if (!addressLabel) throw new NotFoundException('Pro tuto polohu se nepodařilo určit adresu');
+
+    observation.addressLabel = addressLabel;
+    observation.addressProvider = 'openstreetmap-nominatim';
+    observation.addressResolvedAt = new Date();
+    await repo.save(observation);
+    return { addressLabel, addressResolvedAt: observation.addressResolvedAt.toISOString() };
   }
 
   /**

@@ -159,16 +159,31 @@ export class AssetController {
   /** Last Observation: kde/kdy byla věc naposledy VIDĚNA (samostatná vrstva). */
   @Get(':id/observations')
   @RequirePermission('asset.item.view')
-  observations(@Param('id', ParseUUIDPipe) id: string): Promise<
+  observations(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('limit') rawLimit?: string,
+  ): Promise<
     {
       id: string;
       source: string;
       observedAt: string;
       locationName: string | null;
       actorName: string | null;
+      addressLabel: string | null;
+      addressResolvedAt: string | null;
     }[]
   > {
-    return this.assets.listObservations(id);
+    const limit = rawLimit ? Number.parseInt(rawLimit, 10) : 10;
+    return this.assets.listObservations(id, Number.isFinite(limit) ? limit : 10);
+  }
+
+  @Post(':id/observations/:observationId/address')
+  @RequirePermission('asset.item.view')
+  resolveObservationAddress(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('observationId', ParseUUIDPipe) observationId: string,
+  ): Promise<{ addressLabel: string | null; addressResolvedAt: string | null }> {
+    return this.assets.resolveObservationAddress(id, observationId);
   }
 
   @Post(':id/movements')

@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../rbac/permissions.guard';
-import { AllowAuthenticatedOnly, RequirePermission } from '../rbac/require-permission.decorator';
+import { RequirePermission } from '../rbac/require-permission.decorator';
 import { RequireModule } from '../rbac/require-module.decorator';
 import { AccessControlService } from './access-control.service';
 import { CreateAccessPointDto, EvaluateAccessDto } from './dto/access.dto';
@@ -16,7 +16,7 @@ export class AccessPointsController {
   constructor(private readonly access: AccessControlService) {}
 
   @Get()
-  @AllowAuthenticatedOnly()
+  @RequirePermission('access.point.manage')
   list(): Promise<AccessPoint[]> {
     return this.access.list();
   }
@@ -28,7 +28,7 @@ export class AccessPointsController {
   }
 
   @Get(':id')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('access.point.manage')
   get(@Param('id', ParseUUIDPipe) id: string): Promise<AccessPoint> {
     return this.access.get(id);
   }
@@ -43,7 +43,7 @@ export class AccessPointsController {
   }
 
   @Get(':id/events')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('access.point.manage')
   events(@Param('id', ParseUUIDPipe) id: string): Promise<AccessEvent[]> {
     return this.access.listEvents(id);
   }

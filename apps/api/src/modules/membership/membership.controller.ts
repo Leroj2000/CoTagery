@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../core/rbac/permissions.guard';
-import { AllowAuthenticatedOnly, RequirePermission } from '../../core/rbac/require-permission.decorator';
+import { RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { RequireModule } from '../../core/rbac/require-module.decorator';
 import { MembershipService, type CardView } from './membership.service';
 import {
@@ -24,7 +24,7 @@ export class MembershipController {
   constructor(private readonly memberships: MembershipService) {}
 
   @Get('members')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('membership.card.manage')
   listMembers(): Promise<Member[]> {
     return this.memberships.listMembers();
   }
@@ -42,7 +42,7 @@ export class MembershipController {
   }
 
   @Get('tiers')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('membership.card.manage')
   listTiers(): Promise<MembershipTier[]> {
     return this.memberships.listTiers();
   }
@@ -57,13 +57,13 @@ export class MembershipController {
   }
 
   @Get('tiers/:tierId/benefits')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('membership.card.manage')
   listBenefits(@Param('tierId', ParseUUIDPipe) tierId: string): Promise<MembershipBenefit[]> {
     return this.memberships.listBenefits(tierId);
   }
 
   @Get()
-  @AllowAuthenticatedOnly()
+  @RequirePermission('membership.card.manage')
   listMemberships(): Promise<Membership[]> {
     return this.memberships.listMemberships();
   }
@@ -75,7 +75,7 @@ export class MembershipController {
   }
 
   @Get(':membershipId')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('membership.card.manage')
   get(@Param('membershipId', ParseUUIDPipe) membershipId: string): Promise<Membership> {
     return this.memberships.getMembership(membershipId);
   }
@@ -102,7 +102,7 @@ export class MembershipController {
   }
 
   @Get('cards/by-carrier/:carrierId')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('membership.card.manage')
   async cardView(@Param('carrierId', ParseUUIDPipe) carrierId: string): Promise<CardView | null> {
     const card = await this.memberships.cardByCarrier(carrierId);
     return card ? this.memberships.cardView(card) : null;

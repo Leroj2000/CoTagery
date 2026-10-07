@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../core/rbac/permissions.guard';
-import { AllowAuthenticatedOnly, RequirePermission } from '../../core/rbac/require-permission.decorator';
+import { RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { RequireModule } from '../../core/rbac/require-module.decorator';
 import { BillingService, type CheckoutResult } from './billing.service';
 import { CancelSubscriptionDto, CheckoutDto } from './dto/billing.dto';
@@ -23,25 +23,25 @@ export class BillingController {
   }
 
   @Get('subscriptions')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('billing.subscription.manage')
   listSubscriptions(): Promise<Subscription[]> {
     return this.billing.listSubscriptions();
   }
 
   @Get('subscriptions/:id')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('billing.subscription.manage')
   getSubscription(@Param('id', ParseUUIDPipe) id: string): Promise<Subscription> {
     return this.billing.getSubscription(id);
   }
 
   @Get('subscriptions/:id/invoices')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('billing.subscription.manage')
   invoices(@Param('id', ParseUUIDPipe) id: string): Promise<Invoice[]> {
     return this.billing.listInvoices(id);
   }
 
   @Get('subscriptions/:id/portal')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('billing.subscription.manage')
   portal(@Param('id', ParseUUIDPipe) id: string): Promise<{ url: string }> {
     return this.billing.customerPortal(id);
   }
@@ -56,7 +56,7 @@ export class BillingController {
   }
 
   @Get('usage')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('billing.subscription.manage')
   usage(): Promise<PlatformUsageMeter[]> {
     return this.billing.listUsage();
   }

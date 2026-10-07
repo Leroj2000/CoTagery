@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../rbac/permissions.guard';
-import { AllowAuthenticatedOnly, RequirePermission } from '../../rbac/require-permission.decorator';
+import { RequirePermission } from '../../rbac/require-permission.decorator';
 import { DigitalObjectsService } from './digital-objects.service';
 import { DataCarriersService } from '../carriers/data-carriers.service';
 import { CreateDigitalObjectDto } from './dto/create-digital-object.dto';
@@ -30,7 +30,7 @@ export class DigitalObjectsController {
   ) {}
 
   @Get()
-  @AllowAuthenticatedOnly()
+  @RequirePermission('asset.item.view')
   list(): Promise<DigitalObject[]> {
     return this.objects.list();
   }
@@ -42,7 +42,7 @@ export class DigitalObjectsController {
   }
 
   @Get(':id')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('asset.item.view')
   get(@Param('id', ParseUUIDPipe) id: string): Promise<DigitalObject> {
     return this.objects.get(id);
   }
@@ -64,7 +64,7 @@ export class DigitalObjectsController {
   }
 
   @Get(':id/carriers')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('asset.item.view')
   listCarriers(@Param('id', ParseUUIDPipe) id: string): Promise<DataCarrier[]> {
     return this.carriers.listForObject(id);
   }

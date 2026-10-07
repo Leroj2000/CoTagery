@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../core/auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../core/rbac/permissions.guard';
-import { AllowAuthenticatedOnly, RequirePermission } from '../../core/rbac/require-permission.decorator';
+import { RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { RequireModule } from '../../core/rbac/require-module.decorator';
 import { RentersService } from './renters.service';
 import { RentalService } from './rental.service';
@@ -34,7 +34,7 @@ export class RentalController {
   }
 
   @Get('renters/:id')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('rental.item.manage')
   getRenter(@Param('id', ParseUUIDPipe) id: string): Promise<RenterProfile> {
     return this.renters.get(id);
   }
@@ -50,7 +50,7 @@ export class RentalController {
 
   // --- Rental (tenant-scoped) ---
   @Get('rental/items')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('rental.item.manage')
   listItems(): Promise<Item[]> {
     return this.rental.listItems();
   }

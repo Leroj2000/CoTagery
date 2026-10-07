@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../rbac/permissions.guard';
-import { AllowAuthenticatedOnly, RequirePermission } from '../../rbac/require-permission.decorator';
+import { RequirePermission } from '../../rbac/require-permission.decorator';
 import { PersonCategoriesService } from './person-categories.service';
 import { CreatePersonCategoryDto } from './dto/person-category.dto';
 import type { PersonCategory } from '../entities/person-category.entity';
@@ -22,7 +22,7 @@ export class PersonCategoriesController {
   constructor(private readonly categories: PersonCategoriesService) {}
 
   @Get()
-  @AllowAuthenticatedOnly()
+  @RequirePermission('core.person.view')
   list(): Promise<PersonCategory[]> {
     return this.categories.list();
   }

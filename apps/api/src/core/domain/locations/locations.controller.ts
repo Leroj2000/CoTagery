@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../rbac/permissions.guard';
-import { AllowAuthenticatedOnly, RequirePermission } from '../../rbac/require-permission.decorator';
+import { RequirePermission } from '../../rbac/require-permission.decorator';
 import {
   LocationsService,
   type CellAsset,
@@ -18,7 +18,7 @@ export class LocationsController {
   constructor(private readonly locations: LocationsService) {}
 
   @Get()
-  @AllowAuthenticatedOnly()
+  @RequirePermission('core.location.view')
   list(): Promise<Location[]> {
     return this.locations.list();
   }
@@ -30,7 +30,7 @@ export class LocationsController {
   }
 
   @Get(':id')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('core.location.view')
   get(@Param('id', ParseUUIDPipe) id: string): Promise<Location> {
     return this.locations.get(id);
   }
@@ -42,7 +42,7 @@ export class LocationsController {
   }
 
   @Get(':id/grid')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('core.location.view')
   grid(@Param('id', ParseUUIDPipe) id: string): Promise<GridView> {
     return this.locations.getGrid(id);
   }
@@ -57,7 +57,7 @@ export class LocationsController {
   }
 
   @Get(':id/assets')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('core.location.view')
   cellAssets(@Param('id', ParseUUIDPipe) id: string): Promise<CellAsset[]> {
     return this.locations.cellAssets(id);
   }

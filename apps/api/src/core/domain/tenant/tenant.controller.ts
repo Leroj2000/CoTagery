@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../rbac/permissions.guard';
-import { AllowAuthenticatedOnly, RequirePermission } from '../../rbac/require-permission.decorator';
+import { RequirePermission } from '../../rbac/require-permission.decorator';
 import { TenantService } from './tenant.service';
 import { UpdateTenantDto } from './dto/tenant.dto';
 import type { Tenant } from '../entities/tenant.entity';
@@ -13,7 +13,7 @@ export class TenantController {
   constructor(private readonly tenant: TenantService) {}
 
   @Get()
-  @AllowAuthenticatedOnly()
+  @RequirePermission('core.organization.view')
   current(): Promise<Tenant> {
     return this.tenant.current();
   }

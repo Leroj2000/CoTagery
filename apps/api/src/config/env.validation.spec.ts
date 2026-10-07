@@ -32,4 +32,10 @@ describe('production environment validation', () => {
       }).APP_DATABASE_URL,
     ).toContain('app:secret');
   });
+
+  it('validates the reverse geocoding endpoint', () => {
+    expect(() => validateEnv({ ...base, GEOCODING_REVERSE_URL: 'not-a-url' })).toThrow(
+      'GEOCODING_REVERSE_URL',
+    );
+  });
 });

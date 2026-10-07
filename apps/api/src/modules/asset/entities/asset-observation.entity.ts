@@ -36,6 +36,16 @@ export class AssetObservation {
   @Column({ type: 'jsonb', name: 'capture_context', nullable: true })
   captureContext!: Omit<ScanDto, 'code'> | null;
 
+  /** Cache čitelné adresy získané reverzním geokódováním GPS bodu. */
+  @Column({ type: 'text', name: 'address_label', nullable: true })
+  addressLabel!: string | null;
+
+  @Column({ type: 'text', name: 'address_provider', nullable: true })
+  addressProvider!: string | null;
+
+  @Column({ type: 'timestamptz', name: 'address_resolved_at', nullable: true })
+  addressResolvedAt!: Date | null;
+
   @Column({ type: 'timestamptz', name: 'observed_at' })
   observedAt!: Date;
 

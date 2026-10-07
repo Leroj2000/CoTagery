@@ -54,6 +54,9 @@ export const envSchema = z
       (v) => (v === '' ? undefined : v),
       z.string().url().optional(),
     ),
+    // Nominatim-kompatibilní endpoint pro GPS → adresa; musí jít změnit bez releasu.
+    GEOCODING_REVERSE_URL: z.string().url().default('https://nominatim.openstreetmap.org/reverse'),
+    GEOCODING_USER_AGENT: z.string().min(3).default('Tagery/0.1'),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && !env.APP_DATABASE_URL) {

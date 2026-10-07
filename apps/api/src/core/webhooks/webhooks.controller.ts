@@ -12,7 +12,7 @@ import {
 import { IsArray, IsOptional, IsString, IsUrl } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../rbac/permissions.guard';
-import { AllowAuthenticatedOnly, RequirePermission } from '../rbac/require-permission.decorator';
+import { RequirePermission } from '../rbac/require-permission.decorator';
 import { WebhookService } from './webhook.service';
 import type { WebhookEndpoint } from './entities/webhook-endpoint.entity';
 import type { WebhookDelivery } from './entities/webhook-delivery.entity';
@@ -34,13 +34,13 @@ export class WebhooksController {
   constructor(private readonly webhooks: WebhookService) {}
 
   @Get()
-  @AllowAuthenticatedOnly()
+  @RequirePermission('core.integration.manage')
   list(): Promise<WebhookEndpoint[]> {
     return this.webhooks.list();
   }
 
   @Get('deliveries')
-  @AllowAuthenticatedOnly()
+  @RequirePermission('core.integration.manage')
   deliveries(): Promise<WebhookDelivery[]> {
     return this.webhooks.listDeliveries();
   }
