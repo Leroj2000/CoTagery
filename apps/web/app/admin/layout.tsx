@@ -78,36 +78,59 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
       {/* Hlavní sloupec */}
       <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-3 border-b border-slate-200 bg-white/80 px-5 backdrop-blur">
-          <div className="lg:hidden">
+        <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 sm:px-6 lg:bg-white/80 lg:px-8 lg:backdrop-blur">
+          <div className="shrink-0 lg:hidden">
             <Logo />
           </div>
           <div className="hidden lg:block" />
-          <div className="flex items-center gap-3">
+
+          {/* Mobil: jen přepínač firem; zbytek je v menu „Moje" spodní lišty */}
+          <div className="min-w-0 lg:hidden">
+            <OrgSwitcher current={me.tenantId} memberships={memberships} />
+          </div>
+
+          {/* Desktop: vše v řádku */}
+          <div className="hidden min-w-0 items-center gap-3 lg:flex">
             {me.isPlatformAdmin && (
               <a
                 href="/platform"
-                className="rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-700"
+                className="shrink-0 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-700"
               >
                 Platforma
               </a>
             )}
             <OrgSwitcher current={me.tenantId} memberships={memberships} />
-            <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-200">
+            <span className="shrink-0 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-200">
               {me.tenantRole}
             </span>
             <LogoutButton />
           </div>
         </header>
 
-        {/* Mobilní navigace */}
-        <details className="border-b border-slate-200 bg-white px-5 py-3 lg:hidden">
-          <summary className="cursor-pointer text-sm font-semibold text-slate-700">Pracovní prostor a moduly</summary>
-          <div className="max-h-[60vh] overflow-y-auto py-3"><AdminNav hidden={hiddenNav} /></div>
-        </details>
-
         <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-28 sm:p-6 sm:pb-28 lg:p-8">{children}</main>
-        <MobileNav hidden={hiddenNav} />
+        <MobileNav
+          hidden={hiddenNav}
+          user={{ initials: initials(me.user.name), name: me.user.name, email: me.user.email, role: me.tenantRole }}
+          menu={
+            <div className="mt-5 space-y-5">
+              {me.isPlatformAdmin && (
+                <a
+                  href="/platform"
+                  className="flex w-full items-center justify-center rounded-lg bg-slate-900 px-3 py-2.5 text-sm font-medium text-white hover:bg-slate-700"
+                >
+                  Platforma
+                </a>
+              )}
+              <div>
+                <p className="px-1 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                  Pracovní prostor a moduly
+                </p>
+                <AdminNav hidden={hiddenNav} />
+              </div>
+              <LogoutButton block />
+            </div>
+          }
+        />
       </div>
     </div>
   );
