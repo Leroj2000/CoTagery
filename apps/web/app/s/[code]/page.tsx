@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Loader2, ArrowRight } from 'lucide-react';
+import { Loader2, ArrowRight, LogIn } from 'lucide-react';
 import { Logo } from '../../ui/logo';
 import { fetchScan, type ScanResult, type MembershipCardScan, type AssetScan } from '../../lib/api';
 
@@ -70,6 +70,15 @@ export default function ScanPage({ params }: { params: Promise<{ code: string }>
 
         {state && <ScanBody code={code} status={state.status} body={state.body} />}
 
+        {state && isAsset(state.body) && (
+          <Link
+            href={`/admin/scan?code=${encodeURIComponent(code)}&auto=1`}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
+          >
+            <LogIn size={16} /> Vstoupit do aplikace
+          </Link>
+        )}
+
         {state && state.status !== 404 && (
           <Link
             href={`/found/${code}`}
@@ -81,6 +90,11 @@ export default function ScanPage({ params }: { params: Promise<{ code: string }>
       </div>
     </main>
   );
+}
+
+/** Vede kód na evidovanou položku (správce ji může po přihlášení identifikovat)? */
+function isAsset(body: ScanResult): boolean {
+  return 'type' in body && body.type === 'asset' && !!(body as AssetScan).asset;
 }
 
 function ScanBody({ code, status, body }: { code: string; status: number; body: ScanResult }) {

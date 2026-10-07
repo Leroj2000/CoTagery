@@ -84,7 +84,8 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
   const refresh = req.cookies.get(REFRESH_COOKIE)?.value;
   const loginUrl = new URL('/login', req.url);
-  loginUrl.searchParams.set('from', req.nextUrl.pathname);
+  // Včetně query (např. `/admin/scan?code=…&auto=1`), ať se po přihlášení vrátí přesně sem.
+  loginUrl.searchParams.set('from', req.nextUrl.pathname + req.nextUrl.search);
 
   if (!refresh) return NextResponse.redirect(loginUrl);
 

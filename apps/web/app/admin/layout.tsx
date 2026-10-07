@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
 import { getMe, apiFetch, getMyPermissions } from '../lib/server-api';
 import type { Attention } from '../lib/types';
-import { Logo } from '../ui/logo';
+import { BrandLink } from './brand-link';
 import { AdminNav } from './nav';
 import { NAV_ITEMS } from './nav-items';
 import { LogoutButton } from './logout-button';
@@ -82,7 +82,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       {/* Sidebar (lg+) */}
       <aside className="hidden lg:flex lg:flex-col lg:border-r lg:border-slate-200 lg:bg-white">
         <div className="flex h-16 items-center border-b border-slate-100 px-5">
-          <Logo />
+          <BrandLink />
         </div>
         <div className="flex-1 overflow-y-auto p-3">
           <AdminNav hidden={hiddenNav} counts={navCounts} />
@@ -103,12 +103,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       {/* Hlavní sloupec */}
       <div className="flex min-w-0 flex-col">
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 sm:px-6 lg:bg-white/80 lg:px-8 lg:backdrop-blur">
-          <div className="shrink-0 lg:hidden">
-            <Logo />
+          <div className="min-w-0 shrink lg:hidden">
+            <BrandLink />
           </div>
           <div className="hidden lg:block" />
 
-          {/* Mobil: jen přepínač firem; zbytek je v menu „Moje" spodní lišty */}
+          {/* Mobil: jen přepínač firem; zbytek je v „Menu" spodní lišty */}
           <div className="min-w-0 lg:hidden">
             <OrgSwitcher current={me.tenantId} memberships={memberships} />
           </div>

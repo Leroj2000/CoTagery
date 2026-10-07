@@ -10,10 +10,10 @@ export const dynamic = 'force-dynamic';
 export default async function ScanPage({
   searchParams,
 }: {
-  searchParams: Promise<{ code?: string }>;
+  searchParams: Promise<{ code?: string; auto?: string }>;
 }) {
   const locations = await apiFetch<Location[]>('/locations').catch(() => null);
-  const { code } = await searchParams;
+  const { code, auto } = await searchParams;
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
       <PageHeader
@@ -23,6 +23,7 @@ export default async function ScanPage({
       />
       <ScanClient
         initialCode={code ?? ''}
+        autoStart={auto === '1'}
         locations={locations?.map(({ id }) => ({ id, name: locationPath(id, locations) })) ?? []}
         locationsAvailable={locations !== null}
       />

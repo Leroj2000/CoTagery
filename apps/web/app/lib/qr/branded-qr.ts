@@ -7,15 +7,15 @@ import {
   qrLogoBox,
   qrLogoHole,
 } from '@tagery/shared';
+import { TENANT_LOGO_URL } from '../tenant-logo';
 
 /**
- * QR kód s logem firmy uprostřed pro canvas (štítky, klíčenka, štítek místa).
+ * QR kód s logem firmy uprostřed pro canvas (štítky Niimbot/A4, štítek místa).
  * Geometrie otvoru je sdílená s API (`@tagery/shared` qr-logo), takže QR
  * z PDF/PNG ke stažení i z tiskárny vypadá stejně. Client-only.
  */
 
-/** BFF proxy loga aktuální firmy (404 = firma logo nemá). */
-export const TENANT_LOGO_URL = '/api/tenant-logo';
+export { TENANT_LOGO_URL };
 
 const logoCache = new Map<string, Promise<HTMLImageElement | null>>();
 
