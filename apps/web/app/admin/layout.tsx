@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
 import { getMe, apiFetch, getMyPermissions } from '../lib/server-api';
+import type { Attention } from '../lib/types';
 import { Logo } from '../ui/logo';
 import { AdminNav } from './nav';
 import { NAV_ITEMS } from './nav-items';
@@ -32,6 +33,22 @@ function initials(name: string): string {
     .toUpperCase();
 }
 
+/** Počet položek „Vyžaduje pozornost" (stejný součet jako stránka /admin/attention). */
+async function attentionCount(): Promise<number> {
+  const [att, due] = await Promise.all([
+    apiFetch<Attention>('/assets/attention').catch(() => null),
+    apiFetch<unknown[]>('/maintenance/due').catch(() => []),
+  ]);
+  if (!att) return due.length;
+  return (
+    att.overdue.length +
+    att.pendingConfirmations.length +
+    att.openIssues.length +
+    att.dueServices.length +
+    due.length
+  );
+}
+
 /**
  * Chráněný admin shell (server component). Middleware zajistí platnou session
  * (refresh); zde načteme profil pro topbar. Když /me selže, redirect na login.
@@ -53,6 +70,13 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     (item) => (item.moduleKey && inactiveModules.has(item.moduleKey)) || (item.permission && !permissions.has(item.permission)),
   ).map((item) => item.href);
 
+  // Čekající položky → čísla v kolečku v navigaci a na záložce „Menu".
+  const navCounts: Record<string, number> = {};
+  if (permissions.has('asset.item.view')) {
+    navCounts['/admin/attention'] = await attentionCount();
+  }
+  const pendingTotal = Object.values(navCounts).reduce((a, b) => a + b, 0);
+
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[264px_1fr]">
       {/* Sidebar (lg+) */}
@@ -61,7 +85,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <Logo />
         </div>
         <div className="flex-1 overflow-y-auto p-3">
-          <AdminNav hidden={hiddenNav} />
+          <AdminNav hidden={hiddenNav} counts={navCounts} />
         </div>
         <div className="border-t border-slate-100 p-4">
           <div className="flex items-center gap-3">
@@ -110,6 +134,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-28 sm:p-6 sm:pb-28 lg:p-8">{children}</main>
         <MobileNav
           hidden={hiddenNav}
+          badge={pendingTotal}
           user={{ initials: initials(me.user.name), name: me.user.name, email: me.user.email, role: me.tenantRole }}
           menu={
             <div className="mt-5 space-y-5">
@@ -125,7 +150,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
                 <p className="px-1 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-400">
                   Pracovní prostor a moduly
                 </p>
-                <AdminNav hidden={hiddenNav} />
+                <AdminNav hidden={hiddenNav} counts={navCounts} />
               </div>
               <LogoutButton block />
             </div>

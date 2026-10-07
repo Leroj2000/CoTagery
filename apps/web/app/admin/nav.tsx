@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { NAV_SECTIONS, type NavItem } from './nav-items';
+import { CountBadge } from '../ui/count-badge';
 
 /** Aktivní, když je to přesná shoda, nebo podstránka (kromě rootu /admin). */
 function isActive(pathname: string, href: string): boolean {
@@ -13,9 +14,12 @@ function isActive(pathname: string, href: string): boolean {
 export function AdminNav({
   orientation = 'vertical',
   hidden = [],
+  counts = {},
 }: {
   orientation?: 'vertical' | 'horizontal';
   hidden?: string[];
+  /** Počet čekajících položek per `href` → číslo v kolečku u položky. */
+  counts?: Record<string, number>;
 }) {
   const pathname = usePathname();
   // Filtr skrytých položek per sekce; prázdné sekce vypadnou.
@@ -37,13 +41,12 @@ export function AdminNav({
                   key={item.href}
                   href={item.href}
                   className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                    active
-                      ? 'bg-brand-50 text-brand-700'
-                      : 'text-slate-600 hover:bg-slate-100'
+                    active ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
                   <item.icon size={15} className={active ? 'text-brand-600' : undefined} />
                   {item.label}
+                  <CountBadge count={counts[item.href] ?? 0} />
                 </Link>
               );
             })}
@@ -69,7 +72,8 @@ export function AdminNav({
           size={17}
           className={active ? 'text-brand-600' : 'text-slate-400 group-hover:text-brand-600'}
         />
-        {item.label}
+        <span className="flex-1">{item.label}</span>
+        <CountBadge count={counts[item.href] ?? 0} />
       </Link>
     );
   };

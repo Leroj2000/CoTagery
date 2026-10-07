@@ -3,7 +3,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Sun, Search, ScanLine, UserRound } from 'lucide-react';
+import { Sun, Search, ScanLine, UserRound, Menu } from 'lucide-react';
+import { CountBadge } from '../ui/count-badge';
 
 interface MenuUser {
   initials: string;
@@ -13,19 +14,22 @@ interface MenuUser {
 }
 
 /**
- * Spodní mobilní lišta (< lg). Poslední záložka „Moje" neotevírá stránku, ale
+ * Spodní mobilní lišta (< lg). Poslední záložka „Menu" neotevírá stránku, ale
  * celoobrazovkové menu nad lištou (profil, organizace, navigace, odhlášení) –
  * mobilní hlavička tak drží jen logo. Menu se zavře změnou routy, opětovným
- * klepnutím na „Moje" nebo klávesou Escape.
+ * klepnutím na „Menu" nebo klávesou Escape. `badge` = součet čekajících položek
+ * (číslo v kolečku u ikony).
  */
 export function MobileNav({
   hidden = [],
   user,
   menu,
+  badge = 0,
 }: {
   hidden?: string[];
   user: MenuUser;
   menu: ReactNode;
+  badge?: number;
 }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
@@ -59,7 +63,7 @@ export function MobileNav({
           id="mobile-menu"
           role="dialog"
           aria-modal="true"
-          aria-label="Moje menu"
+          aria-label="Menu"
           className="fixed inset-x-0 top-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-50 overflow-y-auto bg-white px-4 pb-6 pt-5 sm:px-6 lg:hidden"
         >
           <div className="flex items-center gap-3">
@@ -104,8 +108,18 @@ export function MobileNav({
           aria-controls="mobile-menu"
           className={tab(open || path.startsWith('/admin/me'))}
         >
-          <UserRound size={22} />
-          Moje
+          <span className="relative">
+            <UserRound size={22} />
+            <span className="absolute -bottom-1 -right-1.5 rounded-sm bg-white">
+              <Menu size={12} strokeWidth={2.75} />
+            </span>
+            <CountBadge
+              count={badge}
+              variant="overlay"
+              label={`${badge} položek vyžaduje pozornost`}
+            />
+          </span>
+          Menu
         </button>
       </nav>
     </>
