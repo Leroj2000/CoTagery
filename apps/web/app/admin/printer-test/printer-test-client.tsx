@@ -20,7 +20,7 @@ export function PrinterTestClient() {
   const [qrValue, setQrValue] = useState('https://app.tagery.tech/r/lC64XUt6XqMQ');
   const [itemName, setItemName] = useState('Propiska');
   const [assetCode, setAssetCode] = useState('lC64XUt6XqMQ');
-  const [subtitle, setSubtitle] = useState('Funkční demo identifikátor');
+  const [category, setCategory] = useState('Kancelářské potřeby');
   const [copies, setCopies] = useState(1);
   const [debug, setDebugState] = useState(false);
   const [version, setVersion] = useState<string | null>(null);
@@ -28,8 +28,8 @@ export function PrinterTestClient() {
   const pngUrlRef = useRef<string | null>(null);
 
   const data: LabelData = useMemo(
-    () => ({ qrValue, itemName, assetCode, subtitle: subtitle || undefined }),
-    [qrValue, itemName, assetCode, subtitle],
+    () => ({ qrValue, itemName, assetCode, category: category || undefined }),
+    [qrValue, itemName, assetCode, category],
   );
 
   const busy =
@@ -76,7 +76,7 @@ export function PrinterTestClient() {
             <Field label="QR hodnota" value={qrValue} onChange={setQrValue} />
             <Field label="Název položky" value={itemName} onChange={setItemName} />
             <Field label="Evidenční kód" value={assetCode} onChange={setAssetCode} />
-            <Field label="Podtitulek (nepovinný)" value={subtitle} onChange={setSubtitle} />
+            <Field label="Kategorie (nepovinná)" value={category} onChange={setCategory} />
           </div>
         </Section>
 

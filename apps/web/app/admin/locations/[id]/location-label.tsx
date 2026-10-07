@@ -1,15 +1,13 @@
 'use client';
 import { useEffect, useState } from 'react';
-import QRCode from 'qrcode';
+import { brandedQrDataUrl } from '../../../lib/qr/branded-qr';
 
 export function LocationLabel({ id, name }: { id: string; name: string }) {
   const [qr, setQr] = useState('');
   useEffect(() => {
     let active = true;
-    void QRCode.toDataURL(`${window.location.origin}/admin/locations/${id}`, {
-      width: 360,
-      margin: 2,
-    })
+    // QR s logem firmy uprostřed a „by tagery.tech" pod ním.
+    void brandedQrDataUrl(`${window.location.origin}/admin/locations/${id}`, 360)
       .then((data) => {
         if (active) setQr(data);
       })
@@ -28,7 +26,7 @@ export function LocationLabel({ id, name }: { id: string; name: string }) {
       </p>
       {qr ? (
         <>
-          <img src={qr} alt={`QR místa ${name}`} className="h-48 w-48" />
+          <img src={qr} alt={`QR místa ${name}`} className="h-auto w-48" />
           <a download={`misto-${id}.png`} href={qr} className="action-secondary">
             Stáhnout QR štítek
           </a>

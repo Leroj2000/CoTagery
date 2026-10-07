@@ -23,6 +23,7 @@ import {
   Store,
   Search,
   UserRound,
+  Printer,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -120,6 +121,12 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'Identifikátory',
         icon: QrCode,
         permission: 'carrier.item.manage',
+      },
+      {
+        href: '/admin/labels',
+        label: 'Editor štítků',
+        icon: Printer,
+        permission: 'core.organization.configure',
       },
       {
         href: '/admin/objects',

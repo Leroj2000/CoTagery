@@ -1,19 +1,83 @@
-import QRCode from 'qrcode';
-import { LABEL_50X30 } from './niimbot-config';
+import {
+  DEFAULT_LABEL_FORMAT,
+  defaultLabelTemplate,
+  findLabelFormat,
+  type LabelCell,
+  type LabelFormat,
+  type LabelTemplate,
+} from '@tagery/shared';
 import { PrinterError, type LabelData } from './types';
+import {
+  TENANT_LOGO_URL,
+  drawBrandedQr,
+  drawQrCaption,
+  loadLogo,
+  measureBrandedQr,
+} from '../qr/branded-qr';
 
 /**
- * Vykreslení štítku 384 × 240 px do canvasu a export jako PNG blob/object URL.
+ * Vykreslení štítku do canvasu a export jako PNG blob/object URL.
+ *
+ * Rozložení je pevné (QR vlevo s logem firmy a „by tagery.tech", vpravo sloupec
+ * buněk), obsah a styl buněk určuje šablona z editoru štítků. Rozměr bitmapy
+ * dává formát: Niimbot = přesné px tiskárny (203 DPI), arch A4 = 12 px/mm.
  *
  * Výstup je deterministický pro stejné vstupy (žádný čas/náhoda). Object URL si
- * volající po dotištění uvolní přes `revokeLabel` (sekce 5 zadání).
- *
- * Canvas i QR běží pouze na klientovi – funkce sahá na `document`/canvas až při
- * volání, nikoliv při importu, takže je bezpečná pro SSR.
+ * volající po dotištění uvolní přes `revoke`. Canvas i QR běží pouze na
+ * klientovi – funkce sahá na `document`/canvas až při volání (bezpečné pro SSR).
  */
 
-const PADDING = 8; // minimální vnitřní odsazení (sekce 7)
-const QR_SIZE = 188; // QR vlevo, ~184–192 px (sekce 7)
+/** Rozlišení pro archy A4 (≈ 305 DPI) – ostrý QR i text při tisku z prohlížeče. */
+const SHEET_PX_PER_MM = 12;
+/** Min. velikost modulu QR v px; když by ji logo nesplnilo, QR se vykreslí bez loga. */
+const MIN_MODULE_PX_WITH_LOGO = 3;
+
+/** Rozměr bitmapy štítku v px. */
+export function labelPixelSize(format: LabelFormat): { w: number; h: number } {
+  if (format.niimbot) return { w: format.niimbot.w_px, h: format.niimbot.h_px };
+  return {
+    w: Math.round(format.widthMm * SHEET_PX_PER_MM),
+    h: Math.round(format.heightMm * SHEET_PX_PER_MM),
+  };
+}
+
+/** Geometrie rozložení (čistá funkce – testovatelná bez canvasu). */
+export function labelGeometry(w: number, h: number) {
+  const pad = Math.max(4, Math.round(h * 0.033));
+  const caption = Math.max(9, Math.round(h * 0.058));
+  const qrMax = Math.max(40, Math.min(h - 2 * pad - caption - 2, Math.floor(w * 0.49)));
+  // Základ písma: u vysokých štítků se neřídí výškou, ale šířkou textového sloupce.
+  const base = Math.min(h, w * 0.625);
+  const font = {
+    S: Math.round(base * 0.067),
+    M: Math.round(base * 0.092),
+    L: Math.round(base * 0.115),
+  };
+  return { pad, caption, qrMax, font, gap: Math.max(6, Math.round(w * 0.031)) };
+}
+
+/** Text buňky pro konkrétní položku (prázdný řetězec = buňka se vynechá). */
+export function labelCellValue(cell: LabelCell, data: LabelData): string {
+  switch (cell.kind) {
+    case 'name':
+      return data.itemName;
+    case 'code':
+      return data.assetCode;
+    case 'category':
+      return data.category ?? '';
+    case 'location':
+      return data.location ?? '';
+    case 'custom':
+      return cell.text ?? '';
+  }
+}
+
+export type RenderOptions = {
+  /** Klíč formátu z katalogu (výchozí Niimbot 50 × 30). */
+  formatKey?: string;
+  /** Šablona buněk (výchozí šablona formátu). */
+  template?: LabelTemplate | null;
+};
 
 /**
  * Zalomí text na daný počet řádků podle změřené šířky. Poslední povolený řádek
@@ -90,93 +154,85 @@ export type RenderedLabel = {
 };
 
 /**
- * Vykreslí štítek do canvasu 384 × 240 px, vloží QR + texty a vrátí object URL
- * PNG. QR se vykresluje jako ostrá matice (bez interpolace), s bílou klidovou
- * zónou a chybovou korekcí „M“.
+ * Vykreslí štítek podle formátu a šablony a vrátí object URL PNG. QR je ostrá
+ * matice s celočíselnou velikostí modulu a klidovou zónou, s logem firmy
+ * uprostřed (u Niimbotu černobíle) a „by tagery.tech" pod ním.
  */
-export async function renderLabel(data: LabelData): Promise<RenderedLabel> {
+export async function renderLabel(
+  data: LabelData,
+  { formatKey, template }: RenderOptions = {},
+): Promise<RenderedLabel> {
   if (typeof document === 'undefined') {
     throw new PrinterError('render-failed', 'Štítek se nepodařilo připravit.');
   }
   try {
-    const { w_px, h_px } = LABEL_50X30;
+    const format = findLabelFormat(formatKey) ?? findLabelFormat(DEFAULT_LABEL_FORMAT)!;
+    const cells =
+      template && template.formatKey === format.key
+        ? template.cells
+        : defaultLabelTemplate(format.key).cells;
+    const { w, h } = labelPixelSize(format);
+    const g = labelGeometry(w, h);
+    const thermal = format.kind === 'niimbot';
+
     const canvas = document.createElement('canvas');
-    canvas.width = w_px;
-    canvas.height = h_px;
+    canvas.width = w;
+    canvas.height = h;
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('2D kontext canvasu není dostupný.');
-
-    // Bílé pozadí, černý obsah.
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, w_px, h_px);
-    ctx.fillStyle = '#000000';
-    ctx.imageSmoothingEnabled = false;
+    ctx.fillRect(0, 0, w, h);
 
-    // ── QR kód vlevo (ostrý, s klidovou zónou) ────────────────────────────────
-    const qrCanvas = document.createElement('canvas');
-    await QRCode.toCanvas(qrCanvas, data.qrValue, {
-      errorCorrectionLevel: 'M',
-      margin: 2, // bílá klidová zóna (moduly)
-      scale: 1,
-      color: { dark: '#000000', light: '#ffffff' },
+    // ── QR vlevo + popisek, blok svisle vycentrovaný ──────────────────────────
+    let logo = await loadLogo(data.logoUrl === undefined ? TENANT_LOGO_URL : data.logoUrl);
+    // Čtení má přednost před logem: na malém štítku by korekce „H“ zhustila
+    // matici pod čitelnou velikost modulu → vykresli QR bez loga.
+    if (logo && measureBrandedQr(data.qrValue, g.qrMax, true).modulePx < MIN_MODULE_PX_WITH_LOGO) {
+      logo = null;
+    }
+    const qrSize = measureBrandedQr(data.qrValue, g.qrMax, !!logo).size;
+    const qrY = Math.max(g.pad, Math.round((h - (qrSize + 2 + g.caption)) / 2));
+    const qr = drawBrandedQr(ctx, data.qrValue, {
+      x: g.pad,
+      y: qrY,
+      maxSize: g.qrMax,
+      logo,
+      monochrome: thermal,
     });
-    const qrY = Math.round((h_px - QR_SIZE) / 2);
-    // Nearest-neighbour škálování matice na cílovou velikost – bez rozmazání.
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(qrCanvas, PADDING, qrY, QR_SIZE, QR_SIZE);
+    drawQrCaption(ctx, qr, g.pad, qrY + qr.size + 2, g.caption);
 
-    // ── Textový sloupec vpravo ────────────────────────────────────────────────
-    const textX = PADDING + QR_SIZE + 12;
-    const textW = w_px - textX - PADDING;
-
-    // Název: max 3 řádky, tučné, dost velké písmo.
-    const nameFont = 'bold 26px Arial, sans-serif';
-    ctx.font = nameFont;
+    // ── Sloupec buněk vpravo (shora dolů, co se nevejde, zkrátí se) ───────────
+    const textX = g.pad + qr.size + g.gap;
+    const textW = w - textX - g.pad;
+    const bottom = h - g.pad;
+    ctx.fillStyle = '#000000';
     ctx.textBaseline = 'top';
     const measure = (s: string): number => ctx.measureText(s).width;
-    const nameLines = wrapText(data.itemName, textW, 3, measure);
-
-    let y = PADDING + 6;
-    const nameLineHeight = 30;
-    for (const line of nameLines) {
-      ctx.fillText(line, textX, y);
-      y += nameLineHeight;
-    }
-
-    // Evidenční kód – výrazně pod názvem.
-    y += 8;
-    ctx.font = 'bold 22px "Courier New", monospace';
-    ctx.fillText(data.assetCode, textX, y);
-
-    // Nepovinný podtitulek u spodního okraje.
-    if (data.subtitle && data.subtitle.trim()) {
-      ctx.font = '16px Arial, sans-serif';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText(clip(ctx, data.subtitle.trim(), textW), textX, h_px - PADDING);
+    let y = g.pad + Math.round(g.font.S * 0.3);
+    for (const cell of cells) {
+      const value = labelCellValue(cell, data).trim();
+      if (!value || textW < 20) continue;
+      const px = g.font[cell.size];
+      const lineH = Math.round(px * 1.15);
+      const fits = Math.floor((bottom - y) / lineH);
+      if (fits < 1) break;
+      const family = cell.kind === 'code' ? '"Courier New", monospace' : 'Arial, sans-serif';
+      ctx.font = `${cell.bold ? 'bold ' : ''}${px}px ${family}`;
+      const lines = wrapText(value, textW, Math.min(cell.maxLines, fits), measure);
+      for (const line of lines) {
+        ctx.fillText(line, textX, y);
+        y += lineH;
+      }
+      y += Math.round(px * 0.3);
     }
 
     const blob = await canvasToPngBlob(canvas);
     const url = URL.createObjectURL(blob);
-    return {
-      url,
-      width: w_px,
-      height: h_px,
-      revoke: () => URL.revokeObjectURL(url),
-    };
+    return { url, width: w, height: h, revoke: () => URL.revokeObjectURL(url) };
   } catch (err) {
     if (err instanceof PrinterError) throw err;
     throw new PrinterError('render-failed', 'Štítek se nepodařilo připravit.', err);
   }
-}
-
-/** Zkrátí jednořádkový text výpustkou, aby se vešel do šířky. */
-function clip(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
-  if (ctx.measureText(text).width <= maxWidth) return text;
-  let s = text;
-  while (s.length > 0 && ctx.measureText(`${s}…`).width > maxWidth) {
-    s = s.slice(0, -1);
-  }
-  return `${s}…`;
 }
 
 function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {

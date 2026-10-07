@@ -5,13 +5,9 @@ import { detectBrowserSupport } from './browser-support';
 import { clampCopies } from './copies';
 import { connectPrinter, printLabel } from './niimbot-client';
 import { toPrinterError } from './printer-messages';
-import {
-  initialMachine,
-  isBusy,
-  reducer,
-  type PrinterMachine,
-} from './printer-machine';
+import { initialMachine, isBusy, reducer, type PrinterMachine } from './printer-machine';
 import type { LabelData } from './types';
+import type { RenderOptions } from './render-label';
 
 /**
  * React hook nad izolovanou tiskovou vrstvou. Řídí stavový automat, průběh
@@ -26,7 +22,7 @@ export type UseNiimbotPrinter = PrinterMachine & {
   /** Kategorie nepodpory (pro návod na Bluefy) – jen když `supported === false`. */
   unsupportedKind: 'ios-no-bluetooth' | 'unsupported' | null;
   connect: () => Promise<void>;
-  printLabel: (data: LabelData, copies?: number) => Promise<void>;
+  printLabel: (data: LabelData, copies?: number, options?: RenderOptions) => Promise<void>;
   resetError: () => void;
 };
 
@@ -34,7 +30,10 @@ export function useNiimbotPrinter(): UseNiimbotPrinter {
   // Start pesimisticky jako „unsupported“ – přepíšeme v efektu na klientovi,
   // aby první render na serveru i klientovi seděl (žádný přístup k navigatoru).
   const [machine, dispatch] = useReducer(reducer, false, initialMachine);
-  const supportRef = useRef<{ supported: boolean; kind: 'ios-no-bluetooth' | 'unsupported' | null }>({
+  const supportRef = useRef<{
+    supported: boolean;
+    kind: 'ios-no-bluetooth' | 'unsupported' | null;
+  }>({
     supported: false,
     kind: 'unsupported',
   });
@@ -65,7 +64,7 @@ export function useNiimbotPrinter(): UseNiimbotPrinter {
   }, [machine.state]);
 
   const doPrint = useCallback(
-    async (data: LabelData, copies = 1) => {
+    async (data: LabelData, copies = 1, options: RenderOptions = {}) => {
       // Zákaz souběžného dvojitého tisku (sekce 5/13 zadání).
       if (busyRef.current || isBusy(machine.state)) return;
       busyRef.current = true;
@@ -73,7 +72,12 @@ export function useNiimbotPrinter(): UseNiimbotPrinter {
       dispatch({ type: 'render-start' });
       try {
         dispatch({ type: 'print-start' });
-        await printLabel(data, count, (message) => dispatch({ type: 'progress', message }));
+        await printLabel(
+          data,
+          count,
+          (message) => dispatch({ type: 'progress', message }),
+          options,
+        );
         dispatch({ type: 'print-success' });
       } catch (err) {
         dispatch({ type: 'fail', error: toPrinterError(err, 'print-failed') });

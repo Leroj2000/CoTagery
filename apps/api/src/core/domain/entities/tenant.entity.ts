@@ -28,6 +28,13 @@ export class Tenant {
   @Column({ type: 'jsonb', name: 'settings_json', default: {} })
   settings!: Record<string, unknown>;
 
+  /**
+   * Klíč loga firmy v úložišti (PNG). `select: false` – interní klíč se neposílá
+   * v `GET /tenant`; klient dostává jen `hasLogo` a obrázek přes `/tenant/logo`.
+   */
+  @Column({ type: 'text', name: 'logo_file_key', nullable: true, select: false })
+  logoFileKey?: string | null;
+
   /** Opt-in viditelnost firmy v síti/discovery nad půjčovnou (EPIC-21). */
   @Column({ type: 'boolean', name: 'network_listed', default: false })
   networkListed!: boolean;

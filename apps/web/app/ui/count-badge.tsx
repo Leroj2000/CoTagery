@@ -22,7 +22,7 @@ export function CountBadge({
   if (count <= 0) return null;
   const text = count > max ? `${max}+` : String(count);
   const position =
-    variant === 'overlay' ? 'absolute -right-2 -top-1.5 ring-2 ring-white' : 'shrink-0';
+    variant === 'overlay' ? 'absolute -right-[18px] -top-1.5 ring-2 ring-white' : 'shrink-0';
   return (
     <span
       role="status"

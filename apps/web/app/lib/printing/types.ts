@@ -14,8 +14,15 @@ export type LabelData = {
   itemName: string;
   /** Evidenční kód (inventární číslo nebo public code nosiče). */
   assetCode: string;
-  /** Nepovinný krátký podtitulek u spodního okraje. */
-  subtitle?: string;
+  /** Kategorie položky (buňka „Kategorie“ v šabloně štítku). */
+  category?: string;
+  /** Umístění položky (buňka „Umístění“ v šabloně štítku). */
+  location?: string;
+  /**
+   * URL loga do středu QR. `undefined` = logo aktuální firmy (BFF proxy),
+   * `null` = bez loga. Když logo neexistuje (404), QR se vykreslí bez něj.
+   */
+  logoUrl?: string | null;
 };
 
 /** Stavový automat tiskárny (viz sekce 5 zadání). */
@@ -69,5 +76,4 @@ export class PrinterError extends Error {
 
 /** Podpora prostředí zjištěná z `navigator`/UA (informativní, ne náhrada za skutečnou chybu). */
 export type BrowserSupport =
-  | { supported: true }
-  | { supported: false; kind: 'ios-no-bluetooth' | 'unsupported' };
+  { supported: true } | { supported: false; kind: 'ios-no-bluetooth' | 'unsupported' };

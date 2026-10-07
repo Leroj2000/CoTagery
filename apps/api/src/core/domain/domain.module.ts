@@ -17,6 +17,7 @@ import { DigitalObjectsService } from './objects/digital-objects.service';
 import { DataCarriersController } from './carriers/data-carriers.controller';
 import { DataCarriersService } from './carriers/data-carriers.service';
 import { QrService } from './carriers/qr.service';
+import { BrandedQrService } from './carriers/branded-qr.service';
 import { UsersController } from './users/users.controller';
 import { UsersService } from './users/users.service';
 import { GroupsController } from './groups/groups.controller';
@@ -61,6 +62,7 @@ import { ModuleRegistry } from './module-handler';
     DigitalObjectsService,
     DataCarriersService,
     QrService,
+    BrandedQrService,
     UsersService,
     GroupsService,
     TenantService,
@@ -69,6 +71,6 @@ import { ModuleRegistry } from './module-handler';
     CategoryLinksService,
     ModuleRegistry,
   ],
-  exports: [ModuleRegistry, DataCarriersService],
+  exports: [ModuleRegistry, DataCarriersService, BrandedQrService],
 })
 export class DomainModule {}

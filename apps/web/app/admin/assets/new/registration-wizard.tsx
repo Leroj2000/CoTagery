@@ -160,7 +160,8 @@ export function RegistrationWizard({
               itemName: receipt.asset.name,
               assetCode: carrier.publicCode,
               qrValue: carrier.resolverUrl ?? carrier.publicCode,
-              subtitle: locationPath(location, places),
+              category: receipt.asset.category ?? undefined,
+              location: locationPath(location, places),
             }}
           />
         )}

@@ -13,7 +13,7 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../rbac/permissions.guard';
 import { RequirePermission } from '../../rbac/require-permission.decorator';
 import { DataCarriersService } from './data-carriers.service';
-import { QrService } from './qr.service';
+import { BrandedQrService } from './branded-qr.service';
 import { ClaimCarrierDto, GenerateBatchDto, NfcPairDto } from './dto/carrier.dto';
 import type { DataCarrier } from '../entities/data-carrier.entity';
 
@@ -22,7 +22,7 @@ import type { DataCarrier } from '../entities/data-carrier.entity';
 export class DataCarriersController {
   constructor(
     private readonly carriers: DataCarriersService,
-    private readonly qr: QrService,
+    private readonly qr: BrandedQrService,
   ) {}
 
   // Předgenerovaný pool – statické routy PŘED ":id".
@@ -75,9 +75,9 @@ export class DataCarriersController {
     const carrier = await this.carriers.get(id);
     const data = carrier.resolverUrl ?? carrier.publicCode;
     if (format === 'png') {
-      return new StreamableFile(await this.qr.png(data), { type: 'image/png' });
+      return new StreamableFile(await this.qr.brandedPng(data), { type: 'image/png' });
     }
-    const svg = await this.qr.svg(data);
+    const svg = await this.qr.brandedSvg(data);
     return new StreamableFile(Buffer.from(svg, 'utf8'), { type: 'image/svg+xml' });
   }
 

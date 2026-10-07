@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import * as QRCode from 'qrcode';
 import PDFDocument from 'pdfkit';
 import { TenantContextService } from '../tenancy/tenant-context.service';
 import { DataCarrier } from '../domain/entities/data-carrier.entity';
+import { BrandedQrService } from '../domain/carriers/branded-qr.service';
+import { QR_CAPTION } from '@tagery/shared';
 import { buildLabelSvg } from './label';
 
 export interface FabricationOutput {
@@ -17,7 +18,10 @@ export interface FabricationOutput {
  */
 @Injectable()
 export class FabricationService {
-  constructor(private readonly context: TenantContextService) {}
+  constructor(
+    private readonly context: TenantContextService,
+    private readonly qr: BrandedQrService,
+  ) {}
 
   private async carrier(id: string): Promise<DataCarrier> {
     const carrier = await this.context.manager
@@ -32,7 +36,7 @@ export class FabricationService {
     const data = carrier.resolverUrl ?? carrier.publicCode;
 
     if (format === 'svg') {
-      const qr = await QRCode.toString(data, { type: 'svg', margin: 0 });
+      const qr = await this.qr.brandedSvg(data, 0);
       const svg = buildLabelSvg(qr, carrier.publicCode);
       return {
         buffer: Buffer.from(svg, 'utf8'),
@@ -41,7 +45,7 @@ export class FabricationService {
       };
     }
 
-    const qrPng = await QRCode.toBuffer(data, { type: 'png', width: 512, margin: 1 });
+    const qrPng = await this.qr.brandedPng(data, 512, 1);
 
     if (format === 'png') {
       return {
@@ -51,7 +55,7 @@ export class FabricationService {
       };
     }
 
-    // PDF: QR + kód na štítek.
+    // PDF: QR (s logem) + „by tagery.tech" + kód na štítek.
     const pdf = await this.renderPdf(qrPng, carrier.publicCode);
     return {
       buffer: pdf,
@@ -69,6 +73,8 @@ export class FabricationService {
       doc.on('error', reject);
 
       doc.image(qrPng, 20, 20, { width: 200 });
+      // QR PNG má 1 modul klidové zóny – text zarovnaný k levé hraně modulů.
+      doc.font('Helvetica-Bold').fontSize(9).fillColor('#111111').text(QR_CAPTION, 26, 224);
       doc.font('Courier').fontSize(16).text(code, 20, 250, { width: 200, align: 'center' });
       doc.end();
     });

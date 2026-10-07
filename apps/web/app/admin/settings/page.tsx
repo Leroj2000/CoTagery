@@ -4,6 +4,7 @@ import { Section, Badge, Mono } from '../ui';
 import { ActionForm } from '../action-form';
 import { updateTenant, updateRentalPayment, setModuleState } from '../actions';
 import { ActionButton } from '../action-button';
+import { TenantLogoForm } from './tenant-logo-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,7 @@ const MODULE_LABELS: Record<string, string> = {
 
 export default async function SettingsPage() {
   const [tenant, modules, permissions] = await Promise.all([
-    apiFetch<Tenant>('/tenant'),
+    apiFetch<Tenant & { hasLogo?: boolean }>('/tenant'),
     apiFetch<ModuleState[]>('/modules').catch(() => [] as ModuleState[]),
     getMyPermissions(),
   ]);
@@ -83,6 +84,16 @@ export default async function SettingsPage() {
               defaultValue: networkListed ? 'true' : 'false',
             },
           ]}
+        />
+      </Section>
+
+      <Section
+        title="Logo firmy"
+        description="Vkládá se doprostřed QR kódů na štítcích a v exportech."
+      >
+        <TenantLogoForm
+          hasLogo={tenant.hasLogo === true}
+          canEdit={permissions.has('core.organization.configure')}
         />
       </Section>
 

@@ -36,3 +36,6 @@ export interface HealthStatus {
   };
   timestamp: string;
 }
+
+export * from './qr-logo';
+export * from './labels';

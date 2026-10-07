@@ -2,22 +2,28 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { renderLabel } from '../../../lib/printing/render-label';
+import { DEFAULT_LABEL_FORMAT, findLabelFormat, type LabelTemplate } from '@tagery/shared';
+import { labelPixelSize, renderLabel } from '../../../lib/printing/render-label';
 import type { LabelData } from '../../../lib/printing/types';
 
 /**
- * Přesný náhled štítku 384 × 240 px. Vykreslí se stejnou funkcí jako tiskový
- * obraz, takže náhled == tisk. Client-only (canvas/Blob) – během SSR nic nedělá.
+ * Přesný náhled štítku ve zvoleném formátu a šabloně. Vykreslí se stejnou
+ * funkcí jako tiskový obraz, takže náhled == tisk. Client-only (canvas/Blob) –
+ * během SSR nic nedělá.
  *
  * `onPngUrl` nepovinně vrací object URL vykreslené PNG (test page ji nabízí ke
  * stažení pro diagnostiku).
  */
 export function LabelPreview({
   data,
+  formatKey = DEFAULT_LABEL_FORMAT,
+  template = null,
   className,
   onPngUrl,
 }: {
   data: LabelData;
+  formatKey?: string;
+  template?: LabelTemplate | null;
   className?: string;
   onPngUrl?: (url: string | null) => void;
 }) {
@@ -29,13 +35,18 @@ export function LabelPreview({
   const onPngUrlRef = useRef(onPngUrl);
   onPngUrlRef.current = onPngUrl;
 
+  const dataKey = JSON.stringify(data);
+  const templateKey = JSON.stringify(template);
+  const format = findLabelFormat(formatKey) ?? findLabelFormat(DEFAULT_LABEL_FORMAT)!;
+  const px = labelPixelSize(format);
+
   useEffect(() => {
     let url: string | null = null;
     let cancelled = false;
     setReady(false);
     setError(false);
 
-    renderLabel(data)
+    renderLabel(data, { formatKey, template })
       .then((rendered) => {
         if (cancelled) {
           rendered.revoke();
@@ -55,14 +66,14 @@ export function LabelPreview({
       onPngUrlRef.current?.(null);
       if (url) URL.revokeObjectURL(url);
     };
-    // Přerenderuje se jen při změně dat štítku.
-  }, [data.qrValue, data.itemName, data.assetCode, data.subtitle]);
+    // Přerenderuje se jen při změně dat štítku, formátu nebo šablony.
+  }, [dataKey, formatKey, templateKey]);
 
   return (
     <div
       className={`relative flex items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white ${className ?? ''}`}
-      // Poměr přesně 384:240 (= 8:5). Reálná bitmapa je vždy 384×240 px.
-      style={{ aspectRatio: '384 / 240' }}
+      // Poměr stran přesně podle bitmapy formátu.
+      style={{ aspectRatio: `${px.w} / ${px.h}` }}
     >
       {!ready && !error && (
         <div className="absolute inset-0 flex items-center justify-center text-slate-300">
@@ -74,9 +85,9 @@ export function LabelPreview({
       ) : (
         <img
           ref={imgRef}
-          alt="Náhled štítku 384 × 240 px"
-          width={384}
-          height={240}
+          alt={`Náhled štítku ${format.label}`}
+          width={px.w}
+          height={px.h}
           className="h-full w-full object-contain"
           style={{ imageRendering: 'pixelated' }}
         />

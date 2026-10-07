@@ -2,7 +2,8 @@ import { LABEL_50X30, NIIMBOT_B1_MODEL } from './niimbot-config';
 import { isSupportedB1 } from './model-check';
 import { toPrinterError } from './printer-messages';
 import { PrinterError, type LabelData, type PrinterInfo } from './types';
-import { renderLabel } from './render-label';
+import { renderLabel, type RenderOptions } from './render-label';
+import { DEFAULT_LABEL_FORMAT, findLabelFormat } from '@tagery/shared';
 
 /**
  * Klientský wrapper nad knihovnou `niimbot-web-bluetooth`. Integrace je záměrně
@@ -100,6 +101,13 @@ const SIZE: NiimbotSize = {
   offset_y_px: LABEL_50X30.offset_y_px,
 };
 
+/** Rozměr tiskového obrazu pro formát z katalogu (výchozí 50 × 30). */
+function sizeFor(formatKey: string | undefined): NiimbotSize {
+  const spec = (findLabelFormat(formatKey) ?? findLabelFormat(DEFAULT_LABEL_FORMAT))?.niimbot;
+  if (!spec) return SIZE;
+  return { w_px: spec.w_px, h_px: spec.h_px, dpi: spec.dpi, offset_y_px: spec.offset_y_px };
+}
+
 /**
  * Vyvolá výběr tiskárny (přímou akcí uživatele), připojí ji a identifikuje.
  * Když nejde o podporovaný B1, hned se odpojí a vyhodí `wrong-model`.
@@ -146,13 +154,14 @@ export async function printLabel(
   data: LabelData,
   copies: number,
   onProgress?: (s: string) => void,
+  options: RenderOptions = {},
 ): Promise<void> {
   const api = await loadNiimbot();
-  const rendered = await renderLabel(data);
+  const rendered = await renderLabel(data, options);
   try {
     await api.printImage(rendered.url, {
       model: MODEL,
-      size: SIZE,
+      size: sizeFor(options.formatKey),
       copies,
       density: NIIMBOT_B1_MODEL.density,
       onProgress,

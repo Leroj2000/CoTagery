@@ -227,7 +227,8 @@ export default async function AssetDetail({
                     qrValue: qrCarrier.resolverUrl ?? qrCarrier.publicCode,
                     itemName: asset.name,
                     assetCode: asset.inventoryNumber ?? qrCarrier.publicCode,
-                    subtitle: asset.category ?? undefined,
+                    category: asset.category ?? undefined,
+                    location: asset.homeLocationId ? locName.get(asset.homeLocationId) : undefined,
                   }}
                 />
               </div>
@@ -541,7 +542,10 @@ export default async function AssetDetail({
                               qrValue: c.resolverUrl ?? c.publicCode,
                               itemName: asset.name,
                               assetCode: asset.inventoryNumber ?? c.publicCode,
-                              subtitle: asset.category ?? undefined,
+                              category: asset.category ?? undefined,
+                              location: asset.homeLocationId
+                                ? locName.get(asset.homeLocationId)
+                                : undefined,
                             }}
                           />
                         </div>
