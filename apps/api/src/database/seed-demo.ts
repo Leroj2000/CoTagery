@@ -132,13 +132,22 @@ async function seedDemo(): Promise<void> {
     await ctx.manager.getRepository(Subscription).save(sub);
     await billing.recordPaidInvoice(sub, false);
 
-    // Uživatelé + skupina
-    const editor = await users.invite({
+    // Uživatelé + skupina (pozvánky jménem vlastníka demo firmy – hierarchie rolí)
+    const [ownerRow] = (await ds.query(
+      `SELECT user_id FROM org_memberships WHERE tenant_id = $1 AND role = 'OWNER' LIMIT 1`,
+      [tenantId],
+    )) as { user_id: string }[];
+    const owner = { userId: ownerRow.user_id, tenantId, tenantRole: 'OWNER' };
+    const editor = await users.invite(owner, {
       email: 'editor@demo.cz',
       name: 'Editor Demo',
       tenantRole: 'EDITOR',
     });
-    await users.invite({ email: 'viewer@demo.cz', name: 'Viewer Demo', tenantRole: 'VIEWER' });
+    await users.invite(owner, {
+      email: 'viewer@demo.cz',
+      name: 'Viewer Demo',
+      tenantRole: 'VIEWER',
+    });
     console.log('Pozvaný editor:', editor.user.email);
     const seedUser = { userId: editor.user.id, tenantId, tenantRole: 'OWNER' as const };
     const group = await groups.create(seedUser, { name: 'Zaměstnanci', type: 'user' });

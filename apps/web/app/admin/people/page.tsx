@@ -1,6 +1,7 @@
 import { Contact, UserRound } from 'lucide-react';
 import { apiFetch, ApiError, getMyPermissions } from '../../lib/server-api';
 import type { AdminUser, Person, PersonCategory } from '../../lib/types';
+import { roleName, type RolesOverview } from '../../lib/roles';
 import { PageHeader, Section, Badge, EmptyState } from '../ui';
 import { InlineEdit } from '../inline-edit';
 import { updatePerson } from '../actions';
@@ -35,6 +36,8 @@ export default async function PeoplePage() {
     throw e;
   });
   const canManage = perms.has('core.person.manage');
+  // Názvy rolí (i vlastních rolí firmy); bez přístupu k rolím zůstane klíč.
+  const roles = await apiFetch<RolesOverview>('/roles').catch(() => null);
 
   const rows: Row[] = [
     ...people.map(
@@ -55,7 +58,7 @@ export default async function PeoplePage() {
         name: u.name,
         subtitle: u.email,
         categoryIds: u.categoryIds ?? [],
-        role: u.tenantRole,
+        role: roles ? roleName(roles.roles, u.tenantRole) : u.tenantRole,
       }),
     ),
   ].sort((a, b) => a.name.localeCompare(b.name, 'cs'));

@@ -37,6 +37,8 @@ export interface Me {
   user: { id: string; email: string; name: string };
   tenantId: string;
   tenantRole: string;
+  /** Název aktuální role (systémové i vlastní role firmy). */
+  roleName?: string;
   isPlatformAdmin?: boolean;
 }
 

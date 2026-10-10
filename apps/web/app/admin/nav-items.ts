@@ -24,6 +24,7 @@ import {
   Search,
   UserRound,
   Printer,
+  KeyRound,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -141,6 +142,12 @@ export const NAV_SECTIONS: NavSection[] = [
         permission: 'core.group.manage',
       },
       { href: '/admin/users', label: 'Uživatelé', icon: Users, permission: 'core.member.view' },
+      {
+        href: '/admin/roles',
+        label: 'Role a oprávnění',
+        icon: KeyRound,
+        permission: 'core.role.view',
+      },
       {
         href: '/admin/billing',
         label: 'Předplatné',

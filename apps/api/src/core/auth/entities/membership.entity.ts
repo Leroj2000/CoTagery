@@ -1,5 +1,4 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
-import type { TenantRole } from '@tagery/shared';
 
 /**
  * Členství identity v organizaci (EPIC-18 Fáze 0). Jeden `user` může mít víc
@@ -22,7 +21,7 @@ export class OrgMembership {
   userId!: string;
 
   @Column({ type: 'text', default: 'VIEWER' })
-  role!: TenantRole;
+  role!: string;
 
   @Column({ type: 'text', default: 'active' })
   status!: 'active' | 'suspended';

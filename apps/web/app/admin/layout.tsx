@@ -125,7 +125,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             )}
             <OrgSwitcher current={me.tenantId} memberships={memberships} />
             <span className="shrink-0 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-200">
-              {me.tenantRole}
+              {me.roleName ?? me.tenantRole}
             </span>
             <LogoutButton />
           </div>
@@ -135,7 +135,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         <MobileNav
           hidden={hiddenNav}
           badge={pendingTotal}
-          user={{ initials: initials(me.user.name), name: me.user.name, email: me.user.email, role: me.tenantRole }}
+          user={{ initials: initials(me.user.name), name: me.user.name, email: me.user.email, role: me.roleName ?? me.tenantRole }}
           menu={
             <div className="mt-5 space-y-5">
               {me.isPlatformAdmin && (

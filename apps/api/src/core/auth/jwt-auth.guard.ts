@@ -5,12 +5,12 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import type { TenantRole } from '@tagery/shared';
 
 export interface RequestUser {
   userId: string;
   tenantId: string;
-  tenantRole: TenantRole;
+  /** Role z tokenu (klíč). Pro autorizaci se bere aktuální role z členství. */
+  tenantRole: string;
   membershipId?: string | null;
 }
 
@@ -40,7 +40,7 @@ export class JwtAuthGuard implements CanActivate {
       req.user = {
         userId: payload.sub as string,
         tenantId: payload.tenantId as string,
-        tenantRole: payload.tenantRole as TenantRole,
+        tenantRole: payload.tenantRole as string,
         membershipId: (payload.membershipId as string | undefined) ?? null,
       };
       return true;

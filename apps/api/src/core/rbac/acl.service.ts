@@ -6,11 +6,18 @@ import { DigitalObject } from '../domain/entities/digital-object.entity';
 import { ObjectPermission } from './entities/object-permission.entity';
 import { highestPermission, permissionMeets } from './permission-rank';
 import type { RequestUser } from '../auth/jwt-auth.guard';
+import { AuthzService } from './authz.service';
+
+/** Úroveň administrátora – od ní výš má role implicitně přístup ke všem objektům. */
+const ADMIN_RANK = 80;
 import type { GrantPermissionDto } from './dto/grant-permission.dto';
 
 @Injectable()
 export class AclService {
-  constructor(private readonly context: TenantContextService) {}
+  constructor(
+    private readonly context: TenantContextService,
+    private readonly authz: AuthzService,
+  ) {}
 
   private repo(): Repository<ObjectPermission> {
     return this.context.manager.getRepository(ObjectPermission);
@@ -57,22 +64,22 @@ export class AclService {
 
   /**
    * Má uživatel na objektu alespoň `required`?
-   * OWNER/ADMIN mají implicitně vše; jinak dle ObjectPermission (user + tenant-wide).
+   * Vlastník/administrátor (úroveň ≥ admin, aktuální role z členství) mají
+   * implicitně vše; jinak dle ObjectPermission (user + tenant-wide).
    */
   async check(
     objectId: string,
     user: RequestUser,
     required: ObjectPermissionLevel,
   ): Promise<boolean> {
-    if (user.tenantRole === 'OWNER' || user.tenantRole === 'ADMIN') return true;
+    if ((await this.authz.roleInfo(user)).rank >= ADMIN_RANK) return true;
 
     const now = Date.now();
     const perms = await this.repo().find({ where: { digitalObjectId: objectId } });
     const applicable = perms
       .filter(
         (p) =>
-          (p.subjectType === 'user' && p.subjectId === user.userId) ||
-          p.subjectType === 'tenant',
+          (p.subjectType === 'user' && p.subjectId === user.userId) || p.subjectType === 'tenant',
       )
       .filter((p) => !p.expiresAt || p.expiresAt.getTime() > now)
       .map((p) => p.permission);

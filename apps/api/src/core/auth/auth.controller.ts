@@ -27,6 +27,7 @@ import {
   RegisterOrganizationDto,
 } from './dto/onboarding.dto';
 import { RateLimitService } from '../resolver/rate-limit.service';
+import { AuthzService } from '../rbac/authz.service';
 
 interface RequestAddress {
   ip?: string;
@@ -39,6 +40,7 @@ export class AuthController {
     private readonly auth: AuthService,
     @InjectRepository(User) private readonly users: Repository<User>,
     private readonly rateLimit: RateLimitService,
+    private readonly authz: AuthzService,
   ) {}
 
   private clientIp(request: RequestAddress): string {
@@ -144,14 +146,18 @@ export class AuthController {
     user: { id: string; email: string; name: string };
     tenantId: string;
     tenantRole: string;
+    roleName: string;
     isPlatformAdmin: boolean;
   }> {
     const user = await this.users.findOne({ where: { id: current.userId } });
     if (!user) throw new NotFoundException('Uživatel neexistuje');
+    // Aktuální role z členství (token může nést roli starou až 15 min).
+    const role = await this.authz.roleInfo(current);
     return {
       user: { id: user.id, email: user.email, name: user.name },
       tenantId: current.tenantId,
-      tenantRole: current.tenantRole,
+      tenantRole: role.key,
+      roleName: role.name,
       isPlatformAdmin: user.isPlatformAdmin,
     };
   }

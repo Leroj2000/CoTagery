@@ -1,7 +1,10 @@
 import { randomBytes } from 'node:crypto';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
-import type { TenantRole } from '@tagery/shared';
+import { isSystemRoleKey, membershipRoleKey, type TenantRole } from '@tagery/shared';
+import type { RequestUser } from '../../auth/jwt-auth.guard';
+import { RolesService } from '../../rbac/roles.service';
+import { AuthzService } from '../../rbac/authz.service';
 import { TenantContextService } from '../../tenancy/tenant-context.service';
 import { AuditService } from '../../rbac/audit.service';
 import { AuthService } from '../../auth/auth.service';
@@ -16,11 +19,17 @@ export interface UserView {
   id: string;
   email: string;
   name: string;
-  tenantRole: TenantRole;
+  /** Klíč role v této firmě (systémová velkými, vlastní `c_…`). */
+  tenantRole: string;
   status: string;
   createdAt: Date;
   /** Kategorie uživatele v této firmě (many-to-many). */
   categoryIds: string[];
+}
+
+/** `users.tenant_role` je historický sloupec (domovská role) – nese jen systémové role. */
+function legacyRole(role: string): TenantRole {
+  return (isSystemRoleKey(role) ? role.toUpperCase() : 'VIEWER') as TenantRole;
 }
 
 function toView(u: User, categoryIds: string[] = []): UserView {
@@ -47,6 +56,8 @@ export class UsersService {
     private readonly audit: AuditService,
     private readonly links: CategoryLinksService,
     private readonly auth: AuthService,
+    private readonly roles: RolesService,
+    private readonly authz: AuthzService,
   ) {}
 
   private repo(): Repository<User> {
@@ -67,7 +78,7 @@ export class UsersService {
       id: string;
       email: string;
       name: string;
-      role: TenantRole;
+      role: string;
       status: string;
       created_at: Date;
     }>;
@@ -96,7 +107,9 @@ export class UsersService {
     await this.links.set('user', userId, categoryIds);
   }
 
-  async invite(dto: InviteUserDto): Promise<{ user: UserView }> {
+  async invite(actor: RequestUser, dto: InviteUserDto): Promise<{ user: UserView }> {
+    // Pozvat lze jen s rolí pod vlastní úrovní (žádná eskalace přes pozvánku).
+    const role = membershipRoleKey((await this.roles.assertAssignable(actor, dto.tenantRole)).key);
     const existing = await this.repo().findOne({ where: { email: dto.email } });
     if (existing) throw new BadRequestException('Uživatel s tímto e-mailem už existuje');
 
@@ -108,17 +121,17 @@ export class UsersService {
         email: dto.email,
         name: dto.name,
         passwordHash,
-        tenantRole: dto.tenantRole,
+        tenantRole: legacyRole(role),
         status: 'pending',
       }),
     );
     // EPIC-18: členství + role_assignment v aktuální organizaci.
-    await this.ensureMembership(user.id, dto.tenantRole);
+    await this.ensureMembership(user.id, role);
     await this.audit.record({
       action: 'member.invited',
       targetType: 'user',
       targetId: user.id,
-      after: { email: user.email, role: dto.tenantRole },
+      after: { email: user.email, role },
     });
     const tenant = await this.context.manager.query(`SELECT name FROM tenants WHERE id = $1`, [
       this.context.tenantId,
@@ -129,11 +142,11 @@ export class UsersService {
       String(tenant[0]?.name ?? 'organizace'),
       this.context.manager,
     );
-    return { user: toView(user) };
+    return { user: { ...toView(user), tenantRole: role } };
   }
 
   /** Založí (nebo srovná roli) membershipu identity v aktuální organizaci. */
-  private async ensureMembership(userId: string, role: TenantRole): Promise<void> {
+  private async ensureMembership(userId: string, role: string): Promise<void> {
     const mRepo = this.context.manager.getRepository(OrgMembership);
     const raRepo = this.context.manager.getRepository(RoleAssignment);
     let m = await mRepo.findOne({ where: { tenantId: this.context.tenantId, userId } });
@@ -162,21 +175,29 @@ export class UsersService {
     }
   }
 
-  async updateRole(id: string, dto: UpdateRoleDto): Promise<UserView> {
+  async updateRole(actor: RequestUser, id: string, dto: UpdateRoleDto): Promise<UserView> {
     const user = await this.get(id);
-    const prevRole = user.tenantRole;
-    user.tenantRole = dto.tenantRole;
+    // Hierarchie: jen role pod sebou, jen podřízeným, ne sobě, vždy ≥ 1 vlastník.
+    const role = membershipRoleKey(
+      (await this.roles.assertAssignable(actor, dto.tenantRole, id)).key,
+    );
+    const [prev] = (await this.context.manager.query(
+      `SELECT role FROM org_memberships WHERE user_id = $1`,
+      [id],
+    )) as { role: string }[];
+    if (isSystemRoleKey(role)) user.tenantRole = legacyRole(role);
     const saved = await this.repo().save(user);
-    // Srovnej roli v membershipu/role_assignmentu (JWT čte roli z membershipu).
-    await this.ensureMembership(user.id, dto.tenantRole);
+    // Srovnej roli v membershipu/role_assignmentu (autorizace čte roli z membershipu).
+    await this.ensureMembership(user.id, role);
+    this.authz.invalidate(this.context.tenantId!);
     await this.audit.record({
       action: 'member.role_changed',
       targetType: 'user',
       targetId: user.id,
-      before: { role: prevRole },
-      after: { role: dto.tenantRole },
+      before: { role: prev?.role ?? null },
+      after: { role },
     });
-    return toView(saved);
+    return { ...toView(saved), tenantRole: role };
   }
 
   async setStatus(id: string, status: 'active' | 'suspended'): Promise<UserView> {

@@ -19,6 +19,8 @@ import { ModulesController } from './modules.controller';
 import { AuditController } from './audit.controller';
 import { PolicyController } from './policy.controller';
 import { RolesGuard } from './roles.guard';
+import { RolesService } from './roles.service';
+import { RolesController } from './roles.controller';
 import { PermissionsGuard } from './permissions.guard';
 
 /** EPIC-06 RBAC-ACL + EPIC-18 permissions/authorize()/entitlementy/policy/audit. */
@@ -30,8 +32,33 @@ import { PermissionsGuard } from './permissions.guard';
       AuditEvent, Policy, PolicyAssignment,
     ]),
   ],
-  controllers: [RbacController, AuthzController, ModulesController, AuditController, PolicyController],
-  providers: [AclService, AuthzService, ModulesService, AuditService, PolicyService, RolesGuard, PermissionsGuard],
-  exports: [AclService, AuthzService, ModulesService, AuditService, PolicyService, RolesGuard, PermissionsGuard],
+  controllers: [
+    RbacController,
+    AuthzController,
+    ModulesController,
+    AuditController,
+    PolicyController,
+    RolesController,
+  ],
+  providers: [
+    AclService,
+    AuthzService,
+    ModulesService,
+    AuditService,
+    PolicyService,
+    RolesService,
+    RolesGuard,
+    PermissionsGuard,
+  ],
+  exports: [
+    AclService,
+    AuthzService,
+    ModulesService,
+    AuditService,
+    PolicyService,
+    RolesService,
+    RolesGuard,
+    PermissionsGuard,
+  ],
 })
 export class RbacModule {}

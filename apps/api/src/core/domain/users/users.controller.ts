@@ -8,7 +8,8 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { JwtAuthGuard, type RequestUser } from '../../auth/jwt-auth.guard';
+import { CurrentUser } from '../../auth/decorators';
 import { PermissionsGuard } from '../../rbac/permissions.guard';
 import { RequirePermission } from '../../rbac/require-permission.decorator';
 import { UsersService, type UserView } from './users.service';
@@ -28,17 +29,21 @@ export class UsersController {
 
   @Post()
   @RequirePermission('core.member.invite')
-  invite(@Body() dto: InviteUserDto): Promise<{ user: UserView }> {
-    return this.users.invite(dto);
+  invite(
+    @CurrentUser() actor: RequestUser,
+    @Body() dto: InviteUserDto,
+  ): Promise<{ user: UserView }> {
+    return this.users.invite(actor, dto);
   }
 
   @Patch(':id/role')
   @RequirePermission('core.role.manage')
   updateRole(
+    @CurrentUser() actor: RequestUser,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateRoleDto,
   ): Promise<UserView> {
-    return this.users.updateRole(id, dto);
+    return this.users.updateRole(actor, id, dto);
   }
 
   @Patch(':id/category')

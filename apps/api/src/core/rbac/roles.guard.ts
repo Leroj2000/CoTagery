@@ -43,7 +43,7 @@ export class RolesGuard implements CanActivate {
     if (!required) {
       throw new ForbiddenException('Endpoint vyžaduje @RequireRole.');
     }
-    if (!roleMeets(user.tenantRole, required)) {
+    if (!roleMeets(user.tenantRole as TenantRole, required)) {
       throw new ForbiddenException(`Vyžadována role alespoň ${required}`);
     }
     return true;

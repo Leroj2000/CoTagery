@@ -1,7 +1,16 @@
-import { ArrayUnique, IsArray, IsEmail, IsIn, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
-import type { TenantRole } from '@tagery/shared';
+import {
+  ArrayUnique,
+  IsArray,
+  IsEmail,
+  IsString,
+  IsUUID,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
-const ROLES: TenantRole[] = ['OWNER', 'ADMIN', 'MANAGER', 'EDITOR', 'VIEWER', 'SCAN_ONLY'];
+/** Klíč role (systémová šablona nebo vlastní role firmy `c_…`); existenci a hierarchii ověří RolesService. */
+const ROLE_KEY = /^[A-Za-z0-9_]{1,64}$/;
 
 export class InviteUserDto {
   @IsEmail()
@@ -12,13 +21,15 @@ export class InviteUserDto {
   @MaxLength(200)
   name!: string;
 
-  @IsIn(ROLES)
-  tenantRole!: TenantRole;
+  @IsString()
+  @Matches(ROLE_KEY)
+  tenantRole!: string;
 }
 
 export class UpdateRoleDto {
-  @IsIn(ROLES)
-  tenantRole!: TenantRole;
+  @IsString()
+  @Matches(ROLE_KEY)
+  tenantRole!: string;
 }
 
 export class SetUserCategoryDto {

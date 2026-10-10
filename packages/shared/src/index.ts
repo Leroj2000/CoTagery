@@ -39,3 +39,4 @@ export interface HealthStatus {
 
 export * from './qr-logo';
 export * from './labels';
+export * from './roles';
