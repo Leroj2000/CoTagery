@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import { Bell, Clock, Wrench } from 'lucide-react';
+import { Bell, Clock, ShieldAlert, Wrench } from 'lucide-react';
 import { apiFetch } from '../../lib/server-api';
 import type { Attention, Person, Location, MaintenanceDue } from '../../lib/types';
+import { daysUntil, fmtDay, type ExpiringWarranty } from '../../lib/purchase';
 import { PageHeader, Section, Table, Badge, EmptyState } from '../ui';
 import { ActionButton } from '../action-button';
 import { confirmMovement, resolveIssue } from '../actions';
@@ -26,6 +27,7 @@ export default async function AttentionPage() {
     apiFetch<Location[]>('/locations'),
     apiFetch<MaintenanceDue[]>('/maintenance/due'),
   ]);
+  const warranties = await apiFetch<ExpiringWarranty[]>('/warranties/expiring').catch(() => []);
   const personName = new Map(people.map((p) => [p.id, p.name]));
   const locName = new Map(locations.map((l) => [l.id, l.name]));
   const holderLabel = (t: string | null, id: string | null): string =>
@@ -36,7 +38,8 @@ export default async function AttentionPage() {
     att.pendingConfirmations.length +
     att.openIssues.length +
     att.dueServices.length +
-    maintenanceDue.length;
+    maintenanceDue.length +
+    warranties.length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -192,6 +195,37 @@ export default async function AttentionPage() {
                     : 'Blíží se'}
               </Badge>,
             ])}
+          />
+        )}
+      </Section>
+
+      <Section
+        title="Končící záruky"
+        description="Záruka skončí do 30 dní – zkontroluj stav, ať se závada stihne reklamovat"
+        action={<Badge tone="amber">{warranties.length}</Badge>}
+      >
+        {warranties.length === 0 ? (
+          <EmptyState>Žádná záruka nekončí.</EmptyState>
+        ) : (
+          <Table
+            head={['Položka', 'Záruka', 'Končí', 'Zbývá']}
+            rows={warranties.map((w) => {
+              const days = daysUntil(w.endsOn);
+              return [
+                <Link
+                  key="n"
+                  href={`/admin/assets/${w.assetId}`}
+                  className="font-medium text-brand-700 hover:underline"
+                >
+                  {w.assetName}
+                </Link>,
+                w.title,
+                <span key="d" className="inline-flex items-center gap-1 text-amber-700">
+                  <ShieldAlert size={13} /> {fmtDay(w.endsOn)}
+                </span>,
+                days === 0 ? 'dnes' : `${days} dní`,
+              ];
+            })}
           />
         )}
       </Section>

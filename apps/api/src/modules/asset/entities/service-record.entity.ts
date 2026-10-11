@@ -13,7 +13,8 @@ export class ServiceRecord extends BaseTenantEntity {
   assetId!: string;
 
   @Column({ type: 'text' })
-  kind!: 'service' | 'inspection' | 'calibration' | 'repair';
+  /** `warranty_claim` = reklamace (opravu kryla záruka, nepočítá se do nákladů). */
+  kind!: 'service' | 'inspection' | 'calibration' | 'repair' | 'warranty_claim';
 
   @Column({ type: 'timestamptz', name: 'performed_at', nullable: true })
   performedAt!: Date | null;

@@ -14,6 +14,9 @@ import { AssetPhoto } from './entities/asset-photo.entity';
 import { AssetManual } from './entities/asset-manual.entity';
 import { AssetSpec } from './entities/asset-spec.entity';
 import { AssetObservation } from './entities/asset-observation.entity';
+import { AssetPurchase } from './entities/asset-purchase.entity';
+import { AssetDocument } from './entities/asset-document.entity';
+import { AssetWarranty } from './entities/asset-warranty.entity';
 import { Tenant } from '../../core/domain/entities/tenant.entity';
 import { AssetService } from './asset.service';
 import { CategoriesService } from './categories.service';
@@ -24,6 +27,7 @@ import { ManualFetchService } from './manual-fetch.service';
 import { ManualCallbackService } from './manual-callback.service';
 import { SpecsService } from './specs.service';
 import { SpecCallbackService } from './spec-callback.service';
+import { PurchaseService } from './purchase.service';
 import { AssetController } from './asset.controller';
 import { ScanController } from './scan.controller';
 import { ReservationsController } from './reservations.controller';
@@ -34,6 +38,7 @@ import { ManualsController } from './manuals.controller';
 import { ManualCallbackController } from './manual-callback.controller';
 import { SpecsController } from './specs.controller';
 import { SpecCallbackController } from './spec-callback.controller';
+import { PurchaseController } from './purchase.controller';
 import { AssetHandler } from './asset.handler';
 import { RegistrationController } from './registration.controller';
 import { PersonalWorkflowsController } from './personal-workflows.controller';
@@ -59,6 +64,9 @@ import { PersonalWorkflowsController } from './personal-workflows.controller';
       AssetManual,
       AssetSpec,
       AssetObservation,
+      AssetPurchase,
+      AssetDocument,
+      AssetWarranty,
       Tenant,
     ]),
     DomainModule,
@@ -76,6 +84,7 @@ import { PersonalWorkflowsController } from './personal-workflows.controller';
     ManualCallbackController,
     SpecsController,
     SpecCallbackController,
+    PurchaseController,
   ],
   providers: [
     AssetService,
@@ -87,6 +96,7 @@ import { PersonalWorkflowsController } from './personal-workflows.controller';
     ManualCallbackService,
     SpecsService,
     SpecCallbackService,
+    PurchaseService,
     AssetHandler,
   ],
   exports: [AssetService],

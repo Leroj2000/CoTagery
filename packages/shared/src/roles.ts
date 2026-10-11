@@ -94,6 +94,7 @@ const SECTIONS: { key: string; label: string; modules: string[] }[] = [
 
 const RESOURCE_LABELS: Record<string, string> = {
   'asset.item': 'Položky',
+  'asset.purchase': 'Pořízení, ceny a záruky',
   'asset.movement': 'Výdej, vrácení, přesuny',
   'asset.dispatch': 'Hromadný výdej',
   'asset.scan': 'Skenování a identifikace',

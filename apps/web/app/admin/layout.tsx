@@ -35,12 +35,14 @@ function initials(name: string): string {
 
 /** Počet položek „Vyžaduje pozornost" (stejný součet jako stránka /admin/attention). */
 async function attentionCount(): Promise<number> {
-  const [att, due] = await Promise.all([
+  const [att, due, warranties] = await Promise.all([
     apiFetch<Attention>('/assets/attention').catch(() => null),
     apiFetch<unknown[]>('/maintenance/due').catch(() => []),
+    apiFetch<unknown[]>('/warranties/expiring').catch(() => []),
   ]);
-  if (!att) return due.length;
+  if (!att) return due.length + warranties.length;
   return (
+    warranties.length +
     att.overdue.length +
     att.pendingConfirmations.length +
     att.openIssues.length +
@@ -67,7 +69,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     modules.filter((m) => m.state === 'inactive').map((m) => m.moduleKey),
   );
   const hiddenNav = NAV_ITEMS.filter(
-    (item) => (item.moduleKey && inactiveModules.has(item.moduleKey)) || (item.permission && !permissions.has(item.permission)),
+    (item) =>
+      (item.moduleKey && inactiveModules.has(item.moduleKey)) ||
+      (item.permission && !permissions.has(item.permission)),
   ).map((item) => item.href);
 
   // Čekající položky → čísla v kolečku v navigaci a na záložce „Menu".
@@ -131,11 +135,18 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-28 sm:p-6 sm:pb-28 lg:p-8">{children}</main>
+        <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-28 sm:p-6 sm:pb-28 lg:p-8">
+          {children}
+        </main>
         <MobileNav
           hidden={hiddenNav}
           badge={pendingTotal}
-          user={{ initials: initials(me.user.name), name: me.user.name, email: me.user.email, role: me.roleName ?? me.tenantRole }}
+          user={{
+            initials: initials(me.user.name),
+            name: me.user.name,
+            email: me.user.email,
+            role: me.roleName ?? me.tenantRole,
+          }}
           menu={
             <div className="mt-5 space-y-5">
               {me.isPlatformAdmin && (

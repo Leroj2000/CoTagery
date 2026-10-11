@@ -133,7 +133,7 @@ async function seedDemo(): Promise<void> {
     await billing.recordPaidInvoice(sub, false);
 
     // Uživatelé + skupina (pozvánky jménem vlastníka demo firmy – hierarchie rolí)
-    const [ownerRow] = (await ds.query(
+    const [ownerRow] = (await ctx.manager.query(
       `SELECT user_id FROM org_memberships WHERE tenant_id = $1 AND role = 'OWNER' LIMIT 1`,
       [tenantId],
     )) as { user_id: string }[];

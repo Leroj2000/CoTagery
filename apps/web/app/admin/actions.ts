@@ -253,6 +253,21 @@ export async function updateRentalPayment(_p: ActionState, fd: FormData): Promis
   );
 }
 
+/** DPH firmy: plátce/neplátce a výchozí sazba (formulář pořízení položky). */
+export async function updateVatSettings(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const rate = num(fd, 'defaultVatRate');
+  if (rate !== undefined && (!Number.isFinite(rate) || rate < 0 || rate > 100)) {
+    return { error: 'Sazba DPH musí být 0–100 %.' };
+  }
+  return run(
+    '/tenant',
+    { settings: { vatPayer: str(fd, 'vatPayer') === 'true', defaultVatRate: rate ?? 21 } },
+    '/admin/settings',
+    'Nastavení DPH uloženo.',
+    'PATCH',
+  );
+}
+
 // --- NFC pairing ---
 export async function pairNfc(_p: ActionState, fd: FormData): Promise<ActionState> {
   const objectId = str(fd, 'objectId');

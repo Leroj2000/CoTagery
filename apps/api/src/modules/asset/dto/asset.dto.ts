@@ -29,6 +29,7 @@ export class SetPhotoPreviewDto {
   previewZoom!: number;
 }
 import type { HolderType, MovementType } from '../movement.logic';
+import type { ServiceRecord } from '../entities/service-record.entity';
 
 const MOVEMENT_TYPES: MovementType[] = [
   'assign',
@@ -258,8 +259,8 @@ export class WorkflowValidateDto {
 }
 
 export class AddServiceDto {
-  @IsIn(['service', 'inspection', 'calibration', 'repair'])
-  kind!: 'service' | 'inspection' | 'calibration' | 'repair';
+  @IsIn(['service', 'inspection', 'calibration', 'repair', 'warranty_claim'])
+  kind!: ServiceRecord['kind'];
 
   @IsOptional()
   @IsString()

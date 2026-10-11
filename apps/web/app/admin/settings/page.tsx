@@ -2,7 +2,7 @@ import { apiFetch, getMyPermissions } from '../../lib/server-api';
 import type { Tenant } from '../../lib/types';
 import { Section, Badge, Mono } from '../ui';
 import { ActionForm } from '../action-form';
-import { updateTenant, updateRentalPayment, setModuleState } from '../actions';
+import { updateTenant, updateRentalPayment, updateVatSettings, setModuleState } from '../actions';
 import { ActionButton } from '../action-button';
 import { TenantLogoForm } from './tenant-logo-form';
 
@@ -36,6 +36,8 @@ export default async function SettingsPage() {
     accountName?: string;
   };
   const networkListed = tenant.networkListed === true;
+  const vatPayer = tenant.settings?.vatPayer === true;
+  const defaultVatRate = Number(tenant.settings?.defaultVatRate ?? 21);
   const canConfigureModules = permissions.has('core.module.configure');
 
   return (
@@ -82,6 +84,33 @@ export default async function SettingsPage() {
                 { value: 'true', label: 'Ano' },
               ],
               defaultValue: networkListed ? 'true' : 'false',
+            },
+          ]}
+        />
+      </Section>
+
+      <Section
+        title="DPH"
+        description="Plátce zadává ceny pořízení bez DPH, neplátce s DPH (DPH je pro něj náklad). U každého pořízení se uloží, jak to bylo v době zadání."
+      >
+        <ActionForm
+          action={updateVatSettings}
+          submitLabel="Uložit DPH"
+          fields={[
+            {
+              name: 'vatPayer',
+              label: 'Firma je plátce DPH',
+              options: [
+                { value: 'false', label: 'Ne – neplátce' },
+                { value: 'true', label: 'Ano – plátce' },
+              ],
+              defaultValue: vatPayer ? 'true' : 'false',
+            },
+            {
+              name: 'defaultVatRate',
+              label: 'Výchozí sazba DPH (%)',
+              type: 'number',
+              defaultValue: String(Number.isFinite(defaultVatRate) ? defaultVatRate : 21),
             },
           ]}
         />

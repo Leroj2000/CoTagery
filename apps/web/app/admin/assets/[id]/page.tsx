@@ -25,6 +25,9 @@ import { MediaTimeline } from '../media-timeline';
 import { ReturnForm } from '../return-form';
 import { PrintLabelButton } from '../printing/print-label-button';
 import { MaintenancePanel } from './maintenance-panel';
+import { PurchasePanel } from './purchase-panel';
+import { WarrantyHint } from './warranty-hint';
+import type { PurchaseView, Warranty } from '../../../lib/purchase';
 import type { AssetMedia, AssetManual, AssetSpec, Tenant, Observation } from '../../../lib/types';
 import {
   addCarrierToObject,
@@ -58,6 +61,7 @@ const SERVICE_LABELS: Record<string, string> = {
   inspection: 'Revize',
   calibration: 'Kalibrace',
   repair: 'Oprava',
+  warranty_claim: 'Reklamace (záruka)',
 };
 
 const MOVEMENT_LABELS: Record<string, string> = {
@@ -119,6 +123,10 @@ export default async function AssetDetail({
   const perms = await getMyPermissions();
   const canEdit = perms.has('asset.item.update');
   const canManagePhotos = perms.has('asset.media.manage');
+  const purchase = perms.has('asset.purchase.view')
+    ? await apiFetch<PurchaseView>(`/assets/${id}/purchase`).catch(() => null)
+    : null;
+  const warranties = await apiFetch<Warranty[]>(`/assets/${id}/warranties`).catch(() => []);
   const photos = await apiFetch<{
     items: {
       id: string;
@@ -357,6 +365,13 @@ export default async function AssetDetail({
           </Section>
         </details>
       )}
+
+      <PurchasePanel
+        assetId={asset.id}
+        view={purchase}
+        warranties={warranties}
+        canEdit={perms.has('asset.purchase.update')}
+      />
 
       {/* Last Observation – kde byla naposledy VIDĚNA (≠ evidence výše) */}
       <Section
@@ -669,6 +684,10 @@ export default async function AssetDetail({
         description="Nahlášení závady – condition je oddělený od půjčení"
       >
         <div className="flex flex-col gap-4">
+          <WarrantyHint
+            warranties={warranties}
+            hint="Závadu v záruce reklamuj u prodejce – oprava by neměla nic stát."
+          />
           {issues.length === 0 ? (
             <EmptyState>Žádná hlášení.</EmptyState>
           ) : (
@@ -724,6 +743,10 @@ export default async function AssetDetail({
         description="Servis, revize, kalibrace – s termínem příští kontroly (§17)"
       >
         <div className="flex flex-col gap-4">
+          <WarrantyHint
+            warranties={warranties}
+            hint="Opravu v záruce zapiš jako „Reklamace (záruka)“ – nepočítá se do nákladů."
+          />
           {services.filter((s) => !s.planCode).length === 0 ? (
             <EmptyState>Žádné servisní záznamy.</EmptyState>
           ) : (
@@ -745,7 +768,7 @@ export default async function AssetDetail({
                     '—'
                   ),
                   s.provider ?? '—',
-                  s.cost ? `${s.cost}` : '—',
+                  s.kind === 'warranty_claim' ? 'záruka' : s.cost ? `${s.cost}` : '—',
                 ])}
             />
           )}
@@ -763,6 +786,7 @@ export default async function AssetDetail({
                   { value: 'inspection', label: 'Revize' },
                   { value: 'calibration', label: 'Kalibrace' },
                   { value: 'repair', label: 'Oprava' },
+                  { value: 'warranty_claim', label: 'Reklamace (záruka)' },
                 ],
               },
               { name: 'performedAt', label: 'Provedeno', type: 'text', placeholder: 'YYYY-MM-DD' },
