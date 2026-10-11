@@ -65,8 +65,11 @@ export class InventoryController {
   /** Export inventury do Excelu (sloupce podle Nastavení → Exporty). */
   @Get(':id/export')
   @RequirePermission('asset.inventory.manage')
-  async export(@Param('id', ParseUUIDPipe) id: string): Promise<StreamableFile> {
-    const file = await this.exports.export(id);
+  async export(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: RequestUser,
+  ): Promise<StreamableFile> {
+    const file = await this.exports.export(id, user);
     return new StreamableFile(file.buffer, {
       type: file.mime,
       disposition: `attachment; filename="${file.fileName}"`,

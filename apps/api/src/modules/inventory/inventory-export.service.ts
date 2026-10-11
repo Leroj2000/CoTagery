@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import {
   EXPORT_DEFINITIONS,
   resolveExportSelection,
@@ -12,7 +12,11 @@ import { Location } from '../../core/domain/entities/location.entity';
 import { Person } from '../../core/domain/entities/person.entity';
 import { Tenant } from '../../core/domain/entities/tenant.entity';
 import { Asset } from '../asset/entities/asset.entity';
-import { STATUS_LABELS } from '../asset/asset-io.logic';
+import { CONDITION_LABELS, STATUS_LABELS } from '../asset/asset-io.logic';
+import { AssetPurchase } from '../asset/entities/asset-purchase.entity';
+import { effectiveInService } from '../asset/purchase.logic';
+import { AuthzService } from '../../core/rbac/authz.service';
+import type { RequestUser } from '../../core/auth/jwt-auth.guard';
 import { InventoryScan } from './entities/inventory-scan.entity';
 import { InventoryService, type InventoryDetail } from './inventory.service';
 import { SERVICE_STATUS_LABELS, pragueDay } from './vehicle-inventory.logic';
@@ -43,6 +47,9 @@ const COLUMN_FORMAT: Record<string, { kind: ColumnKind; width: number }> = {
   holder: { kind: 'text', width: 22 },
   status: { kind: 'text', width: 14 },
   scannedAt: { kind: 'datetime', width: 18 },
+  condition: { kind: 'text', width: 14 },
+  purchasedOn: { kind: 'date', width: 15 },
+  inServiceOn: { kind: 'date', width: 17 },
   odometerStart: { kind: 'km', width: 14 },
   odometerStartAt: { kind: 'date', width: 14 },
   odometerEnd: { kind: 'km', width: 14 },
@@ -56,6 +63,8 @@ const COLUMN_FORMAT: Record<string, { kind: ColumnKind; width: number }> = {
   servicesInPeriod: { kind: 'text', width: 36 },
   note: { kind: 'text', width: 36 },
 };
+
+const PURCHASE_KEYS = new Set(['condition', 'purchasedOn', 'inServiceOn']);
 
 const RESULT_LABELS = { found: 'Nalezeno', missing: 'Chybí', unexpected: 'Navíc' } as const;
 
@@ -114,27 +123,58 @@ export class InventoryExportService {
   constructor(
     private readonly context: TenantContextService,
     private readonly inventory: InventoryService,
+    private readonly authz: AuthzService,
   ) {}
 
   private repo<T extends object>(entity: { new (): T }): Repository<T> {
     return this.context.manager.getRepository(entity);
   }
 
-  private async selection(kind: ExportKind): Promise<ExportSelection> {
+  /** Výběr z nastavení; údaje z pořízení jen s `asset.purchase.view`. */
+  private async selection(kind: ExportKind, canPurchase: boolean): Promise<ExportSelection> {
     const tenant = await this.repo(Tenant).findOne({ where: { id: this.context.tenantId } });
-    return resolveExportSelection(kind, tenant?.settings);
+    const sel = resolveExportSelection(kind, tenant?.settings);
+    if (canPurchase) return sel;
+    const hidden = new Set(
+      EXPORT_DEFINITIONS[kind].columns.filter((c) => c.purchase).map((c) => c.key),
+    );
+    return { ...sel, columns: sel.columns.filter((c) => !hidden.has(c)) };
   }
 
-  async export(checkId: string): Promise<ExportFile> {
+  /** Data pořízení položek pro sloupce Nové/použité, Datum pořízení, Uvedeno do provozu. */
+  private async purchaseCells(
+    assetIds: string[],
+    columns: string[],
+  ): Promise<Map<string, Record<string, Cell>>> {
+    const result = new Map<string, Record<string, Cell>>();
+    if (!assetIds.length || !columns.some((c) => PURCHASE_KEYS.has(c))) return result;
+    const purchases = await this.repo(AssetPurchase).find({ where: { assetId: In(assetIds) } });
+    for (const p of purchases)
+      result.set(p.assetId, {
+        condition: CONDITION_LABELS[p.condition] ?? null,
+        purchasedOn: day(p.purchasedOn),
+        inServiceOn: day(effectiveInService(p)),
+      });
+    return result;
+  }
+
+  async export(checkId: string, user: RequestUser): Promise<ExportFile> {
     const detail = await this.inventory.detail(checkId);
-    return detail.check.kind === 'vehicle' ? this.vehicles(detail) : this.stock(detail);
+    const canPurchase = (await this.authz.can(user, 'asset.purchase.view')).allowed;
+    return detail.check.kind === 'vehicle'
+      ? this.vehicles(detail, canPurchase)
+      : this.stock(detail, canPurchase);
   }
 
   // --- Inventura skladu ---
 
-  private async stock(detail: InventoryDetail): Promise<ExportFile> {
+  private async stock(detail: InventoryDetail, canPurchase: boolean): Promise<ExportFile> {
     const { check } = detail;
-    const sel = await this.selection('stockInventory');
+    const sel = await this.selection('stockInventory', canPurchase);
+    const purchase = await this.purchaseCells(
+      [...detail.found, ...detail.missing, ...detail.unexpected].map((a) => a.id),
+      sel.columns,
+    );
     const locations = await this.repo(Location).find();
     const people = await this.repo(Person).find();
     const scans = await this.repo(InventoryScan).find({ where: { checkId: check.id } });
@@ -177,6 +217,7 @@ export class InventoryExportService {
         holder: holder(a),
         status: STATUS_LABELS[a.status] ?? a.status,
         scannedAt: localTime(scannedAt.get(a.id) ?? null),
+        ...purchase.get(a.id),
       })),
     );
 
@@ -205,10 +246,14 @@ export class InventoryExportService {
 
   // --- Inventura vozidel ---
 
-  private async vehicles(detail: InventoryDetail): Promise<ExportFile> {
+  private async vehicles(detail: InventoryDetail, canPurchase: boolean): Promise<ExportFile> {
     const { check } = detail;
-    const sel = await this.selection('vehicleInventory');
+    const sel = await this.selection('vehicleInventory', canPurchase);
     const vehicles = detail.vehicles ?? [];
+    const purchase = await this.purchaseCells(
+      vehicles.map((v) => v.assetId),
+      sel.columns,
+    );
     const rows = vehicles.map((v): Record<string, Cell> => ({
       name: v.name,
       registrationPlate: v.registrationPlate ?? null,
@@ -234,6 +279,7 @@ export class InventoryExportService {
           )
           .join('; ') || null,
       note: v.note,
+      ...purchase.get(v.assetId),
     }));
 
     // Pořadí listů = pořadí vytvoření: tabulka první, ať Excel otevře data.

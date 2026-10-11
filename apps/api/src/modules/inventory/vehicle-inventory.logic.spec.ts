@@ -83,6 +83,10 @@ describe('vehicle-inventory.logic', () => {
     expect(def.columns).toContain('odometerEnd');
     expect(def.columns).not.toContain('serialNumber');
     expect(def.sheets).toEqual(['summary']);
+    // data z pořízení: u vozidel výchozí, nové/použité na přání
+    expect(def.columns).toEqual(expect.arrayContaining(['purchasedOn', 'inServiceOn']));
+    expect(def.columns).not.toContain('condition');
+    expect(resolveExportSelection('stockInventory', {}).columns).not.toContain('purchasedOn');
     const custom = resolveExportSelection('vehicleInventory', {
       exports: { vehicleInventory: { columns: ['note', 'name', 'xxx'], sheets: [] } },
     });

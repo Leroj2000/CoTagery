@@ -13,7 +13,11 @@ export interface ExportOptionDef {
   /** Zapnuté, dokud firma výběr nezmění. */
   default: boolean;
   help?: string;
+  /** Údaj z pořízení – v exportu jen pro oprávnění `asset.purchase.view`. */
+  purchase?: boolean;
 }
+
+const PURCHASE_HELP = 'Jen pro uživatele s oprávněním k pořízení a cenám.';
 
 export interface ExportDefinition {
   kind: ExportKind;
@@ -40,6 +44,27 @@ export const EXPORT_DEFINITIONS: Record<ExportKind, ExportDefinition> = {
       { key: 'homeLocation', label: 'Domovské místo', default: true },
       { key: 'holder', label: 'Kde je podle evidence', default: true },
       { key: 'status', label: 'Stav položky', default: false },
+      {
+        key: 'condition',
+        label: 'Nové / použité',
+        default: false,
+        purchase: true,
+        help: PURCHASE_HELP,
+      },
+      {
+        key: 'purchasedOn',
+        label: 'Datum pořízení',
+        default: false,
+        purchase: true,
+        help: PURCHASE_HELP,
+      },
+      {
+        key: 'inServiceOn',
+        label: 'Uvedeno do provozu',
+        default: false,
+        purchase: true,
+        help: `U nové věci bez data = datum pořízení. ${PURCHASE_HELP}`,
+      },
       { key: 'scannedAt', label: 'Naskenováno', default: true },
     ],
     sheets: [
@@ -62,6 +87,27 @@ export const EXPORT_DEFINITIONS: Record<ExportKind, ExportDefinition> = {
       { key: 'serialNumber', label: 'VIN / výrobní číslo', default: false },
       { key: 'category', label: 'Kategorie', default: false },
       { key: 'holder', label: 'Kdo ho má', default: true },
+      {
+        key: 'condition',
+        label: 'Nové / použité',
+        default: false,
+        purchase: true,
+        help: PURCHASE_HELP,
+      },
+      {
+        key: 'purchasedOn',
+        label: 'Datum pořízení',
+        default: true,
+        purchase: true,
+        help: PURCHASE_HELP,
+      },
+      {
+        key: 'inServiceOn',
+        label: 'Uvedeno do provozu',
+        default: true,
+        purchase: true,
+        help: `U nové věci bez data = datum pořízení. ${PURCHASE_HELP}`,
+      },
       { key: 'odometerStart', label: 'Tachometr na začátku', default: true },
       { key: 'odometerStartAt', label: 'Odečet začátku (datum)', default: false },
       { key: 'odometerEnd', label: 'Tachometr na konci', default: true },
