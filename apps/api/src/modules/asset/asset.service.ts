@@ -181,7 +181,8 @@ export class AssetService {
       query.andWhere(
         new Brackets((b) => {
           b.where(
-            "concat_ws(' ',a.name,a.inventoryNumber,a.serialNumber,a.category,a.manufacturer,a.model) ILIKE :like",
+            // Názvy sloupců v DB – TypeORM uvnitř concat_ws vlastnosti nepřekládá.
+            "concat_ws(' ',a.name,a.inventory_number,a.serial_number,a.category,a.manufacturer,a.model) ILIKE :like",
             { like },
           ).orWhere(
             "(a.currentHolderType='person' AND a.currentHolderId IN (SELECT id FROM people WHERE name ILIKE :like))",
