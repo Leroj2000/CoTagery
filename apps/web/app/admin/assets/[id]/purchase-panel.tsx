@@ -5,16 +5,23 @@ import { useRouter } from 'next/navigation';
 import { FileText, Loader2, Pencil, Plus, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { Badge, Section } from '../../ui';
 import {
+  CONDITION_LABELS,
   DOCUMENT_LABELS,
+  START_BASIS_LABELS,
   daysUntil,
+  defaultStartBasis,
+  warrantyStartFor,
   documentUrl,
   fmtDay,
   fmtMoney,
   purchaseApi,
   type AssetDocument,
   type DocumentType,
+  type PurchaseCondition,
+  type PurchaseDates,
   type PurchaseView,
   type Warranty,
+  type WarrantyStartBasis,
 } from '../../../lib/purchase';
 
 const inputCls =
@@ -27,6 +34,16 @@ const iconBtn = 'rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-s
 
 const VAT_RATES = [21, 12, 0];
 const MONTH_PRESETS = [6, 12, 24, 36, 60];
+
+/** Rychlé názvy záruky; u výrobce/prodejce rovnou nastaví, od čeho běží. */
+const TITLE_PRESETS: {
+  title: string;
+  basis?: (d: PurchaseDates | null) => WarrantyStartBasis;
+}[] = [
+  { title: 'Záruka výrobce', basis: (d) => (d?.condition === 'used' ? 'in_service' : 'purchase') },
+  { title: 'Záruka prodejce', basis: () => 'purchase' },
+  { title: 'Prodloužená záruka' },
+];
 
 /** Číslo z inputu – přijme i desetinnou čárku a mezery. */
 function parseAmount(raw: string): number | null {
@@ -98,7 +115,7 @@ export function PurchasePanel({
           assetId={assetId}
           warranties={warranties}
           documents={view?.documents ?? []}
-          purchasedOn={view?.purchase?.purchasedOn ?? null}
+          dates={view?.purchase ?? null}
           canEdit={canEdit}
         />
         {view && <DocumentsBlock assetId={assetId} documents={view.documents} canEdit={canEdit} />}
@@ -125,6 +142,41 @@ function ErrorText({ error }: { error: string | null }) {
   );
 }
 
+function Segmented<T extends string | boolean>({
+  value,
+  options,
+  onChange,
+  label,
+}: {
+  value: T;
+  options: { v: T; label: string }[];
+  onChange: (v: T) => void;
+  label?: string;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className="flex shrink-0 overflow-hidden rounded-lg border border-slate-300 bg-white text-sm shadow-sm"
+    >
+      {options.map((o) => (
+        <button
+          key={o.label}
+          type="button"
+          role="radio"
+          aria-checked={value === o.v}
+          onClick={() => onChange(o.v)}
+          className={`px-3 py-2 font-medium transition ${
+            value === o.v ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // --- Pořízení ---
 
 function PurchaseBlock({
@@ -138,7 +190,14 @@ function PurchaseBlock({
 }) {
   const p = view.purchase;
   const [editing, setEditing] = useState(false);
-  const empty = !p || (!p.purchasedOn && !p.supplier && p.priceNet == null && p.priceGross == null);
+  const empty =
+    !p ||
+    (!p.purchasedOn &&
+      !p.inServiceOn &&
+      p.condition === 'new' &&
+      !p.supplier &&
+      p.priceNet == null &&
+      p.priceGross == null);
 
   if (editing)
     return <PurchaseForm assetId={assetId} view={view} onDone={() => setEditing(false)} />;
@@ -155,11 +214,22 @@ function PurchaseBlock({
       </div>
       {empty ? (
         <p className="text-sm text-slate-400">
-          Zatím nevyplněno. Datum pořízení slouží i jako začátek záruky.
+          Zatím nevyplněno. Z data pořízení a uvedení do provozu se počítá začátek záruky.
         </p>
       ) : (
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+          <Item label="Pořízeno" value={CONDITION_LABELS[p.condition]} />
           <Item label="Datum pořízení" value={fmtDay(p.purchasedOn)} />
+          <Item
+            label={p.condition === 'used' ? 'První uvedení do provozu' : 'Uvedeno do provozu'}
+            value={
+              p.inServiceOn
+                ? fmtDay(p.inServiceOn)
+                : p.condition === 'new' && p.purchasedOn
+                  ? `${fmtDay(p.purchasedOn)} (= pořízení)`
+                  : '—'
+            }
+          />
           <Item label="Dodavatel" value={p.supplier ?? '—'} />
           <Item label="Číslo dokladu" value={p.documentNumber ?? '—'} />
           <Item label="Cena bez DPH" value={fmtMoney(p.priceNet, p.currency)} />
@@ -210,6 +280,8 @@ function PurchaseForm({
   const p = view.purchase;
   const payer = view.vat.payer;
   const [purchasedOn, setPurchasedOn] = useState(p?.purchasedOn ?? '');
+  const [condition, setCondition] = useState<PurchaseCondition>(p?.condition ?? 'new');
+  const [inServiceOn, setInServiceOn] = useState(p?.inServiceOn ?? '');
   const [supplier, setSupplier] = useState(p?.supplier ?? '');
   const [documentNumber, setDocumentNumber] = useState(p?.documentNumber ?? '');
   const [note, setNote] = useState(p?.note ?? '');
@@ -241,6 +313,8 @@ function PurchaseForm({
     try {
       await send(`assets/${assetId}/purchase`, 'PUT', {
         purchasedOn: purchasedOn || null,
+        condition,
+        inServiceOn: inServiceOn || null,
         supplier: supplier || null,
         documentNumber: documentNumber || null,
         note: note || null,
@@ -259,8 +333,19 @@ function PurchaseForm({
 
   return (
     <form onSubmit={save} className="flex flex-col gap-4 rounded-xl bg-slate-50 p-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pořízení</h3>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pořízení</h3>
+        <Segmented
+          label="Stav při pořízení"
+          value={condition}
+          onChange={setCondition}
+          options={[
+            { v: 'new', label: 'Nové' },
+            { v: 'used', label: 'Použité' },
+          ]}
+        />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Datum pořízení">
           <input
             type="date"
@@ -269,6 +354,26 @@ function PurchaseForm({
             onChange={(e) => setPurchasedOn(e.target.value)}
           />
         </Field>
+        <Field label={condition === 'used' ? 'První uvedení do provozu' : 'Uvedeno do provozu'}>
+          <input
+            type="date"
+            className={inputCls}
+            value={inServiceOn}
+            onChange={(e) => setInServiceOn(e.target.value)}
+          />
+        </Field>
+      </div>
+      <p className="-mt-2 text-xs text-slate-500">
+        {condition === 'used'
+          ? 'U použité věci je uvedení do provozu u předchozího majitele (viz záruční list, doklad nebo štítek) – od něj běží zbytek záruky výrobce. Záruka prodejce běží od pořízení.'
+          : 'Vyplň, jen když se věc začala používat později než byla koupena (např. kotel nebo stroj se zárukou od zprovoznění). Prázdné = datum pořízení.'}
+      </p>
+      {condition === 'used' && inServiceOn && purchasedOn && inServiceOn > purchasedOn && (
+        <p className="-mt-2 text-xs text-amber-700">
+          Uvedení do provozu je až po pořízení – u použité věci bývá dřív. Zkontroluj data.
+        </p>
+      )}
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Dodavatel">
           <input
             className={inputCls}
@@ -297,25 +402,15 @@ function PurchaseForm({
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0,00"
             />
-            <div className="flex shrink-0 overflow-hidden rounded-lg border border-slate-300 bg-white text-sm shadow-sm">
-              {[
+            <Segmented
+              label="Cena je"
+              value={includesVat}
+              onChange={setIncludesVat}
+              options={[
                 { v: false, label: 'bez DPH' },
                 { v: true, label: 's DPH' },
-              ].map((o) => (
-                <button
-                  key={o.label}
-                  type="button"
-                  onClick={() => setIncludesVat(o.v)}
-                  className={`px-3 py-2 font-medium transition ${
-                    includesVat === o.v
-                      ? 'bg-brand-600 text-white'
-                      : 'text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
+              ]}
+            />
           </div>
           <span className="text-xs text-slate-500">
             {preview ??
@@ -359,13 +454,13 @@ function WarrantyBlock({
   assetId,
   warranties,
   documents,
-  purchasedOn,
+  dates,
   canEdit,
 }: {
   assetId: string;
   warranties: Warranty[];
   documents: AssetDocument[];
-  purchasedOn: string | null;
+  dates: PurchaseDates | null;
   canEdit: boolean;
 }) {
   const router = useRouter();
@@ -404,7 +499,7 @@ function WarrantyBlock({
                 assetId={assetId}
                 warranty={w}
                 documents={documents}
-                purchasedOn={purchasedOn}
+                dates={dates}
                 onDone={() => setEditing(null)}
               />
             </li>
@@ -428,7 +523,14 @@ function WarrantyBlock({
                 </div>
                 <p className="mt-0.5 text-slate-600">
                   do <strong>{fmtDay(w.endsOn)}</strong>
-                  {w.startsOn && ` · od ${fmtDay(w.startsOn)}`}
+                  {w.startsOn &&
+                    ` · od ${fmtDay(w.startsOn)}${
+                      w.startBasis === 'in_service'
+                        ? ' (uvedení do provozu)'
+                        : w.startBasis === 'purchase'
+                          ? ' (pořízení)'
+                          : ''
+                    }`}
                   {w.months && ` · ${w.months} měs.`}
                   {w.provider && ` · ${w.provider}`}
                 </p>
@@ -472,7 +574,7 @@ function WarrantyBlock({
         <WarrantyForm
           assetId={assetId}
           documents={documents}
-          purchasedOn={purchasedOn}
+          dates={dates}
           isFirst={warranties.length === 0}
           onDone={() => setEditing(null)}
         />
@@ -485,14 +587,14 @@ function WarrantyForm({
   assetId,
   warranty,
   documents,
-  purchasedOn,
+  dates,
   isFirst,
   onDone,
 }: {
   assetId: string;
   warranty?: Warranty;
   documents: AssetDocument[];
-  purchasedOn: string | null;
+  dates: PurchaseDates | null;
   isFirst?: boolean;
   onDone: () => void;
 }) {
@@ -500,9 +602,11 @@ function WarrantyForm({
   const [title, setTitle] = useState(
     warranty?.title ?? (isFirst ? 'Záruka výrobce' : 'Prodloužená záruka'),
   );
-  const [startsOn, setStartsOn] = useState(
-    warranty ? (warranty.startsOn ?? '') : (purchasedOn ?? ''),
+  const [basis, setBasis] = useState<WarrantyStartBasis>(
+    warranty?.startBasis ?? defaultStartBasis(dates),
   );
+  const [customStart, setCustomStart] = useState(warranty?.startsOn ?? '');
+  const startsOn = basis === 'custom' ? customStart : (warrantyStartFor(basis, dates) ?? '');
   const [mode, setMode] = useState<'months' | 'date'>(
     warranty && warranty.months == null ? 'date' : 'months',
   );
@@ -523,7 +627,9 @@ function WarrantyForm({
     e.preventDefault();
     if (mode === 'months' && !startsOn)
       return setError(
-        'Zadej začátek záruky (typicky datum pořízení / převzetí), nebo přepni na datum konce.',
+        basis === 'custom'
+          ? 'Zadej začátek záruky, nebo přepni na datum konce.'
+          : `Chybí datum ${basis === 'purchase' ? 'pořízení' : 'uvedení do provozu'} – vyplň ho v Pořízení, zvol jiné datum začátku, nebo přepni na datum konce.`,
       );
     setBusy(true);
     setError(null);
@@ -542,7 +648,8 @@ function WarrantyForm({
       }
       const body = {
         title,
-        startsOn: startsOn || null,
+        startBasis: basis,
+        ...(basis === 'custom' ? { startsOn: customStart || null } : {}),
         months: mode === 'months' ? monthsNum : null,
         endsOn: mode === 'date' ? endsOn || null : null,
         provider: provider || null,
@@ -575,19 +682,66 @@ function WarrantyForm({
             placeholder="např. Záruka výrobce, Baterie"
           />
         </Field>
-        <Field label="Začátek záruky">
-          <input
-            type="date"
-            className={inputCls}
-            value={startsOn}
-            onChange={(e) => setStartsOn(e.target.value)}
-          />
-        </Field>
+        <div className="flex flex-wrap items-end gap-1.5">
+          {TITLE_PRESETS.map((t) => (
+            <button
+              key={t.title}
+              type="button"
+              onClick={() => {
+                setTitle(t.title);
+                if (t.basis) setBasis(t.basis(dates));
+              }}
+              className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-300 hover:bg-slate-50"
+            >
+              {t.title}
+            </button>
+          ))}
+        </div>
       </div>
-      <p className="-mt-2 text-xs text-slate-500">
-        Začátek se předvyplní datem pořízení – zákonná záruka ale běží od převzetí, takže ho
-        případně uprav.
-      </p>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1.5 text-xs font-medium text-slate-600">Záruka běží</legend>
+        {(['purchase', 'in_service'] as const).map((b) => {
+          const day = warrantyStartFor(b, dates);
+          return (
+            <label key={b} className="inline-flex items-center gap-2 text-sm">
+              <input type="radio" checked={basis === b} onChange={() => setBasis(b)} />
+              <span>
+                {START_BASIS_LABELS[b]}{' '}
+                <span className={day ? 'text-slate-500' : 'text-amber-700'}>
+                  ({day ? fmtDay(day) : 'datum není vyplněné'}
+                  {b === 'in_service' && day && !dates?.inServiceOn ? ' = pořízení' : ''})
+                </span>
+              </span>
+            </label>
+          );
+        })}
+        <label className="inline-flex flex-wrap items-center gap-2 text-sm">
+          <input
+            type="radio"
+            checked={basis === 'custom'}
+            onChange={() => {
+              if (!customStart) setCustomStart(startsOn);
+              setBasis('custom');
+            }}
+          />
+          od jiného data
+          {basis === 'custom' && (
+            <input
+              type="date"
+              className={`${inputCls} w-auto py-1`}
+              value={customStart}
+              onChange={(e) => setCustomStart(e.target.value)}
+              aria-label="Začátek záruky"
+            />
+          )}
+        </label>
+        <p className="text-xs text-slate-500">
+          Záruka prodejce běží od převzetí (pořízení). Zbytek záruky výrobce u použité věci a záruka
+          od zprovoznění (kotle, stroje) běží od uvedení do provozu. Při změně dat v Pořízení se
+          začátek i konec přepočítají.
+        </p>
+      </fieldset>
 
       <div className="flex flex-col gap-2">
         <div className="flex gap-4 text-sm">

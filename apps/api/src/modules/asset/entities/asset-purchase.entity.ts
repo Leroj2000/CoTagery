@@ -1,6 +1,7 @@
 import { Column, Entity, Index } from 'typeorm';
 import { BaseTenantEntity } from '../../../core/database/base-tenant.entity';
 import { moneyTransformer } from './money.transformer';
+import type { PurchaseCondition } from '../purchase.logic';
 
 /**
  * Pořízení položky (1:1). Ukládají se obě ceny i sazba – žádný zpětný přepočet,
@@ -16,6 +17,18 @@ export class AssetPurchase extends BaseTenantEntity {
   /** Datum pořízení (YYYY-MM-DD) – nezávislé na založení položky v systému. */
   @Column({ type: 'date', name: 'purchased_on', nullable: true })
   purchasedOn!: string | null;
+
+  /** Pořízeno jako nové / použité (bazar, od jiné firmy, z leasingu…). */
+  @Column({ type: 'text', default: 'new' })
+  condition!: PurchaseCondition;
+
+  /**
+   * První uvedení do provozu (YYYY-MM-DD). U použité věci typicky dřív než
+   * pořízení (u předchozího majitele), u nové může být později (zprovoznění).
+   * Prázdné u nové věci = datum pořízení.
+   */
+  @Column({ type: 'date', name: 'in_service_on', nullable: true })
+  inServiceOn!: string | null;
 
   @Column({ type: 'text', nullable: true })
   supplier!: string | null;

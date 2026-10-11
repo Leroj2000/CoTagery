@@ -2,11 +2,15 @@ import {
   addMonths,
   computePrice,
   decodeFileName,
+  defaultStartBasis,
+  effectiveInService,
   isIsoDate,
+  rebaseWarranty,
   tenantIsVatPayer,
   tenantVatRate,
   todayInPrague,
   warrantyEnd,
+  warrantyStartFor,
   warrantyStatus,
 } from './purchase.logic';
 
@@ -83,6 +87,78 @@ describe('purchase.logic', () => {
 
     it('dnešek v Praze (po půlnoci SELČ je už další den)', () => {
       expect(todayInPrague(new Date('2026-10-10T22:30:00Z'))).toBe('2026-10-11');
+    });
+  });
+
+  describe('nové / použité a začátek záruky', () => {
+    const fresh = { condition: 'new' as const, purchasedOn: '2026-03-01', inServiceOn: null };
+    const used = {
+      condition: 'used' as const,
+      purchasedOn: '2026-03-01',
+      inServiceOn: '2025-06-15',
+    };
+
+    it('uvedení do provozu: nová věc bez data = pořízení, použitá ne', () => {
+      expect(effectiveInService(fresh)).toBe('2026-03-01');
+      expect(effectiveInService({ ...used, inServiceOn: null })).toBeNull();
+      expect(effectiveInService(used)).toBe('2025-06-15');
+      expect(effectiveInService({ ...fresh, inServiceOn: '2026-04-10' })).toBe('2026-04-10');
+    });
+
+    it('začátek podle základu', () => {
+      expect(warrantyStartFor('purchase', used)).toBe('2026-03-01');
+      expect(warrantyStartFor('in_service', used)).toBe('2025-06-15');
+      expect(warrantyStartFor('custom', used)).toBeNull();
+      expect(warrantyStartFor('purchase', null)).toBeNull();
+    });
+
+    it('výchozí základ: použitá se známým zprovozněním → od uvedení do provozu', () => {
+      expect(defaultStartBasis(fresh)).toBe('purchase');
+      expect(defaultStartBasis(used)).toBe('in_service');
+      expect(defaultStartBasis({ ...used, inServiceOn: null })).toBe('purchase');
+      expect(defaultStartBasis(null)).toBe('purchase');
+    });
+
+    it('přepočet záruky po změně dat pořízení', () => {
+      const w = {
+        startBasis: 'purchase' as const,
+        startsOn: '2026-01-01',
+        months: 24,
+        endsOn: '2028-01-01',
+      };
+      expect(rebaseWarranty(w, fresh)).toEqual({ startsOn: '2026-03-01', endsOn: '2028-03-01' });
+      // zbytek záruky výrobce u použité věci
+      expect(rebaseWarranty({ ...w, startBasis: 'in_service' }, used)).toEqual({
+        startsOn: '2025-06-15',
+        endsOn: '2027-06-15',
+      });
+      // pevný konec zůstává, posune se jen začátek
+      expect(rebaseWarranty({ ...w, months: null }, fresh)).toEqual({
+        startsOn: '2026-03-01',
+        endsOn: '2028-01-01',
+      });
+    });
+
+    it('přepočet nic nemění u ručního začátku, chybějícího data a konce před začátkem', () => {
+      const w = {
+        startBasis: 'custom' as const,
+        startsOn: '2026-01-01',
+        months: 24,
+        endsOn: '2028-01-01',
+      };
+      expect(rebaseWarranty(w, fresh)).toBeNull();
+      expect(
+        rebaseWarranty({ ...w, startBasis: 'in_service' }, { ...used, inServiceOn: null }),
+      ).toBeNull();
+      expect(
+        rebaseWarranty({ ...w, startBasis: 'purchase', months: null, endsOn: '2026-02-01' }, fresh),
+      ).toBeNull();
+      expect(
+        rebaseWarranty(
+          { ...w, startBasis: 'purchase', startsOn: '2026-03-01', endsOn: '2028-03-01' },
+          fresh,
+        ),
+      ).toBeNull();
     });
   });
 

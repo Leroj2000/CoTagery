@@ -12,8 +12,14 @@ export interface AssetDocument {
   createdAt: string;
 }
 
+export type PurchaseCondition = 'new' | 'used';
+export type WarrantyStartBasis = 'purchase' | 'in_service' | 'custom';
+
 export interface AssetPurchase {
   purchasedOn: string | null;
+  condition: PurchaseCondition;
+  /** První uvedení do provozu (u použité věci u předchozího majitele). */
+  inServiceOn: string | null;
   supplier: string | null;
   documentNumber: string | null;
   priceNet: number | null;
@@ -41,6 +47,7 @@ export interface Warranty {
   id: string;
   assetId: string;
   title: string;
+  startBasis: WarrantyStartBasis;
   startsOn: string | null;
   months: number | null;
   endsOn: string;
@@ -60,6 +67,36 @@ export const DOCUMENT_LABELS: Record<DocumentType, string> = {
   warranty: 'Záruční list',
   other: 'Jiný doklad',
 };
+
+export const CONDITION_LABELS: Record<PurchaseCondition, string> = {
+  new: 'Nové',
+  used: 'Použité',
+};
+
+export const START_BASIS_LABELS: Record<WarrantyStartBasis, string> = {
+  purchase: 'od pořízení',
+  in_service: 'od uvedení do provozu',
+  custom: 'ručně zadaný začátek',
+};
+
+/** Data pořízení pro odvození začátku záruky (stejné pravidlo jako API). */
+export type PurchaseDates = Pick<AssetPurchase, 'condition' | 'purchasedOn' | 'inServiceOn'>;
+
+/** Uvedení do provozu: zadané, u nové věci jinak datum pořízení. */
+export function effectiveInService(p: PurchaseDates | null): string | null {
+  if (!p) return null;
+  return p.inServiceOn ?? (p.condition === 'new' ? p.purchasedOn : null);
+}
+
+export function warrantyStartFor(basis: WarrantyStartBasis, p: PurchaseDates | null) {
+  if (basis === 'purchase') return p?.purchasedOn ?? null;
+  if (basis === 'in_service') return effectiveInService(p);
+  return null;
+}
+
+export function defaultStartBasis(p: PurchaseDates | null): WarrantyStartBasis {
+  return p?.condition === 'used' && p.inServiceOn ? 'in_service' : 'purchase';
+}
 
 /** BFF cesta k API pořízení (proxy `/api/asset-purchase/...`). */
 export const purchaseApi = (path: string) => `/api/asset-purchase/${path}`;

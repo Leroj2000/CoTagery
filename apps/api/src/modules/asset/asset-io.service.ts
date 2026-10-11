@@ -16,11 +16,13 @@ import { AssetWarranty } from './entities/asset-warranty.entity';
 import { toCsv } from './csv.logic';
 import {
   ASSET_COLUMNS,
+  CONDITION_LABELS,
   IMPORT_MAX_ROWS,
   STATUS_LABELS,
   formatCzDate,
   formatCzNumber,
   mapHeader,
+  parseCondition,
   parseCsvFile,
   parseDate,
   parseNumber,
@@ -28,7 +30,17 @@ import {
   type ColumnDef,
   type ColumnKey,
 } from './asset-io.logic';
-import { tenantIsVatPayer, tenantVatRate, type PriceBreakdown } from './purchase.logic';
+import { PurchaseService } from './purchase.service';
+import {
+  defaultStartBasis,
+  tenantIsVatPayer,
+  tenantVatRate,
+  warrantyStartFor,
+  type PriceBreakdown,
+  type PurchaseCondition,
+  type PurchaseDates,
+  type WarrantyStartBasis,
+} from './purchase.logic';
 
 export type TransferFormat = 'xlsx' | 'csv';
 
@@ -76,6 +88,8 @@ interface AssetPatch {
 
 interface PurchasePatch {
   purchasedOn?: string;
+  condition?: PurchaseCondition;
+  inServiceOn?: string;
   supplier?: string;
   documentNumber?: string;
   price?: PriceBreakdown;
@@ -85,7 +99,13 @@ interface RowPlan extends ImportRowView {
   assetId?: string;
   asset: AssetPatch;
   purchase: PurchasePatch;
-  warranty?: { op: 'create' | 'update'; id?: string; endsOn: string; startsOn: string | null };
+  warranty?: {
+    op: 'create' | 'update';
+    id?: string;
+    endsOn: string;
+    startsOn: string | null;
+    startBasis?: WarrantyStartBasis;
+  };
 }
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -131,6 +151,7 @@ export class AssetIoService {
     private readonly assets: AssetService,
     private readonly authz: AuthzService,
     private readonly audit: AuditService,
+    private readonly purchases: PurchaseService,
   ) {}
 
   private repo<T extends object>(entity: { new (): T }): Repository<T> {
@@ -199,6 +220,8 @@ export class AssetIoService {
         status: STATUS_LABELS[a.status] ?? a.status,
         holder: holder ?? null,
         purchasedOn: p?.purchasedOn ?? null,
+        condition: p ? CONDITION_LABELS[p.condition] : null,
+        inServiceOn: p?.inServiceOn ?? null,
         supplier: p?.supplier ?? null,
         documentNumber: p?.documentNumber ?? null,
         priceNet: p?.priceNet ?? null,
@@ -285,6 +308,20 @@ export class AssetIoService {
       };
       if (c.help) head.note = c.help;
     });
+    const condIdx = cols.findIndex((c) => c.key === 'condition');
+    if (condIdx >= 0) {
+      // Rozbalovací výběr nové/použité (exceljs typy dataValidations neznají).
+      const letter = ws.getColumn(condIdx + 1).letter;
+      (
+        ws as unknown as {
+          dataValidations: { add(range: string, v: Record<string, unknown>): void };
+        }
+      ).dataValidations.add(`${letter}2:${letter}${IMPORT_MAX_ROWS + 1}`, {
+        type: 'list',
+        allowBlank: true,
+        formulae: [`"${CONDITION_LABELS.new},${CONDITION_LABELS.used}"`],
+      });
+    }
     ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } };
 
     if (withGuide) {
@@ -550,6 +587,13 @@ export class AssetIoService {
           return v;
         };
         purchasedOn = date('purchasedOn');
+        const inServiceOn = date('inServiceOn');
+        const conditionRaw = get('condition') ?? '';
+        const condition = parseCondition(conditionRaw);
+        if (condition === 'invalid')
+          errors.push(
+            `${LABEL.get('condition')}: „${conditionRaw}" (použij „nové" nebo „použité")`,
+          );
         warrantyEnd = date('warrantyEndsOn');
         price = resolveImportPrice(
           {
@@ -564,6 +608,9 @@ export class AssetIoService {
         const documentNumber = text('documentNumber');
         const ex = existingPurchase;
         if (purchasedOn && purchasedOn !== ex?.purchasedOn) plan.purchase.purchasedOn = purchasedOn;
+        if (condition && condition !== 'invalid' && condition !== (ex?.condition ?? 'new'))
+          plan.purchase.condition = condition;
+        if (inServiceOn && inServiceOn !== ex?.inServiceOn) plan.purchase.inServiceOn = inServiceOn;
         if (supplier && supplier !== ex?.supplier) plan.purchase.supplier = supplier;
         if (documentNumber && documentNumber !== ex?.documentNumber)
           plan.purchase.documentNumber = documentNumber;
@@ -577,11 +624,22 @@ export class AssetIoService {
         }
         if (warrantyEnd) {
           const list = target ? (warranties.get(target.id) ?? []) : [];
-          const startsOn = purchasedOn ?? ex?.purchasedOn ?? null;
+          // Data pořízení po importu řádku → začátek nové záruky.
+          const dates: PurchaseDates = {
+            condition: plan.purchase.condition ?? ex?.condition ?? 'new',
+            purchasedOn: purchasedOn ?? ex?.purchasedOn ?? null,
+            inServiceOn: inServiceOn ?? ex?.inServiceOn ?? null,
+          };
+          const startBasis = defaultStartBasis(dates);
+          const startsOn = warrantyStartFor(startBasis, dates);
           if (startsOn && warrantyEnd < startsOn) {
-            errors.push('Konec záruky je před datem pořízení');
+            errors.push(
+              startBasis === 'in_service'
+                ? 'Konec záruky je před uvedením do provozu'
+                : 'Konec záruky je před datem pořízení',
+            );
           } else if (list.length === 0) {
-            plan.warranty = { op: 'create', endsOn: warrantyEnd, startsOn };
+            plan.warranty = { op: 'create', endsOn: warrantyEnd, startsOn, startBasis };
           } else if (list.length === 1) {
             if (list[0].endsOn !== warrantyEnd)
               plan.warranty = {
@@ -642,6 +700,8 @@ export class AssetIoService {
           )!,
         ),
         ...(plan.purchase.purchasedOn ? [LABEL.get('purchasedOn')!] : []),
+        ...(plan.purchase.condition ? [LABEL.get('condition')!] : []),
+        ...(plan.purchase.inServiceOn ? [LABEL.get('inServiceOn')!] : []),
         ...(plan.purchase.supplier ? [LABEL.get('supplier')!] : []),
         ...(plan.purchase.documentNumber ? [LABEL.get('documentNumber')!] : []),
         ...(plan.purchase.price ? ['Cena'] : []),
@@ -715,15 +775,20 @@ export class AssetIoService {
           const repo = this.repo(AssetPurchase);
           const row =
             (await repo.findOne({ where: { assetId } })) ??
-            repo.create({ tenantId, assetId, currency: 'CZK', vatPayer });
+            repo.create({ tenantId, assetId, currency: 'CZK', vatPayer, condition: 'new' });
+          const datesBefore = [row.purchasedOn, row.inServiceOn, row.condition].join('|');
           if (p.purchasedOn) row.purchasedOn = p.purchasedOn;
+          if (p.condition) row.condition = p.condition;
+          if (p.inServiceOn) row.inServiceOn = p.inServiceOn;
           if (p.supplier) row.supplier = p.supplier;
           if (p.documentNumber) row.documentNumber = p.documentNumber;
           if (p.price) {
             Object.assign(row, p.price);
             row.vatPayer = vatPayer;
           }
-          await repo.save(row);
+          const saved = await repo.save(row);
+          if ([saved.purchasedOn, saved.inServiceOn, saved.condition].join('|') !== datesBefore)
+            await this.purchases.rebaseWarranties(assetId!, saved);
         }
 
         if (plan.warranty) {
@@ -734,6 +799,7 @@ export class AssetIoService {
                 tenantId,
                 assetId,
                 title: 'Záruka výrobce',
+                startBasis: plan.warranty.startBasis ?? 'custom',
                 startsOn: plan.warranty.startsOn,
                 months: null,
                 endsOn: plan.warranty.endsOn,

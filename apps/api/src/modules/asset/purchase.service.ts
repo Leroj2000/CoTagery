@@ -16,7 +16,11 @@ import {
   addDays,
   computePrice,
   decodeFileName,
+  defaultStartBasis,
   isIsoDate,
+  rebaseWarranty,
+  warrantyStartFor,
+  type WarrantyStartBasis,
   tenantIsVatPayer,
   tenantVatRate,
   todayInPrague,
@@ -97,12 +101,24 @@ export class PurchaseService {
     const before = existing ? { ...existing } : null;
     const row =
       existing ??
-      repo.create({ tenantId: this.context.tenantId, assetId, currency: 'CZK', vatPayer: false });
+      repo.create({
+        tenantId: this.context.tenantId,
+        assetId,
+        currency: 'CZK',
+        vatPayer: false,
+        condition: 'new',
+      });
 
     if (dto.purchasedOn !== undefined) {
       if (dto.purchasedOn && !isIsoDate(dto.purchasedOn))
         throw new BadRequestException('Neplatné datum pořízení');
       row.purchasedOn = dto.purchasedOn || null;
+    }
+    if (dto.condition !== undefined) row.condition = dto.condition;
+    if (dto.inServiceOn !== undefined) {
+      if (dto.inServiceOn && !isIsoDate(dto.inServiceOn))
+        throw new BadRequestException('Neplatné datum uvedení do provozu');
+      row.inServiceOn = dto.inServiceOn || null;
     }
     if (dto.supplier !== undefined) row.supplier = dto.supplier?.trim() || null;
     if (dto.documentNumber !== undefined) row.documentNumber = dto.documentNumber?.trim() || null;
@@ -124,6 +140,13 @@ export class PurchaseService {
     }
 
     const saved = await repo.save(row);
+    if (
+      saved.purchasedOn !== (before?.purchasedOn ?? null) ||
+      saved.inServiceOn !== (before?.inServiceOn ?? null) ||
+      saved.condition !== (before?.condition ?? 'new')
+    ) {
+      await this.rebaseWarranties(assetId, saved);
+    }
     await this.audit.record({
       action: 'asset.purchase.update',
       targetType: 'asset',
@@ -132,6 +155,23 @@ export class PurchaseService {
       after: saved as unknown as Record<string, unknown>,
     });
     return this.purchase(assetId);
+  }
+
+  /**
+   * Po změně dat pořízení posune záruky, jejichž začátek se z pořízení odvozuje
+   * (od pořízení / od uvedení do provozu). Ručně zadané začátky nechá být.
+   */
+  async rebaseWarranties(assetId: string, purchase: AssetPurchase | null): Promise<number> {
+    const repo = this.repo(AssetWarranty);
+    const rows = await repo.find({ where: { assetId } });
+    let changed = 0;
+    for (const w of rows) {
+      const next = rebaseWarranty(w, purchase);
+      if (!next) continue;
+      await repo.update({ id: w.id }, next);
+      changed++;
+    }
+    return changed;
   }
 
   // --- Doklady ---
@@ -287,22 +327,35 @@ export class PurchaseService {
     for (const d of [dto.startsOn, dto.endsOn]) {
       if (d && !isIsoDate(d)) throw new BadRequestException(`Neplatné datum ${d}`);
     }
-    let startsOn = dto.startsOn !== undefined ? dto.startsOn || null : row.startsOn;
-    if (isNew && dto.startsOn === undefined) {
-      // Výchozí začátek = datum pořízení (ne den založení položky).
-      const purchase = await this.repo(AssetPurchase).findOne({ where: { assetId: row.assetId } });
-      startsOn = purchase?.purchasedOn ?? null;
-    }
+    const purchase = await this.repo(AssetPurchase).findOne({ where: { assetId: row.assetId } });
+    const basis: WarrantyStartBasis =
+      dto.startBasis ??
+      (dto.startsOn !== undefined
+        ? 'custom'
+        : isNew
+          ? defaultStartBasis(purchase)
+          : (row.startBasis ?? 'custom'));
+    const startsOn =
+      basis === 'custom'
+        ? dto.startsOn !== undefined
+          ? dto.startsOn || null
+          : row.startsOn
+        : warrantyStartFor(basis, purchase);
     const months = dto.months !== undefined ? dto.months : row.months;
     const explicitEnd = dto.endsOn !== undefined ? dto.endsOn : null;
     const endsOn = warrantyEnd({ startsOn, months, endsOn: explicitEnd || null });
     if (!endsOn) {
       throw new BadRequestException(
-        'Zadej konec záruky, nebo začátek a délku v měsících (začátek = datum pořízení)',
+        basis === 'purchase'
+          ? 'Chybí datum pořízení – vyplň ho v Pořízení, nebo zadej začátek či konec záruky ručně'
+          : basis === 'in_service'
+            ? 'Chybí datum uvedení do provozu – vyplň ho v Pořízení, nebo zadej začátek či konec záruky ručně'
+            : 'Zadej konec záruky, nebo začátek a délku v měsících',
       );
     }
     if (startsOn && endsOn < startsOn)
       throw new BadRequestException('Konec záruky je před jejím začátkem');
+    row.startBasis = basis;
     row.startsOn = startsOn;
     row.months = explicitEnd ? null : months;
     row.endsOn = endsOn;

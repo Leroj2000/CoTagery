@@ -5,8 +5,13 @@
  * aby se historické údaje nerozjely změnou sazby. Plátce DPH zadává typicky
  * cenu bez DPH, neplátce cenu s DPH (DPH je pro něj náklad).
  *
- * Záruky: začátek (default = datum pořízení, zákonná záruka běží od převzetí),
- * délka v měsících nebo přímo datum konce. Data jsou `YYYY-MM-DD` (bez času).
+ * Záruky: začátek, délka v měsících nebo přímo datum konce. Data jsou
+ * `YYYY-MM-DD` (bez času). Začátek se odvozuje z pořízení podle „základu":
+ * - `purchase` – od data pořízení (zákonná záruka prodejce běží od převzetí),
+ * - `in_service` – od prvního uvedení do provozu (zbytek záruky výrobce
+ *   u použité věci, kotle a stroje se zárukou od zprovoznění),
+ * - `custom` – ručně zadané datum.
+ * Při změně dat pořízení se záruky s odvozeným začátkem přepočítají.
  */
 
 /** Výchozí sazba DPH (ČR, základní). */
@@ -49,6 +54,68 @@ export function computePrice(input: PriceInput): PriceBreakdown {
   return input.includesVat
     ? { priceNet: round2(amount / factor), vatRate: input.vatRate, priceGross: amount }
     : { priceNet: amount, vatRate: input.vatRate, priceGross: round2(amount * factor) };
+}
+
+export type PurchaseCondition = 'new' | 'used';
+export type WarrantyStartBasis = 'purchase' | 'in_service' | 'custom';
+export const WARRANTY_START_BASES: WarrantyStartBasis[] = ['purchase', 'in_service', 'custom'];
+
+/** Data pořízení potřebná k odvození začátku záruky. */
+export interface PurchaseDates {
+  condition: PurchaseCondition;
+  purchasedOn: string | null;
+  /** První uvedení do provozu (u použité věci typicky u předchozího majitele). */
+  inServiceOn: string | null;
+}
+
+/**
+ * Datum uvedení do provozu: zadané, u nové věci jinak datum pořízení. U použité
+ * se z data pořízení odvodit nedá (věc už předtím někdo používal).
+ */
+export function effectiveInService(p: PurchaseDates | null): string | null {
+  if (!p) return null;
+  return p.inServiceOn ?? (p.condition === 'new' ? p.purchasedOn : null);
+}
+
+/** Začátek záruky podle základu; `null` = z pořízení nejde určit (nebo `custom`). */
+export function warrantyStartFor(
+  basis: WarrantyStartBasis,
+  p: PurchaseDates | null,
+): string | null {
+  if (basis === 'purchase') return p?.purchasedOn ?? null;
+  if (basis === 'in_service') return effectiveInService(p);
+  return null;
+}
+
+/**
+ * Výchozí základ nové záruky: u použité věci se známým uvedením do provozu
+ * zbytek záruky výrobce, jinak od pořízení.
+ */
+export function defaultStartBasis(p: PurchaseDates | null): WarrantyStartBasis {
+  return p?.condition === 'used' && p.inServiceOn ? 'in_service' : 'purchase';
+}
+
+/**
+ * Přepočet záruky po změně dat pořízení. Vrací nové `startsOn`/`endsOn`, nebo
+ * `null`, když se nic nemění (ruční začátek, chybějící datum, nebo by pevně
+ * zadaný konec vyšel před začátek).
+ */
+export function rebaseWarranty(
+  w: {
+    startBasis: WarrantyStartBasis;
+    startsOn: string | null;
+    months: number | null;
+    endsOn: string;
+  },
+  p: PurchaseDates | null,
+): { startsOn: string; endsOn: string } | null {
+  if (w.startBasis === 'custom') return null;
+  const startsOn = warrantyStartFor(w.startBasis, p);
+  if (!startsOn) return null;
+  const endsOn = w.months ? addMonths(startsOn, w.months) : w.endsOn;
+  if (endsOn < startsOn) return null;
+  if (startsOn === w.startsOn && endsOn === w.endsOn) return null;
+  return { startsOn, endsOn };
 }
 
 export function isIsoDate(value: string): boolean {

@@ -9,7 +9,12 @@
  *   při úpravě = beze změny (nic se nemaže).
  */
 import { parseCsv, type CsvDelimiter } from './csv.logic';
-import { computePrice, isIsoDate, type PriceBreakdown } from './purchase.logic';
+import {
+  computePrice,
+  isIsoDate,
+  type PriceBreakdown,
+  type PurchaseCondition,
+} from './purchase.logic';
 
 export type ColumnKey =
   | 'id'
@@ -23,6 +28,8 @@ export type ColumnKey =
   | 'status'
   | 'holder'
   | 'purchasedOn'
+  | 'condition'
+  | 'inServiceOn'
   | 'supplier'
   | 'documentNumber'
   | 'priceNet'
@@ -145,9 +152,35 @@ export const ASSET_COLUMNS: ColumnDef[] = [
     aliases: ['datumporizeni', 'purchasedon', 'porizeno', 'datumnakupu'],
     kind: 'date',
     purchase: true,
-    help: 'Např. 1.3.2026 nebo 2026-03-01. Slouží i jako začátek záruky.',
+    help: 'Kdy firma věc koupila, např. 1.3.2026 nebo 2026-03-01. Od něj běží záruka prodejce.',
     example: '1.3.2026',
     width: 15,
+  },
+  {
+    key: 'condition',
+    label: 'Nové / použité',
+    aliases: ['novepouzite', 'condition', 'stavporizeni', 'stavpriporizeni', 'pouzite'],
+    kind: 'text',
+    purchase: true,
+    help: '„nové" nebo „použité". Prázdné u nové položky = nové.',
+    example: 'nové',
+    width: 14,
+  },
+  {
+    key: 'inServiceOn',
+    label: 'Uvedeno do provozu',
+    aliases: [
+      'uvedenodoprovozu',
+      'datumuvedenidoprovozu',
+      'prvniuvedenidoprovozu',
+      'vprovozuod',
+      'inserviceon',
+    ],
+    kind: 'date',
+    purchase: true,
+    help: 'První uvedení do provozu – u použité věci u předchozího majitele (od něj běží zbytek záruky výrobce). U nové prázdné = datum pořízení.',
+    example: '',
+    width: 17,
   },
   {
     key: 'supplier',
@@ -345,6 +378,20 @@ export function resolveImportPrice(
   if (existing?.priceGross != null)
     return computePrice({ amount: existing.priceGross, includesVat: true, vatRate: rate });
   return { priceNet: null, vatRate: rate, priceGross: null };
+}
+
+export const CONDITION_LABELS: Record<PurchaseCondition, string> = {
+  new: 'nové',
+  used: 'použité',
+};
+
+/** „nové"/„použité" (i „nový", „new", „used", „bazar"…). Prázdné = null, nesmysl = 'invalid'. */
+export function parseCondition(raw: string): PurchaseCondition | null | 'invalid' {
+  const v = normalizeHeader(raw);
+  if (v === '') return null;
+  if (/^(n|nov[aeyi]?|new)$/.test(v)) return 'new';
+  if (/^(p|u|pouzit[aeyi]?|used|bazar[a-z]*|secondhand|repas[a-z]*)$/.test(v)) return 'used';
+  return 'invalid';
 }
 
 export const STATUS_LABELS: Record<string, string> = {

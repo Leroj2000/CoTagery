@@ -1,9 +1,11 @@
 import { Column, Entity, Index } from 'typeorm';
 import { BaseTenantEntity } from '../../../core/database/base-tenant.entity';
+import type { WarrantyStartBasis } from '../purchase.logic';
 
 /**
- * Záruka položky (víc na položku – výrobce, prodloužená, baterie…). Začátek
- * se předvyplní datem pořízení; konec je zadaný nebo začátek + měsíce.
+ * Záruka položky (víc na položku – výrobce, prodejce, prodloužená, baterie…).
+ * Začátek je odvozený z pořízení (`startBasis`) nebo ruční; konec je zadaný
+ * nebo začátek + měsíce.
  */
 @Entity('asset_warranties')
 export class AssetWarranty extends BaseTenantEntity {
@@ -13,6 +15,10 @@ export class AssetWarranty extends BaseTenantEntity {
 
   @Column({ type: 'text' })
   title!: string;
+
+  /** Od čeho běží: datum pořízení / uvedení do provozu / ručně zadané datum. */
+  @Column({ type: 'text', name: 'start_basis', default: 'custom' })
+  startBasis!: WarrantyStartBasis;
 
   @Column({ type: 'date', name: 'starts_on', nullable: true })
   startsOn!: string | null;

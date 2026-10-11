@@ -23,6 +23,15 @@ export class UpsertPurchaseDto {
   purchasedOn?: string | null;
 
   @IsOptional()
+  @IsIn(['new', 'used'])
+  condition?: 'new' | 'used';
+
+  @IsOptional()
+  @ValidateIf((_o, v) => v !== null)
+  @Matches(DATE, { message: 'Datum uvedení do provozu musí být ve tvaru RRRR-MM-DD' })
+  inServiceOn?: string | null;
+
+  @IsOptional()
   @ValidateIf((_o, v) => v !== null)
   @IsString()
   @MaxLength(200)
@@ -64,6 +73,15 @@ export class WarrantyDto {
   @IsString()
   @MaxLength(120)
   title!: string;
+
+  /**
+   * Od čeho záruka běží. `purchase`/`in_service` = začátek z pořízení (a
+   * přepočítá se při jeho změně), `custom` = `startsOn`. Bez zadání: se
+   * `startsOn` ruční, jinak výchozí podle pořízení (u nové záruky).
+   */
+  @IsOptional()
+  @IsIn(['purchase', 'in_service', 'custom'])
+  startBasis?: 'purchase' | 'in_service' | 'custom';
 
   @IsOptional()
   @ValidateIf((_o, v) => v !== null)

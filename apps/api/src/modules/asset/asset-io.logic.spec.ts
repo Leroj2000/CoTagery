@@ -3,6 +3,7 @@ import {
   detectDelimiter,
   formatCzNumber,
   mapHeader,
+  parseCondition,
   parseCsvFile,
   parseDate,
   parseNumber,
@@ -22,6 +23,21 @@ describe('asset-io.logic', () => {
     expect(m.index).toMatchObject({ name: 0, inventoryNumber: 1, serialNumber: 2, priceGross: 3 });
     expect(m.unknown).toEqual(['Barva']);
     expect(m.duplicate).toEqual(['nazev']);
+  });
+
+  it('nové / použité: hlavička i hodnoty', () => {
+    expect(mapHeader(['Stav', 'Nové / použité', 'Uvedeno do provozu']).index).toEqual({
+      status: 0,
+      condition: 1,
+      inServiceOn: 2,
+    });
+    expect(parseCondition('nové')).toBe('new');
+    expect(parseCondition('Nový')).toBe('new');
+    expect(parseCondition('POUŽITÉ')).toBe('used');
+    expect(parseCondition('bazar')).toBe('used');
+    expect(parseCondition('used')).toBe('used');
+    expect(parseCondition(' ')).toBeNull();
+    expect(parseCondition('zánovní')).toBe('invalid');
   });
 
   it('oddělovač: středník, čárka, tabulátor (mimo uvozovky)', () => {
