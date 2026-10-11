@@ -28,6 +28,7 @@ import { ManualCallbackService } from './manual-callback.service';
 import { SpecsService } from './specs.service';
 import { SpecCallbackService } from './spec-callback.service';
 import { PurchaseService } from './purchase.service';
+import { AssetIoService } from './asset-io.service';
 import { AssetController } from './asset.controller';
 import { ScanController } from './scan.controller';
 import { ReservationsController } from './reservations.controller';
@@ -39,6 +40,7 @@ import { ManualCallbackController } from './manual-callback.controller';
 import { SpecsController } from './specs.controller';
 import { SpecCallbackController } from './spec-callback.controller';
 import { PurchaseController } from './purchase.controller';
+import { AssetIoController } from './asset-io.controller';
 import { AssetHandler } from './asset.handler';
 import { RegistrationController } from './registration.controller';
 import { PersonalWorkflowsController } from './personal-workflows.controller';
@@ -74,6 +76,7 @@ import { PersonalWorkflowsController } from './personal-workflows.controller';
   controllers: [
     RegistrationController,
     PersonalWorkflowsController,
+    AssetIoController,
     AssetController,
     ScanController,
     ReservationsController,
@@ -97,6 +100,7 @@ import { PersonalWorkflowsController } from './personal-workflows.controller';
     SpecsService,
     SpecCallbackService,
     PurchaseService,
+    AssetIoService,
     AssetHandler,
   ],
   exports: [AssetService],

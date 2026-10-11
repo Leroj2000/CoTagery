@@ -4,7 +4,7 @@ import { apiFetch, getMyPermissions } from '../../lib/server-api';
 import { locationPath } from '../../lib/location-path';
 import type { Asset, Person, Location, Category } from '../../lib/types';
 import { PageHeader } from '../ui';
-import { CsvTools } from './csv-tools';
+import { AssetTransfer } from './asset-transfer';
 import { AssetsExplorer } from './assets-explorer';
 
 export const dynamic = 'force-dynamic';
@@ -32,7 +32,9 @@ export default async function AssetsPage() {
   };
 
   const now = Date.now();
-  const overdue = assets.filter((a) => a.dueAt && new Date(a.dueAt).getTime() < now && a.status === 'loaned');
+  const overdue = assets.filter(
+    (a) => a.dueAt && new Date(a.dueAt).getTime() < now && a.status === 'loaned',
+  );
 
   // Názvy kategorií pro filtr = číselník + volnotextové hodnoty z položek.
   const categoryNames = [
@@ -70,7 +72,11 @@ export default async function AssetsPage() {
         </div>
       )}
 
-      {perms.has('asset.item.create') && <Link href="/admin/assets/new" className="action-primary self-start">Přidat položku</Link>}
+      {perms.has('asset.item.create') && (
+        <Link href="/admin/assets/new" className="action-primary self-start">
+          Přidat položku
+        </Link>
+      )}
 
       <AssetsExplorer
         assets={assets}
@@ -80,7 +86,7 @@ export default async function AssetsPage() {
           name: locName.get(l.id) ?? l.name,
           isCell: l.cellRow != null,
         }))}
-        actions={<CsvTools />}
+        actions={<AssetTransfer canImport={perms.has('asset.item.create')} />}
       />
     </div>
   );

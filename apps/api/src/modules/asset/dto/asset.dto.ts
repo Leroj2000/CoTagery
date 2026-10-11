@@ -139,11 +139,6 @@ export class PutIntoContainerDto {
   childAssetId!: string;
 }
 
-export class ImportCsvDto {
-  @IsString()
-  csv!: string;
-}
-
 export class ReportIssueDto {
   @IsIn(['damage', 'malfunction', 'missing_part', 'other'])
   kind!: 'damage' | 'malfunction' | 'missing_part' | 'other';

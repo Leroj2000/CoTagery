@@ -3,19 +3,21 @@
  * Podporuje uvozovky, zdvojené uvozovky uvnitř pole a čárky/nové řádky v poli.
  */
 
+export type CsvDelimiter = ',' | ';' | '\t';
+
 /** Serializuje řádky (pole polí) do CSV textu. */
-export function toCsv(rows: string[][]): string {
-  return rows.map((r) => r.map(escapeCell).join(',')).join('\n');
+export function toCsv(rows: string[][], delimiter: CsvDelimiter = ',', eol = '\n'): string {
+  return rows.map((r) => r.map((c) => escapeCell(c, delimiter)).join(delimiter)).join(eol);
 }
 
-function escapeCell(value: string): string {
+function escapeCell(value: string, delimiter: CsvDelimiter): string {
   const v = value ?? '';
-  if (/[",\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+  if (v.includes(delimiter) || /["\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
   return v;
 }
 
 /** Rozparsuje CSV text na pole řádků (pole buněk). Přeskočí prázdné řádky. */
-export function parseCsv(text: string): string[][] {
+export function parseCsv(text: string, delimiter: CsvDelimiter = ','): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = '';
@@ -37,7 +39,7 @@ export function parseCsv(text: string): string[][] {
       }
     } else if (ch === '"') {
       inQuotes = true;
-    } else if (ch === ',') {
+    } else if (ch === delimiter) {
       row.push(cell);
       cell = '';
     } else if (ch === '\n') {

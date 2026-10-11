@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  Header,
   HttpCode,
   Param,
   ParseUUIDPipe,
@@ -25,7 +24,6 @@ import {
   AddServiceDto,
   BulkMovementDto,
   CreateAssetDto,
-  ImportCsvDto,
   PerformMovementDto,
   PutIntoContainerDto,
   ReportIssueDto,
@@ -82,22 +80,6 @@ export class AssetController {
     @Query('location', new ParseUUIDPipe({ optional: true })) location?: string,
   ) {
     return this.assets.search(q, location);
-  }
-
-  @Get('export')
-  @RequirePermission('asset.item.view')
-  @Header('content-type', 'text/csv; charset=utf-8')
-  @Header('content-disposition', 'attachment; filename="veci.csv"')
-  async exportCsv(): Promise<string> {
-    return this.assets.exportCsv();
-  }
-
-  @Post('import')
-  @RequirePermission('asset.item.create')
-  importCsv(
-    @Body() dto: ImportCsvDto,
-  ): Promise<{ created: number; failed: { row: number; error: string }[] }> {
-    return this.assets.importCsv(dto.csv);
   }
 
   // --- Hromadný výdej ---

@@ -172,8 +172,8 @@ export class PurchaseService {
       targetId: assetId,
       after: { documentId: saved.id, docType },
     });
-    const { fileKey: _key, ...view } = saved;
-    return view as AssetDocument;
+    // Interní klíč souboru se klientovi nevrací.
+    return Object.assign(saved, { fileKey: undefined }) as AssetDocument;
   }
 
   /**

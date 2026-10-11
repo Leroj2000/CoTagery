@@ -294,23 +294,6 @@ export async function addBenefit(_p: ActionState, fd: FormData): Promise<ActionS
   );
 }
 
-// --- CSV import + hromadný výdej ---
-export async function importAssetsCsv(_p: ActionState, fd: FormData): Promise<ActionState> {
-  const csv = fd.get('csv') as string | null;
-  if (!csv || !csv.trim()) return { error: 'Prázdný CSV.' };
-  try {
-    const res = await apiFetch<{ created: number; failed: { row: number; error: string }[] }>(
-      '/assets/import',
-      { method: 'POST', body: JSON.stringify({ csv }) },
-    );
-    revalidatePath('/admin/assets');
-    const failMsg = res.failed.length ? ` (${res.failed.length} chyb)` : '';
-    return { ok: true, message: `Naimportováno ${res.created} položek${failMsg}.` };
-  } catch (e) {
-    return { error: e instanceof ApiError ? e.message : 'Import selhal' };
-  }
-}
-
 // Pozn.: hromadný výdej sjednocen do workflow scanneru (/admin/workflow → BFF /api/workflow/*).
 
 // --- Nálezy + webhooky (🔵) ---
