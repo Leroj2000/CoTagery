@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { In, IsNull, Not, Repository } from 'typeorm';
+import { In, IsNull, LessThanOrEqual, Not, Repository } from 'typeorm';
 import { TenantContextService } from '../../core/tenancy/tenant-context.service';
 import { AuditService } from '../../core/rbac/audit.service';
 import { AssetService } from './asset.service';
@@ -70,6 +70,7 @@ export class MaintenanceService {
     readings: MeterReading[],
     rules: MaintenanceRule[],
     services: ServiceRecord[],
+    now = new Date(),
   ): MaintenanceSummary {
     const currentReading = readings[0] ?? null;
     if (kind === 'general')
@@ -92,6 +93,7 @@ export class MaintenanceService {
         { intervalUnits, intervalMonths },
         lastService,
         currentReading?.value ?? null,
+        now,
       );
       return {
         code: template.code,
@@ -257,6 +259,49 @@ export class MaintenanceService {
       after: { planCode: dto.planCode, meterValue: dto.meterValue, performedAt: dto.performedAt },
     });
     return record;
+  }
+
+  /**
+   * Stav údržby vozidel/strojů k okamžiku `at` (inventura vozidel): počítá jen
+   * s odečty a servisy do `at`. Položky bez kategorie Vozidlo/Stroj vynechá.
+   */
+  async summariesAt(assets: Asset[], at: Date): Promise<Map<string, MaintenanceSummary>> {
+    const result = new Map<string, MaintenanceSummary>();
+    if (!assets.length) return result;
+    const ids = assets.map((asset) => asset.id);
+    const categoryIds = [
+      ...new Set(assets.map((asset) => asset.categoryId).filter((id): id is string => !!id)),
+    ];
+    // Sekvenčně – jeden query runner tenant transakce nesnese paralelní dotazy.
+    const categories = categoryIds.length
+      ? await this.repo(Category).find({ where: { id: In(categoryIds) } })
+      : [];
+    const readings = await this.repo(MeterReading).find({
+      where: { assetId: In(ids), deletedAt: IsNull(), observedAt: LessThanOrEqual(at) },
+      order: { observedAt: 'DESC', createdAt: 'DESC' },
+    });
+    const rules = await this.repo(MaintenanceRule).find({ where: { assetId: In(ids) } });
+    const services = await this.repo(ServiceRecord).find({
+      where: { assetId: In(ids), planCode: Not(IsNull()), performedAt: LessThanOrEqual(at) },
+    });
+    const kindByCategory = new Map(categories.map((c) => [c.id, c.equipmentKind]));
+    const byAsset = <T extends { assetId: string }>(items: T[], id: string) =>
+      items.filter((item) => item.assetId === id);
+    for (const asset of assets) {
+      const kind = kindByCategory.get(asset.categoryId ?? '') ?? 'general';
+      if (kind === 'general') continue;
+      result.set(
+        asset.id,
+        this.buildSummary(
+          kind,
+          byAsset(readings, asset.id),
+          byAsset(rules, asset.id),
+          byAsset(services, asset.id),
+          at,
+        ),
+      );
+    }
+    return result;
   }
 
   async due(): Promise<

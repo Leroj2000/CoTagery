@@ -1,10 +1,17 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Check, X, HelpCircle, ClipboardCheck } from 'lucide-react';
+import { Car, Check, X, HelpCircle, ClipboardCheck, FileSpreadsheet } from 'lucide-react';
 import { apiFetch, ApiError } from '../../../lib/server-api';
 import type { InventoryDetail, Location, Asset, Person } from '../../../lib/types';
 import { PageHeader, Section, Badge, StatusBadge, Table, EmptyState } from '../../ui';
 import { InventoryScanner } from './inventory-scanner';
+import { VehicleInventory } from './vehicle-inventory';
+
+function fmtDay(iso: string | null): string {
+  if (!iso) return '—';
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  return `${d}. ${m}. ${y}`;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +25,37 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
     if (e instanceof ApiError && e.status === 404) notFound();
     throw e;
   }
+  if (detail.check.kind === 'vehicle') {
+    const { check } = detail;
+    const single = check.subjectId
+      ? detail.vehicles?.find((v) => v.assetId === check.subjectId)?.name
+      : null;
+    return (
+      <div className="flex flex-col gap-6">
+        <div>
+          <Link href="/admin/inventory" className="text-xs text-slate-500 hover:underline">
+            ← Inventura
+          </Link>
+          <div className="mt-1">
+            <PageHeader
+              title={`Inventura vozidel — ${single ?? 'všechna vozidla'}`}
+              description={`Období ${fmtDay(check.periodFrom)} – ${fmtDay(check.periodTo)}`}
+              icon={<Car size={18} />}
+              action={
+                check.status === 'open' ? (
+                  <Badge tone="amber">probíhá</Badge>
+                ) : (
+                  <Badge tone="green">uzavřeno</Badge>
+                )
+              }
+            />
+          </div>
+        </div>
+        <VehicleInventory initialDetail={detail} />
+      </div>
+    );
+  }
+
   const [locations, assets, people] = await Promise.all([
     apiFetch<Location[]>('/locations'),
     apiFetch<Asset[]>('/assets'),
@@ -64,7 +102,17 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
             title={`Inventura — ${subjectName}`}
             description={`Očekáváno: ${expected} · naskenováno: ${detail.scannedCount}`}
             icon={<ClipboardCheck size={18} />}
-            action={open ? <Badge tone="amber">probíhá</Badge> : <Badge tone="green">uzavřeno</Badge>}
+            action={
+              <span className="flex items-center gap-2">
+                <a
+                  href={`/api/inventory/${check.id}/export`}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  <FileSpreadsheet size={13} /> Excel
+                </a>
+                {open ? <Badge tone="amber">probíhá</Badge> : <Badge tone="green">uzavřeno</Badge>}
+              </span>
+            }
           />
         </div>
       </div>
@@ -82,20 +130,47 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
         <>
           {/* Souhrn uzavřené inventury */}
           <div className="grid gap-3 sm:grid-cols-3">
-            <Summary icon={<Check size={18} />} tone="green" label="Nalezeno" value={detail.found.length} />
-            <Summary icon={<X size={18} />} tone="red" label="Chybí" value={detail.missing.length} />
-            <Summary icon={<HelpCircle size={18} />} tone="amber" label="Navíc" value={detail.unexpected.length} />
+            <Summary
+              icon={<Check size={18} />}
+              tone="green"
+              label="Nalezeno"
+              value={detail.found.length}
+            />
+            <Summary
+              icon={<X size={18} />}
+              tone="red"
+              label="Chybí"
+              value={detail.missing.length}
+            />
+            <Summary
+              icon={<HelpCircle size={18} />}
+              tone="amber"
+              label="Navíc"
+              value={detail.unexpected.length}
+            />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-3">
             <Section title={`Nalezeno (${detail.found.length})`}>
-              {detail.found.length === 0 ? <EmptyState>—</EmptyState> : <Table head={['Položka', 'Stav', 'Výrobce']} rows={assetRows(detail.found)} />}
+              {detail.found.length === 0 ? (
+                <EmptyState>—</EmptyState>
+              ) : (
+                <Table head={['Položka', 'Stav', 'Výrobce']} rows={assetRows(detail.found)} />
+              )}
             </Section>
             <Section title={`Chybí (${detail.missing.length})`}>
-              {detail.missing.length === 0 ? <EmptyState>—</EmptyState> : <Table head={['Položka', 'Stav', 'Výrobce']} rows={assetRows(detail.missing)} />}
+              {detail.missing.length === 0 ? (
+                <EmptyState>—</EmptyState>
+              ) : (
+                <Table head={['Položka', 'Stav', 'Výrobce']} rows={assetRows(detail.missing)} />
+              )}
             </Section>
             <Section title={`Navíc (${detail.unexpected.length})`}>
-              {detail.unexpected.length === 0 ? <EmptyState>—</EmptyState> : <Table head={['Položka', 'Stav', 'Výrobce']} rows={assetRows(detail.unexpected)} />}
+              {detail.unexpected.length === 0 ? (
+                <EmptyState>—</EmptyState>
+              ) : (
+                <Table head={['Položka', 'Stav', 'Výrobce']} rows={assetRows(detail.unexpected)} />
+              )}
             </Section>
           </div>
           {(detail.missing.length > 0 || detail.unexpected.length > 0) && (
@@ -103,7 +178,8 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
               <p className="font-medium">Inventura vyžaduje řešení</p>
               <p className="mt-1 text-amber-800">
                 Otevři detail položky z tabulky výše a zkontroluj její pohyb, místo nebo stav.
-                Nalezené položky jsou označené jako „Navíc“ a očekávané, které nebyly načtené, jako „Chybí“.
+                Nalezené položky jsou označené jako „Navíc“ a očekávané, které nebyly načtené, jako
+                „Chybí“.
               </p>
             </div>
           )}

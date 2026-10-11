@@ -34,6 +34,7 @@ import {
   type MovementType,
 } from './movement.logic';
 import { wouldCreateCycle } from './nesting.logic';
+import { normalizePlate } from './plate.logic';
 import { Issue } from './entities/issue.entity';
 import { randomUUID } from 'node:crypto';
 import { generatePublicCode } from '../../core/domain/public-code';
@@ -182,7 +183,7 @@ export class AssetService {
         new Brackets((b) => {
           b.where(
             // Názvy sloupců v DB – TypeORM uvnitř concat_ws vlastnosti nepřekládá.
-            "concat_ws(' ',a.name,a.inventory_number,a.serial_number,a.category,a.manufacturer,a.model) ILIKE :like",
+            "concat_ws(' ',a.name,a.inventory_number,a.serial_number,a.registration_plate,a.category,a.manufacturer,a.model) ILIKE :like",
             { like },
           ).orWhere(
             "(a.currentHolderType='person' AND a.currentHolderId IN (SELECT id FROM people WHERE name ILIKE :like))",
@@ -311,6 +312,8 @@ export class AssetService {
     if (dto.manufacturer !== undefined) asset.manufacturer = dto.manufacturer || null;
     if (dto.model !== undefined) asset.model = dto.model || null;
     if (dto.serialNumber !== undefined) asset.serialNumber = dto.serialNumber || null;
+    if (dto.registrationPlate !== undefined)
+      asset.registrationPlate = normalizePlate(dto.registrationPlate);
     if (dto.inventoryNumber !== undefined) asset.inventoryNumber = dto.inventoryNumber || null;
     if (dto.homeLocationId !== undefined) asset.homeLocationId = dto.homeLocationId || null;
     if (dto.canContainAssets !== undefined) asset.canContainAssets = dto.canContainAssets;
@@ -351,6 +354,7 @@ export class AssetService {
         manufacturer: dto.manufacturer ?? null,
         model: dto.model ?? null,
         serialNumber: dto.serialNumber ?? null,
+        registrationPlate: normalizePlate(dto.registrationPlate),
         inventoryNumber: dto.inventoryNumber ?? null,
         homeLocationId: dto.homeLocationId ?? null,
         canContainAssets: dto.canContainAssets ?? false,

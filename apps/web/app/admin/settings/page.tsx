@@ -5,6 +5,8 @@ import { ActionForm } from '../action-form';
 import { updateTenant, updateRentalPayment, updateVatSettings, setModuleState } from '../actions';
 import { ActionButton } from '../action-button';
 import { TenantLogoForm } from './tenant-logo-form';
+import { ExportSettingsForm } from './export-settings-form';
+import { resolveExportSettings } from '@tagery/shared';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,6 +117,18 @@ export default async function SettingsPage() {
           ]}
         />
       </Section>
+
+      <div id="exporty" className="scroll-mt-20">
+        <Section
+          title="Exporty"
+          description="Co obsahují soubory Excelu stažené ze seznamu inventur. Pořadí sloupců je pevné, vypnuté sloupce se do souboru nedostanou."
+        >
+          <ExportSettingsForm
+            settings={resolveExportSettings(tenant.settings)}
+            canEdit={permissions.has('core.organization.configure')}
+          />
+        </Section>
+      </div>
 
       <Section
         title="Logo firmy"

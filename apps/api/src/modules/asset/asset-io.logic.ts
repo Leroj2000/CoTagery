@@ -23,6 +23,7 @@ export type ColumnKey =
   | 'manufacturer'
   | 'model'
   | 'serialNumber'
+  | 'registrationPlate'
   | 'inventoryNumber'
   | 'homeLocation'
   | 'status'
@@ -107,6 +108,15 @@ export const ASSET_COLUMNS: ColumnDef[] = [
     help: '',
     example: 'SN123456',
     width: 18,
+  },
+  {
+    key: 'registrationPlate',
+    label: 'SPZ',
+    aliases: ['spz', 'rz', 'registracniznacka', 'registrationplate', 'licenseplate', 'poznavacka'],
+    kind: 'text',
+    help: 'Registrační značka vozidla, např. 1AB 2345.',
+    example: '',
+    width: 12,
   },
   {
     key: 'inventoryNumber',

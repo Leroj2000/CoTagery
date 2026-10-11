@@ -1,16 +1,27 @@
 import Link from 'next/link';
-import { ClipboardCheck } from 'lucide-react';
+import { Car, ClipboardCheck, FileSpreadsheet } from 'lucide-react';
 import { apiFetch } from '../../lib/server-api';
 import { locationPath } from '../../lib/location-path';
-import type { InventoryCheck, Location, Person, Asset } from '../../lib/types';
+import type { InventoryCheck, Location, Person, Asset, Category } from '../../lib/types';
 import { PageHeader, Section, Table, Badge, EmptyState } from '../ui';
 import { ActionForm } from '../action-form';
-import { startInventorySubject } from '../actions';
+import { startInventorySubject, startVehicleInventory } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
 function fmtDateTime(iso: string): string {
   return new Date(iso).toLocaleString('cs-CZ');
+}
+
+/** `YYYY-MM-DD` → `1. 3. 2026`. */
+function fmtDay(iso: string | null): string {
+  if (!iso) return '—';
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  return `${d}. ${m}. ${y}`;
+}
+
+function pragueToday(): string {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Prague' }).format(new Date());
 }
 
 export default async function InventoryPage({
@@ -19,16 +30,28 @@ export default async function InventoryPage({
   searchParams: Promise<{ location?: string }>;
 }) {
   const { location } = await searchParams;
-  const [checks, locations, people, assets] = await Promise.all([
+  const [checks, locations, people, assets, categories] = await Promise.all([
     apiFetch<InventoryCheck[]>('/inventory'),
     apiFetch<Location[]>('/locations'),
     apiFetch<Person[]>('/people'),
     apiFetch<Asset[]>('/assets'),
+    apiFetch<Category[]>('/categories'),
   ]);
+  const vehicleCategories = new Set(
+    categories.filter((c) => c.equipmentKind === 'vehicle').map((c) => c.id),
+  );
+  const vehicles = assets
+    .filter((a) => a.categoryId && vehicleCategories.has(a.categoryId) && a.status !== 'retired')
+    .sort((a, b) => a.name.localeCompare(b.name, 'cs'));
+  const today = pragueToday();
   const locName = new Map(locations.map((l) => [l.id, locationPath(l.id, locations)]));
   const perName = new Map(people.map((p) => [p.id, p.name]));
   const assetName = new Map(assets.map((a) => [a.id, a.name]));
   const subjectName = (c: InventoryCheck): string => {
+    if (c.kind === 'vehicle') {
+      const which = c.subjectId ? (assetName.get(c.subjectId) ?? 'vozidlo') : 'Všechna vozidla';
+      return `${which} · ${fmtDay(c.periodFrom)} – ${fmtDay(c.periodTo)}`;
+    }
     const id = c.subjectId ?? c.locationId;
     if (!id) return '—';
     if (c.subjectType === 'person') return perName.get(id) ?? '—';
@@ -38,7 +61,9 @@ export default async function InventoryPage({
 
   // Subjekt inventury: místo / osoba / kontejner (zakódováno "type:id").
   const subjectOptions = [
-    ...locations.filter((l) => l.type !== 'access_point').map((l) => ({ value: `location:${l.id}`, label: `📍 ${locName.get(l.id)}` })),
+    ...locations
+      .filter((l) => l.type !== 'access_point')
+      .map((l) => ({ value: `location:${l.id}`, label: `📍 ${locName.get(l.id)}` })),
     ...people.map((p) => ({ value: `person:${p.id}`, label: `👤 ${p.name}` })),
     ...assets
       .filter((a) => a.canContainAssets)
@@ -53,34 +78,93 @@ export default async function InventoryPage({
         icon={<ClipboardCheck size={18} />}
       />
 
-      <Section title="Spustit inventuru" description="Nad místem, osobou nebo kontejnerem">
-        {subjectOptions.length === 0 ? (
-          <EmptyState>Nejdřív vytvoř místo, osobu nebo kontejner.</EmptyState>
-        ) : (
-          <ActionForm
-            action={startInventorySubject}
-            submitLabel="Spustit"
-            fields={[
-              {
-                name: 'subject',
-                label: 'Co inventarizuješ?',
-                required: true,
-                options: subjectOptions,
-                defaultValue: locations.some((l) => l.id === location)
-                  ? `location:${location}`
-                  : undefined,
-              },
-            ]}
-          />
-        )}
-      </Section>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Section
+          title="Inventura skladu"
+          description="Naskenuj, co je na místě, u osoby nebo v kontejneru – výsledek nalezeno / chybí / navíc."
+        >
+          {subjectOptions.length === 0 ? (
+            <EmptyState>Nejdřív vytvoř místo, osobu nebo kontejner.</EmptyState>
+          ) : (
+            <ActionForm
+              action={startInventorySubject}
+              submitLabel="Spustit"
+              fields={[
+                {
+                  name: 'subject',
+                  label: 'Co inventarizuješ?',
+                  required: true,
+                  options: subjectOptions,
+                  defaultValue: locations.some((l) => l.id === location)
+                    ? `location:${location}`
+                    : undefined,
+                },
+              ]}
+            />
+          )}
+        </Section>
 
-      <Section title={`Inventury (${checks.length})`}>
+        <Section
+          title="Inventura vozidel"
+          description="Sepsání stavu vozidel k období: tachometr, ujeté km, dny a km do servisu / po servisu."
+        >
+          {vehicles.length === 0 ? (
+            <EmptyState>
+              Žádná vozidla. V{' '}
+              <Link href="/admin/categories" className="text-brand-700 hover:underline">
+                Kategoriích
+              </Link>{' '}
+              nastav u kategorie druh „Vozidlo“.
+            </EmptyState>
+          ) : (
+            <ActionForm
+              action={startVehicleInventory}
+              submitLabel="Založit inventuru vozidel"
+              fields={[
+                {
+                  name: 'vehicle',
+                  label: 'Vozidla',
+                  required: true,
+                  defaultValue: 'all',
+                  options: [
+                    { value: 'all', label: `Všechna vozidla (${vehicles.length})` },
+                    ...vehicles.map((v) => ({
+                      value: v.id,
+                      label: [v.name, v.registrationPlate ?? v.inventoryNumber]
+                        .filter(Boolean)
+                        .join(' · '),
+                    })),
+                  ],
+                },
+                {
+                  name: 'periodFrom',
+                  label: 'Období od',
+                  type: 'date',
+                  required: true,
+                  defaultValue: `${today.slice(0, 8)}01`,
+                },
+                {
+                  name: 'periodTo',
+                  label: 'Období do',
+                  type: 'date',
+                  required: true,
+                  defaultValue: today,
+                },
+              ]}
+            />
+          )}
+        </Section>
+      </div>
+
+      <Section
+        title={`Inventury (${checks.length})`}
+        description="Uzavřenou i probíhající inventuru lze stáhnout do Excelu – co soubor obsahuje, nastavíš v Nastavení → Exporty."
+      >
         {checks.length === 0 ? (
           <EmptyState>Zatím žádné inventury.</EmptyState>
         ) : (
           <Table
-            head={['Kdy', 'Subjekt', 'Stav', 'Nalezeno', 'Chybí', 'Navíc']}
+            head={['Kdy', 'Inventura', 'Stav', 'Výsledek', 'Export']}
             rows={checks.map((c) => [
               <Link
                 key="d"
@@ -89,35 +173,56 @@ export default async function InventoryPage({
               >
                 {fmtDateTime(c.createdAt)}
               </Link>,
-              subjectName(c),
+              <span key="s" className="inline-flex items-center gap-1.5">
+                {c.kind === 'vehicle' ? (
+                  <Car size={14} className="shrink-0 text-slate-400" aria-label="Vozidla" />
+                ) : (
+                  <ClipboardCheck
+                    size={14}
+                    className="shrink-0 text-slate-400"
+                    aria-label="Sklad"
+                  />
+                )}
+                {subjectName(c)}
+              </span>,
               c.status === 'open' ? (
                 <Badge tone="amber">probíhá</Badge>
               ) : (
                 <Badge tone="green">uzavřeno</Badge>
               ),
-              c.status === 'closed' ? c.foundCount : '—',
-              c.status === 'closed' ? (
-                c.missingCount > 0 ? (
-                  <Badge tone="red">{c.missingCount}</Badge>
-                ) : (
-                  0
-                )
-              ) : (
-                '—'
-              ),
-              c.status === 'closed' ? (
-                c.unexpectedCount > 0 ? (
-                  <Badge tone="amber">{c.unexpectedCount}</Badge>
-                ) : (
-                  0
-                )
-              ) : (
-                '—'
-              ),
+              <ResultCell key="r" check={c} />,
+              <a
+                key="x"
+                href={`/api/inventory/${c.id}/export`}
+                className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
+              >
+                <FileSpreadsheet size={14} /> Excel
+              </a>,
             ])}
           />
         )}
       </Section>
     </div>
+  );
+}
+
+function ResultCell({ check: c }: { check: InventoryCheck }) {
+  if (c.status !== 'closed') return <span className="text-slate-400">—</span>;
+  if (c.kind === 'vehicle') {
+    // Uzavřená inventura vozidel: found = vozidel, missing = po servisu, unexpected = bez tachometru.
+    return (
+      <span className="flex flex-wrap items-center gap-1.5">
+        <span>{c.foundCount} vozidel</span>
+        {c.missingCount > 0 && <Badge tone="red">{c.missingCount} po servisu</Badge>}
+        {c.unexpectedCount > 0 && <Badge tone="amber">{c.unexpectedCount} bez tachometru</Badge>}
+      </span>
+    );
+  }
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      <span>{c.foundCount} nalezeno</span>
+      {c.missingCount > 0 && <Badge tone="red">{c.missingCount} chybí</Badge>}
+      {c.unexpectedCount > 0 && <Badge tone="amber">{c.unexpectedCount} navíc</Badge>}
+    </span>
   );
 }

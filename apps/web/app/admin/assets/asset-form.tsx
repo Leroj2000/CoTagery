@@ -66,6 +66,9 @@ export function AssetForm({
         <Field label="Sériové číslo">
           <input name="serialNumber" className={inputCls} />
         </Field>
+        <Field label="SPZ (u vozidel)">
+          <input name="registrationPlate" placeholder="1AB 2345" className={inputCls} />
+        </Field>
         <Field label="Patří do (home)">
           <LocationPicker name="homeLocationId" locations={locations} />
         </Field>

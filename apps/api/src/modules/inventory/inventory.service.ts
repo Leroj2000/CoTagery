@@ -9,7 +9,14 @@ import { Location } from '../../core/domain/entities/location.entity';
 import { InventoryCheck } from './entities/inventory-check.entity';
 import { InventoryScan } from './entities/inventory-scan.entity';
 import { classifyScan, computeResult, type InventoryResult } from './inventory.logic';
-import type { ScanInventoryDto, StartInventoryDto } from './dto/inventory.dto';
+import { VehicleInventoryService } from './vehicle-inventory.service';
+import type { VehicleInventoryRow } from './vehicle-inventory.logic';
+import type {
+  RecordVehicleDto,
+  ScanInventoryDto,
+  StartInventoryDto,
+  StartVehicleInventoryDto,
+} from './dto/inventory.dto';
 
 /** Detail inventury s vyřešenými assety (pro UI). */
 export interface InventoryDetail {
@@ -18,6 +25,8 @@ export interface InventoryDetail {
   missing: Asset[];
   unexpected: Asset[];
   scannedCount: number;
+  /** Inventura vozidel: stav vozidel (u skladu chybí). */
+  vehicles?: VehicleInventoryRow[];
 }
 
 @Injectable()
@@ -27,6 +36,7 @@ export class InventoryService {
     private readonly webhooks: WebhookService,
     private readonly carriers: DataCarriersService,
     private readonly assets: AssetService,
+    private readonly vehicleInventory: VehicleInventoryService,
   ) {}
 
   private repo<T extends object>(entity: { new (): T }): Repository<T> {
@@ -63,15 +73,39 @@ export class InventoryService {
     );
   }
 
-  private async getCheck(id: string): Promise<InventoryCheck> {
+  async getCheck(id: string): Promise<InventoryCheck> {
     const check = await this.repo(InventoryCheck).findOne({ where: { id } });
     if (!check) throw new NotFoundException('Inventura neexistuje');
     return check;
   }
 
+  private async getStockCheck(id: string): Promise<InventoryCheck> {
+    const check = await this.getCheck(id);
+    if (check.kind === 'vehicle')
+      throw new BadRequestException('U inventury vozidel se neskenuje – zapisuje se stav');
+    return check;
+  }
+
+  // --- Inventura vozidel ---
+
+  startVehicles(dto: StartVehicleInventoryDto): Promise<InventoryCheck> {
+    return this.vehicleInventory.start(dto);
+  }
+
+  async recordVehicle(
+    checkId: string,
+    assetId: string,
+    dto: RecordVehicleDto,
+  ): Promise<InventoryDetail> {
+    const check = await this.getCheck(checkId);
+    if (check.kind !== 'vehicle') throw new BadRequestException('Není inventura vozidel');
+    await this.vehicleInventory.record(check, assetId, dto);
+    return this.detail(checkId);
+  }
+
   /** Naskenuje asset do inventury: klasifikuje found/unexpected (idempotentně). */
   async scan(checkId: string, dto: ScanInventoryDto, actorUserId?: string): Promise<InventoryScan> {
-    const check = await this.getCheck(checkId);
+    const check = await this.getStockCheck(checkId);
     if (check.status !== 'open') throw new BadRequestException('Inventura je uzavřená');
 
     let assetId = dto.assetId ?? null;
@@ -107,7 +141,7 @@ export class InventoryService {
    * Platí jen pro inventuru MÍSTA a věc klasifikovanou jako unexpected.
    */
   async reconcile(checkId: string, assetId: string): Promise<InventoryDetail> {
-    const check = await this.getCheck(checkId);
+    const check = await this.getStockCheck(checkId);
     if (check.status !== 'open') throw new BadRequestException('Inventura je uzavřená');
 
     const locationId =
@@ -132,6 +166,10 @@ export class InventoryService {
   async close(checkId: string): Promise<InventoryDetail> {
     const check = await this.getCheck(checkId);
     if (check.status === 'closed') return this.detail(checkId);
+    if (check.kind === 'vehicle') {
+      await this.vehicleInventory.close(check);
+      return this.detail(checkId);
+    }
 
     const scans = await this.repo(InventoryScan).find({ where: { checkId } });
     const result = computeResult(
@@ -163,6 +201,16 @@ export class InventoryService {
   /** Detail inventury s načtenými assety pro každou kategorii. */
   async detail(checkId: string): Promise<InventoryDetail> {
     const check = await this.getCheck(checkId);
+    if (check.kind === 'vehicle') {
+      return {
+        check,
+        found: [],
+        missing: [],
+        unexpected: [],
+        scannedCount: 0,
+        vehicles: await this.vehicleInventory.rows(check),
+      };
+    }
     const scans = await this.repo(InventoryScan).find({ where: { checkId } });
     const result: InventoryResult = computeResult(
       new Set(check.expectedAssetIds),

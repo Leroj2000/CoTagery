@@ -10,6 +10,7 @@ export interface Asset {
   manufacturer: string | null;
   model: string | null;
   serialNumber: string | null;
+  registrationPlate?: string | null;
   inventoryNumber: string | null;
   homeLocationId: string | null;
   status: string;
@@ -239,6 +240,11 @@ export interface Location {
 
 export interface InventoryCheck {
   id: string;
+  /** `stock` = inventura skladu (sken), `vehicle` = sepsání stavu vozidel. */
+  kind: 'stock' | 'vehicle';
+  periodFrom: string | null;
+  periodTo: string | null;
+  vehicleNotes: Record<string, string>;
   subjectType: 'location' | 'person' | 'asset';
   subjectId: string | null;
   locationId: string | null;
@@ -257,6 +263,45 @@ export interface InventoryDetail {
   missing: Asset[];
   unexpected: Asset[];
   scannedCount: number;
+  vehicles?: VehicleInventoryRow[];
+}
+
+export type MaintenanceStatus = 'not_started' | 'need_reading' | 'ok' | 'soon' | 'overdue';
+
+export interface VehiclePlanState {
+  code: string;
+  title: string;
+  status: MaintenanceStatus;
+  nextMeter: number | null;
+  kmToService: number | null;
+  nextDueOn: string | null;
+  daysToService: number | null;
+  lastServiceOn: string | null;
+  lastServiceMeter: number | null;
+}
+
+export interface VehicleInventoryRow {
+  assetId: string;
+  name: string;
+  inventoryNumber: string | null;
+  serialNumber: string | null;
+  registrationPlate?: string | null;
+  category: string | null;
+  holder: string | null;
+  odometerStart: number | null;
+  odometerStartAt: string | null;
+  odometerEnd: number | null;
+  odometerEndAt: string | null;
+  distance: number | null;
+  plans: VehiclePlanState[];
+  next: VehiclePlanState | null;
+  servicesInPeriod: {
+    performedOn: string;
+    title: string;
+    meterValue: number | null;
+    provider: string | null;
+  }[];
+  note: string | null;
 }
 
 export interface DigitalObject {

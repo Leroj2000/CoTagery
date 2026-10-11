@@ -73,6 +73,12 @@ export class CreateAssetDto {
   @MaxLength(200)
   serialNumber?: string;
 
+  /** SPZ vozidla. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  registrationPlate?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(200)
@@ -119,6 +125,12 @@ export class UpdateAssetDto {
   @IsString()
   @MaxLength(200)
   serialNumber?: string;
+
+  /** SPZ vozidla. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  registrationPlate?: string;
 
   @IsOptional()
   @IsString()

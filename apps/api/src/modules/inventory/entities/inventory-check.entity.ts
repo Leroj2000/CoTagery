@@ -1,12 +1,33 @@
 import { Column, Entity } from 'typeorm';
 import { BaseTenantEntity } from '../../../core/database/base-tenant.entity';
+import type { VehicleInventoryRow } from '../vehicle-inventory.logic';
 
 /**
- * Inventura nad lokací. Při startu se zmrazí množina očekávaných assetů
- * (`expected_asset_ids`), aby výsledek nebyl ovlivněný pohyby během inventury.
+ * Inventura. `stock` = nad místem/osobou/kontejnerem: při startu se zmrazí
+ * množina očekávaných assetů (`expected_asset_ids`), aby výsledek nebyl
+ * ovlivněný pohyby během inventury. `vehicle` = sepsání stavu vozidel
+ * (`expected_asset_ids`) k období `period_from`–`period_to`.
  */
 @Entity('inventory_checks')
 export class InventoryCheck extends BaseTenantEntity {
+  @Column({ type: 'text', default: 'stock' })
+  kind!: 'stock' | 'vehicle';
+
+  /** Období inventury vozidel (YYYY-MM-DD, včetně). */
+  @Column({ type: 'date', name: 'period_from', nullable: true })
+  periodFrom!: string | null;
+
+  @Column({ type: 'date', name: 'period_to', nullable: true })
+  periodTo!: string | null;
+
+  /** Poznámky k vozidlům (assetId → text). */
+  @Column({ type: 'jsonb', name: 'vehicle_notes', default: {} })
+  vehicleNotes!: Record<string, string>;
+
+  /** Stav vozidel zmrazený při uzavření; u probíhající se počítá živě. */
+  @Column({ type: 'jsonb', name: 'vehicle_rows', nullable: true })
+  vehicleRows!: VehicleInventoryRow[] | null;
+
   /** Nad čím inventura probíhá: místo / osoba / kontejner. */
   @Column({ type: 'text', name: 'subject_type', default: 'location' })
   subjectType!: 'location' | 'person' | 'asset';

@@ -8,6 +8,8 @@ import { InventoryCheck } from './entities/inventory-check.entity';
 import { InventoryScan } from './entities/inventory-scan.entity';
 import { InventoryService } from './inventory.service';
 import { InventoryController } from './inventory.controller';
+import { VehicleInventoryService } from './vehicle-inventory.service';
+import { InventoryExportService } from './inventory-export.service';
 
 /**
  * Inventura (Fáze C): porovnání evidence s realitou – nalezeno/chybí/navíc.
@@ -20,6 +22,6 @@ import { InventoryController } from './inventory.controller';
     AssetModule,
   ],
   controllers: [InventoryController],
-  providers: [InventoryService],
+  providers: [InventoryService, VehicleInventoryService, InventoryExportService],
 })
 export class InventoryModule {}

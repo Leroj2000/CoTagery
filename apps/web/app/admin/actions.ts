@@ -1,7 +1,9 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { apiFetch, ApiError } from '../lib/server-api';
+import { EXPORT_DEFINITIONS, type ExportKind } from '@tagery/shared';
 import type { ActionState } from './action-form';
 
 /** Obalí volání API do ActionState (chyba/úspěch) + revaliduje cestu. */
@@ -352,6 +354,60 @@ export async function resolveIssue(_p: ActionState, fd: FormData): Promise<Actio
   );
 }
 
+/** Inventura vozidel: všechna (`vehicle` = 'all') nebo jedno, k období od–do. */
+export async function startVehicleInventory(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const vehicle = str(fd, 'vehicle');
+  const periodFrom = str(fd, 'periodFrom');
+  const periodTo = str(fd, 'periodTo');
+  if (!periodFrom || !periodTo) return { error: 'Vyplň období od–do.' };
+  if (periodFrom > periodTo) return { error: 'Začátek období je až po jeho konci.' };
+  let id: string;
+  try {
+    const check = await apiFetch<{ id: string }>('/inventory/vehicles', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...(vehicle && vehicle !== 'all' ? { assetId: vehicle } : {}),
+        periodFrom,
+        periodTo,
+      }),
+    });
+    id = check.id;
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Neočekávaná chyba' };
+  }
+  revalidatePath('/admin/inventory');
+  redirect(`/admin/inventory/${id}`);
+}
+
+/** Nastavení → Exporty: sloupce a listy exportů (`settings.exports`). */
+export async function updateExportSettings(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const exports = Object.fromEntries(
+    (Object.keys(EXPORT_DEFINITIONS) as ExportKind[]).map((kind) => {
+      const def = EXPORT_DEFINITIONS[kind];
+      const chosen = (prefix: string, keys: string[]) =>
+        keys.filter((k) => fd.get(`${kind}.${prefix}.${k}`) === 'on');
+      const keys = (opts: { key: string }[]) => opts.map((o) => o.key);
+      return [
+        kind,
+        { columns: chosen('col', keys(def.columns)), sheets: chosen('sheet', keys(def.sheets)) },
+      ];
+    }),
+  );
+  for (const [kind, sel] of Object.entries(exports)) {
+    if (!sel.columns.length)
+      return {
+        error: `${EXPORT_DEFINITIONS[kind as ExportKind].title}: vyber aspoň jeden sloupec.`,
+      };
+  }
+  return run(
+    '/tenant',
+    { settings: { exports } },
+    '/admin/settings',
+    'Nastavení exportů uloženo.',
+    'PATCH',
+  );
+}
+
 export async function startInventorySubject(_p: ActionState, fd: FormData): Promise<ActionState> {
   const subject = str(fd, 'subject'); // "type:id"
   const [subjectType, subjectId] = subject.includes(':')
@@ -426,6 +482,7 @@ export async function createAsset(_p: ActionState, fd: FormData): Promise<Action
         categoryId: categoryId || undefined,
         manufacturer: str(fd, 'manufacturer') || undefined,
         serialNumber: str(fd, 'serialNumber') || undefined,
+        registrationPlate: str(fd, 'registrationPlate') || undefined,
         homeLocationId: str(fd, 'homeLocationId') || undefined,
         canContainAssets: str(fd, 'canContainAssets') === 'true',
       }),
@@ -735,6 +792,7 @@ export async function updateAsset(_p: ActionState, fd: FormData): Promise<Action
       manufacturer: str(fd, 'manufacturer') || '',
       model: str(fd, 'model') || '',
       serialNumber: str(fd, 'serialNumber') || '',
+      ...(fd.has('registrationPlate') ? { registrationPlate: str(fd, 'registrationPlate') } : {}),
       inventoryNumber: str(fd, 'inventoryNumber') || '',
       homeLocationId: str(fd, 'homeLocationId') || undefined,
     },

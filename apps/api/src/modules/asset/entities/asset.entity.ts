@@ -34,6 +34,10 @@ export class Asset extends BaseTenantEntity {
   @Column({ type: 'text', name: 'serial_number', nullable: true })
   serialNumber!: string | null;
 
+  /** SPZ (registrační značka) vozidla – velkými písmeny, mezery sjednocené. */
+  @Column({ type: 'text', name: 'registration_plate', nullable: true })
+  registrationPlate!: string | null;
+
   @Column({ type: 'text', name: 'inventory_number', nullable: true })
   inventoryNumber!: string | null;
 

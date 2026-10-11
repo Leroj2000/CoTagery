@@ -181,8 +181,14 @@ export default async function AssetDetail({
           <PageHeader
             title={asset.name}
             description={
-              [asset.manufacturer, asset.model, asset.serialNumber].filter(Boolean).join(' · ') ||
-              undefined
+              [
+                asset.registrationPlate && `SPZ ${asset.registrationPlate}`,
+                asset.manufacturer,
+                asset.model,
+                asset.serialNumber,
+              ]
+                .filter(Boolean)
+                .join(' · ') || undefined
             }
             icon={<Package size={18} />}
             action={<StatusBadge status={asset.status} />}
@@ -342,6 +348,12 @@ export default async function AssetDetail({
                   name: 'serialNumber',
                   label: 'Sériové číslo',
                   defaultValue: asset.serialNumber ?? '',
+                },
+                {
+                  name: 'registrationPlate',
+                  label: 'SPZ (u vozidel)',
+                  placeholder: 'např. 1AB 2345',
+                  defaultValue: asset.registrationPlate ?? '',
                 },
                 {
                   name: 'inventoryNumber',

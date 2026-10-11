@@ -31,6 +31,7 @@ import {
   type ColumnKey,
 } from './asset-io.logic';
 import { PurchaseService } from './purchase.service';
+import { normalizePlate } from './plate.logic';
 import {
   defaultStartBasis,
   tenantIsVatPayer,
@@ -82,6 +83,7 @@ interface AssetPatch {
   manufacturer?: string;
   model?: string;
   serialNumber?: string;
+  registrationPlate?: string;
   inventoryNumber?: string;
   locationName?: string;
 }
@@ -117,6 +119,7 @@ const ASSET_FIELDS: (keyof AssetPatch)[] = [
   'manufacturer',
   'model',
   'serialNumber',
+  'registrationPlate',
   'inventoryNumber',
   'locationName',
 ];
@@ -215,6 +218,7 @@ export class AssetIoService {
         manufacturer: a.manufacturer,
         model: a.model,
         serialNumber: a.serialNumber,
+        registrationPlate: a.registrationPlate,
         inventoryNumber: a.inventoryNumber,
         homeLocation: locName.get(a.homeLocationId ?? '') ?? null,
         status: STATUS_LABELS[a.status] ?? a.status,
@@ -559,6 +563,7 @@ export class AssetIoService {
         manufacturer: text('manufacturer'),
         model: text('model'),
         serialNumber: text('serialNumber'),
+        registrationPlate: normalizePlate(text('registrationPlate')) ?? undefined,
         inventoryNumber: inv,
         locationName: text('homeLocation'),
       };
@@ -670,6 +675,7 @@ export class AssetIoService {
           manufacturer: target.manufacturer ?? '',
           model: target.model ?? '',
           serialNumber: target.serialNumber ?? '',
+          registrationPlate: target.registrationPlate ?? '',
           inventoryNumber: target.inventoryNumber ?? '',
           locationName: locName.get(target.homeLocationId ?? '') ?? '',
         };
@@ -758,6 +764,7 @@ export class AssetIoService {
           ...(a.manufacturer !== undefined ? { manufacturer: a.manufacturer } : {}),
           ...(a.model !== undefined ? { model: a.model } : {}),
           ...(a.serialNumber !== undefined ? { serialNumber: a.serialNumber } : {}),
+          ...(a.registrationPlate !== undefined ? { registrationPlate: a.registrationPlate } : {}),
           ...(a.inventoryNumber !== undefined ? { inventoryNumber: a.inventoryNumber } : {}),
           ...(a.locationName !== undefined
             ? { homeLocationId: await locationId(a.locationName) }

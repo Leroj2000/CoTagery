@@ -103,6 +103,6 @@ import { PersonalWorkflowsController } from './personal-workflows.controller';
     AssetIoService,
     AssetHandler,
   ],
-  exports: [AssetService],
+  exports: [AssetService, MaintenanceService],
 })
 export class AssetModule {}
