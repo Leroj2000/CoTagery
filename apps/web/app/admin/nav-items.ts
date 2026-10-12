@@ -17,6 +17,7 @@ import {
   UsersRound,
   Settings,
   MapPinned,
+  Shapes,
   Webhook,
   ScanLine,
   Rocket,
@@ -117,6 +118,12 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'Kategorie',
         icon: Tags,
         permission: 'asset.category.manage',
+      },
+      {
+        href: '/admin/locations/types',
+        label: 'Typy míst',
+        icon: Shapes,
+        permission: 'core.location.update',
       },
       {
         href: '/admin/carriers',

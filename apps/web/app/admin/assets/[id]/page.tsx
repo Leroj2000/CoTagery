@@ -160,7 +160,8 @@ export default async function AssetDetail({
     .map((l) => ({
       id: l.id,
       label: locationPath(l.id, locations),
-      grid: l.type === 'rack' || l.type === 'cabinet',
+      // Matice buněk u míst s vygenerovanou mřížkou (regál, skříň i vlastní typy).
+      grid: (l.gridRows ?? 0) > 0,
     }));
   const assetName = new Map(allAssets.map((a) => [a.id, a.name]));
   // Kandidáti na vložení: nekontejnerové/volné věci mimo tuto věc a její obsah.

@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { TenantContextService } from '../../tenancy/tenant-context.service';
 import { Location } from '../entities/location.entity';
 import type { CreateLocationDto } from './dto/create-location.dto';
+import { LocationTypesService } from './location-types.service';
 import type { UpdateLocationDto } from './dto/update-location.dto';
 import type { GenerateGridDto } from './dto/grid.dto';
 import { EntitlementsService } from '../../plans/entitlements.service';
@@ -46,6 +47,7 @@ export class LocationsService {
   constructor(
     private readonly context: TenantContextService,
     private readonly entitlements: EntitlementsService,
+    private readonly types: LocationTypesService,
   ) {}
 
   private repo(): Repository<Location> {
@@ -77,6 +79,7 @@ export class LocationsService {
 
   async create(dto: CreateLocationDto): Promise<Location> {
     if (!dto.name.trim()) throw new BadRequestException('Vyplň název místa.');
+    if (dto.type) await this.types.assertSelectable(dto.type);
     await this.entitlements.assertWithinLimit('locations');
     if (dto.parentId) {
       const parent = await this.get(dto.parentId);
@@ -117,8 +120,7 @@ export class LocationsService {
     if (dto.parentId === id) throw new BadRequestException('Lokace nemůže být rodičem sama sobě');
     if (dto.parentId) {
       const parent = await this.get(dto.parentId);
-      if (parent.type === 'cell')
-        throw new BadRequestException('Pod buňku nelze místo přeřadit.');
+      if (parent.type === 'cell') throw new BadRequestException('Pod buňku nelze místo přeřadit.');
       if ((await this.subtree(id)).includes(dto.parentId))
         throw new BadRequestException('Místo nelze vložit do vlastního podřízeného místa.');
     }
@@ -128,7 +130,10 @@ export class LocationsService {
       if (!dto.name.trim()) throw new BadRequestException('Vyplň název místa.');
       location.name = dto.name.trim();
     }
-    if (dto.type !== undefined) location.type = dto.type;
+    if (dto.type !== undefined) {
+      await this.types.assertSelectable(dto.type, location.type);
+      location.type = dto.type;
+    }
     if (dto.address !== undefined) location.address = dto.address || null;
     if (dto.timezone) location.timezone = dto.timezone;
     if (dto.parentId !== undefined) location.parentId = dto.parentId || null;

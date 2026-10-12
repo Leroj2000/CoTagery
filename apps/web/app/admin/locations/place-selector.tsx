@@ -1,8 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { locationPath, type PlaceNode } from '../../lib/location-path';
 import { CodeInput } from '../scan/code-input';
-import { LOCATION_TYPES_BY_CATEGORY } from './location-types';
+import { LOCATION_CATEGORIES, typeOptions, type LocationTypeDef } from './location-types';
 
 export function PlaceSelector({
   places,
@@ -22,6 +22,19 @@ export function PlaceSelector({
   const [mode, setMode] = useState<'browse' | 'scan' | 'new'>('browse');
   const [name, setName] = useState('');
   const [type, setType] = useState('box');
+  const [types, setTypes] = useState<LocationTypeDef[]>([]);
+  // Typy míst firmy se načtou až při zakládání nového místa.
+  useEffect(() => {
+    if (mode !== 'new' || types.length) return;
+    void fetch('/api/location-types', { cache: 'no-store' })
+      .then((r) => (r.ok ? (r.json() as Promise<LocationTypeDef[]>) : []))
+      .then((list) => {
+        setTypes(list);
+        if (!list.some((t) => t.key === type && !t.hidden))
+          setType(list.find((t) => !t.hidden)?.key ?? type);
+      })
+      .catch(() => undefined);
+  }, [mode, types.length, type]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const available = places.filter(
@@ -180,15 +193,15 @@ export function PlaceSelector({
           <label className="block text-sm">
             Typ místa
             <select className="field-input" value={type} onChange={(e) => setType(e.target.value)}>
-              {Object.entries(LOCATION_TYPES_BY_CATEGORY)
-                .filter(([category]) => category !== 'access')
-                .map(([, types]) => types)
-                .flat()
-                .map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
+              {LOCATION_CATEGORIES.map((c) => (
+                <optgroup key={c.value} label={c.label}>
+                  {typeOptions(types, c.value).map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
             </select>
           </label>
           <button

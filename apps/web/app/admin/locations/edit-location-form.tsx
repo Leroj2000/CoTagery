@@ -7,9 +7,9 @@ import type { ActionState } from '../action-form';
 import { updateLocation } from '../actions';
 import {
   LOCATION_CATEGORIES,
-  LOCATION_TYPES_BY_CATEGORY,
   categoryOfType,
-  typeOptionsFor,
+  typeOptions,
+  type LocationTypeDef,
 } from './location-types';
 
 const selCls =
@@ -28,7 +28,9 @@ export function EditLocationForm({
   address,
   parentId,
   parentOptions,
+  types,
 }: {
+  types: LocationTypeDef[];
   id: string;
   name: string;
   type: string;
@@ -39,7 +41,7 @@ export function EditLocationForm({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState<ActionState, FormData>(updateLocation, null);
-  const [category, setCategory] = useState(categoryOfType(type));
+  const [category, setCategory] = useState<string>(categoryOfType(types, type));
   const [curType, setCurType] = useState(type);
 
   useEffect(() => {
@@ -70,32 +72,32 @@ export function EditLocationForm({
         <input name="name" defaultValue={name} className={inpCls} />
       </label>
 
-      <label className="flex flex-col gap-0.5 text-[11px] text-slate-500">
-        Kategorie
-        <select
-          value={category}
-          onChange={(e) => {
-            const c = e.target.value;
-            setCategory(c);
-            setCurType((LOCATION_TYPES_BY_CATEGORY[c] ?? [])[0]?.value ?? curType);
-          }}
-          className={selCls}
-        >
-          {LOCATION_CATEGORIES.filter((c) => type !== 'access_point' || c.value === 'access').map(
-            (c) => (
+      {type !== 'access_point' && (
+        <label className="flex flex-col gap-0.5 text-[11px] text-slate-500">
+          Kategorie
+          <select
+            value={category}
+            onChange={(e) => {
+              const c = e.target.value;
+              setCategory(c);
+              setCurType(typeOptions(types, c, type)[0]?.value ?? curType);
+            }}
+            className={selCls}
+          >
+            {LOCATION_CATEGORIES.map((c) => (
               <option key={c.value} value={c.value}>
                 {c.label}
               </option>
-            ),
-          )}
-        </select>
-      </label>
+            ))}
+          </select>
+        </label>
+      )}
 
       {type !== 'access_point' && (
         <label className="flex flex-col gap-0.5 text-[11px] text-slate-500">
           Typ
           <select value={curType} onChange={(e) => setCurType(e.target.value)} className={selCls}>
-            {typeOptionsFor(category, type).map((t) => (
+            {typeOptions(types, category, type).map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
               </option>
@@ -122,7 +124,9 @@ export function EditLocationForm({
               (o) =>
                 o.value !== id &&
                 (type !== 'access_point' ||
-                  (o.value && !['box', 'shelf', 'rack', 'cabinet', 'cell'].includes(o.type ?? ''))),
+                  (o.value &&
+                    o.type !== 'cell' &&
+                    categoryOfType(types, o.type ?? '') !== 'storage')),
             )
             .map((o) => (
               <option key={o.value} value={o.value}>

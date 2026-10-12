@@ -6,6 +6,7 @@ import type { Asset, Location } from '../../../lib/types';
 import { PageHeader, Section, EmptyState, StatusBadge } from '../../ui';
 import { LocationLabel } from './location-label';
 import { EditLocationForm } from '../edit-location-form';
+import type { LocationTypeDef } from '../location-types';
 
 export default async function LocationDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -17,12 +18,13 @@ export default async function LocationDetail({ params }: { params: Promise<{ id:
     throw e;
   }
   const perms = await getMyPermissions();
-  const [places, result, modules] = await Promise.all([
+  const [places, result, modules, types] = await Promise.all([
     apiFetch<Location[]>('/locations'),
     place.type !== 'access_point' && perms.has('asset.item.view')
       ? apiFetch<{ items: Asset[]; total: number }>(`/assets/search?location=${id}`)
       : Promise.resolve({ items: [], total: 0 }),
     apiFetch<{ moduleKey: string; state: string }[]>('/modules'),
+    apiFetch<LocationTypeDef[]>('/location-types').catch(() => [] as LocationTypeDef[]),
   ]);
   const assets = result.items;
   const descendants = locationDescendants(id, places);
@@ -57,6 +59,7 @@ export default async function LocationDetail({ params }: { params: Promise<{ id:
             type={place.type}
             address={place.address}
             parentId={place.parentId}
+            types={types}
             parentOptions={[
               { value: '', label: '— žádná (kořen) —' },
               ...places

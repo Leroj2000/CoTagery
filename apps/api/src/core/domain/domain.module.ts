@@ -12,6 +12,9 @@ import { DataCarrier } from './entities/data-carrier.entity';
 import { ScanEvent } from './entities/scan-event.entity';
 import { LocationsController } from './locations/locations.controller';
 import { LocationsService } from './locations/locations.service';
+import { LocationTypesService } from './locations/location-types.service';
+import { LocationTypesController } from './locations/location-types.controller';
+import { LocationTypeRow } from './entities/location-type.entity';
 import { DigitalObjectsController } from './objects/digital-objects.controller';
 import { DigitalObjectsService } from './objects/digital-objects.service';
 import { DataCarriersController } from './carriers/data-carriers.controller';
@@ -37,6 +40,7 @@ import { ModuleRegistry } from './module-handler';
     TypeOrmModule.forFeature([
       Tenant,
       Location,
+      LocationTypeRow,
       Group,
       GroupMember,
       Person,
@@ -49,6 +53,7 @@ import { ModuleRegistry } from './module-handler';
   ],
   controllers: [
     LocationsController,
+    LocationTypesController,
     DigitalObjectsController,
     DataCarriersController,
     UsersController,
@@ -59,6 +64,7 @@ import { ModuleRegistry } from './module-handler';
   ],
   providers: [
     LocationsService,
+    LocationTypesService,
     DigitalObjectsService,
     DataCarriersService,
     QrService,

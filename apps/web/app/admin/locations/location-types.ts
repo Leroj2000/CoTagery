@@ -1,46 +1,59 @@
-/** Sdílené definice kategorií/typů míst (dvoukrokový výběr) + label buňky. */
+/**
+ * Typy míst ve webu: kategorie (Místo / Úložný prostor) a typy z číselníku firmy
+ * (`GET /location-types` – systémové s přejmenováním/skrytím + vlastní) + label buňky.
+ */
+import {
+  INTERNAL_LOCATION_TYPES,
+  LOCATION_CATEGORY_LABELS,
+  locationTypeName,
+  type LocationCategory,
+  type LocationTypeDef,
+} from '@tagery/shared';
 
-export const LOCATION_CATEGORIES = [
-  { value: 'place', label: 'Místo' },
-  { value: 'storage', label: 'Úložný prostor' },
-];
+export type { LocationTypeDef };
 
-export const LOCATION_TYPES_BY_CATEGORY: Record<string, { value: string; label: string }[]> = {
-  place: [
-    { value: 'city', label: 'Město' },
-    { value: 'street', label: 'Ulice' },
-    { value: 'building', label: 'Budova' },
-    { value: 'room', label: 'Místnost' },
-    { value: 'warehouse', label: 'Sklad' },
-    { value: 'store', label: 'Prodejna' },
-    { value: 'venue', label: 'Místo konání' },
-    { value: 'office', label: 'Kancelář' },
-    { value: 'home', label: 'Domov' },
-  ],
-  storage: [
-    { value: 'box', label: 'Úložný box' },
-    { value: 'shelf', label: 'Police' },
-    { value: 'rack', label: 'Regál' },
-    { value: 'cabinet', label: 'Skříň' },
-  ],
-};
-
-/** Typy s mřížkovým rozdělením na sekce. */
-export const GRID_TYPES = new Set(['rack', 'cabinet']);
-
-export function categoryOfType(type: string): string {
-  return ['rack', 'cabinet', 'box', 'shelf'].includes(type) ? 'storage' : 'place';
+export interface LocationTypeView extends LocationTypeDef {
+  usage: number;
 }
 
-/** Typy pro danou kategorii; zachová i neznámý (legacy) aktuální typ. */
-export function typeOptionsFor(
+export const LOCATION_CATEGORIES = (
+  Object.keys(LOCATION_CATEGORY_LABELS) as LocationCategory[]
+).map((value) => ({ value, label: LOCATION_CATEGORY_LABELS[value] }));
+
+/** Kategorie typu (neznámý / legacy typ = Místo). */
+export function categoryOfType(types: LocationTypeDef[], key: string): LocationCategory {
+  return (
+    types.find((t) => t.key === key)?.category ?? INTERNAL_LOCATION_TYPES[key]?.category ?? 'place'
+  );
+}
+
+/** Dělí se typ na mřížku buněk? */
+export function isGridType(types: LocationTypeDef[], key: string): boolean {
+  return types.find((t) => t.key === key)?.grid ?? false;
+}
+
+export function typeLabel(types: LocationTypeDef[], key: string): string {
+  return locationTypeName(types, key);
+}
+
+/**
+ * Typy k výběru v kategorii: bez skrytých; aktuální typ místa zůstane i když je
+ * skrytý nebo neznámý (úprava místa o typ nepřijde).
+ */
+export function typeOptions(
+  types: LocationTypeDef[],
   category: string,
   currentType?: string,
 ): { value: string; label: string }[] {
-  const base = LOCATION_TYPES_BY_CATEGORY[category] ?? [];
-  if (currentType && !base.some((t) => t.value === currentType)) {
-    return [{ value: currentType, label: currentType }, ...base];
-  }
+  const base = types
+    .filter((t) => t.category === category && (!t.hidden || t.key === currentType))
+    .map((t) => ({ value: t.key, label: t.name }));
+  if (
+    currentType &&
+    !base.some((t) => t.value === currentType) &&
+    category === categoryOfType(types, currentType)
+  )
+    return [{ value: currentType, label: typeLabel(types, currentType) }, ...base];
   return base;
 }
 

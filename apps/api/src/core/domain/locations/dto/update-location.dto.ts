@@ -1,6 +1,4 @@
-import { IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
-
-import { LOCATION_TYPES } from './create-location.dto';
+import { IsOptional, IsString, IsUUID, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class UpdateLocationDto {
   @IsOptional()
@@ -9,9 +7,10 @@ export class UpdateLocationDto {
   @MaxLength(200)
   name?: string;
 
+  /** Klíč typu z číselníku firmy (`GET /location-types`); ověřuje služba. */
   @IsOptional()
-  @IsIn(LOCATION_TYPES)
-  type?: (typeof LOCATION_TYPES)[number];
+  @Matches(/^[a-z][a-z0-9_]{1,40}$/)
+  type?: string;
 
   @IsOptional()
   @IsString()

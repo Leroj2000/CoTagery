@@ -5,10 +5,20 @@ import { usePathname } from 'next/navigation';
 import { NAV_SECTIONS, type NavItem } from './nav-items';
 import { CountBadge } from '../ui/count-badge';
 
-/** Aktivní, když je to přesná shoda, nebo podstránka (kromě rootu /admin). */
-function isActive(pathname: string, href: string): boolean {
+const ALL_HREFS = NAV_SECTIONS.flatMap((s) => s.items.map((i) => i.href));
+
+function matches(pathname: string, href: string): boolean {
   if (href === '/admin') return pathname === '/admin';
   return pathname === href || pathname.startsWith(href + '/');
+}
+
+/**
+ * Aktivní, když je to přesná shoda, nebo podstránka (kromě rootu /admin) – a žádná
+ * jiná položka neodpovídá přesněji (`/admin/locations/types` ≠ „Místa").
+ */
+function isActive(pathname: string, href: string): boolean {
+  if (!matches(pathname, href)) return false;
+  return !ALL_HREFS.some((h) => h.length > href.length && matches(pathname, h));
 }
 
 export function AdminNav({

@@ -725,9 +725,9 @@ export async function createLocation(_p: ActionState, fd: FormData): Promise<Act
         parentId: str(fd, 'parentId') || undefined,
       }),
     });
-    // 2) Úložný prostor (regál/skříň) se zadanou mřížkou → rovnou vygeneruj buňky.
+    // 2) Typ s mřížkou (regál, skříň, vlastní typ) → rovnou vygeneruj buňky.
     let extra = '';
-    if ((type === 'rack' || type === 'cabinet') && gridRows && gridCols) {
+    if (str(fd, 'grid') === '1' && gridRows && gridCols) {
       try {
         await apiFetch(`/locations/${loc.id}/grid`, {
           method: 'POST',

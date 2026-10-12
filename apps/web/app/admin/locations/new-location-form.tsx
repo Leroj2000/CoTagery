@@ -5,31 +5,42 @@ import Link from 'next/link';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { createLocation } from '../actions';
 import type { ActionState } from '../action-form';
-import { LOCATION_CATEGORIES, LOCATION_TYPES_BY_CATEGORY, cellLabel } from './location-types';
+import {
+  LOCATION_CATEGORIES,
+  cellLabel,
+  isGridType,
+  typeOptions,
+  type LocationTypeDef,
+} from './location-types';
 
 const inputCls =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
 
-const CATEGORIES = LOCATION_CATEGORIES;
-const TYPES = LOCATION_TYPES_BY_CATEGORY;
-
 /**
- * Zakládání místa dvoukrokově: kategorie (Místo / Úložný prostor) → konkrétní typ.
- * U úložného prostoru (Regál/Skříň) se rovnou zadá mřížka (řady × sloupce) s živým
- * náhledem; buňky se vygenerují při vytvoření.
+ * Zakládání místa dvoukrokově: kategorie (Místo / Úložný prostor) → konkrétní typ
+ * z číselníku firmy. U typu s mřížkou (regál, skříň, vlastní) se rovnou zadá
+ * mřížka (řady × sloupce) s živým náhledem; buňky se vygenerují při vytvoření.
  */
 export function NewLocationForm({
   parentOptions,
+  types,
 }: {
   parentOptions: { value: string; label: string; type?: string }[];
+  types: LocationTypeDef[];
 }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(createLocation, null);
   const [category, setCategory] = useState('place');
-  const [type, setType] = useState('warehouse');
+  const [type, setType] = useState(
+    () =>
+      typeOptions(types, 'place').find((t) => t.value === 'warehouse')?.value ??
+      typeOptions(types, 'place')[0]?.value ??
+      '',
+  );
   const [rows, setRows] = useState(3);
   const [cols, setCols] = useState(3);
 
-  const isStorage = category === 'storage';
+  const isGrid = isGridType(types, type);
+  const typeName = types.find((t) => t.key === type)?.name ?? '';
   const parents = parentOptions;
 
   return (
@@ -45,11 +56,11 @@ export function NewLocationForm({
             onChange={(e) => {
               const c = e.target.value;
               setCategory(c);
-              setType(TYPES[c][0].value);
+              setType(typeOptions(types, c)[0]?.value ?? '');
             }}
             className={inputCls}
           >
-            {CATEGORIES.map((c) => (
+            {LOCATION_CATEGORIES.map((c) => (
               <option key={c.value} value={c.value}>
                 {c.label}
               </option>
@@ -64,7 +75,7 @@ export function NewLocationForm({
             onChange={(e) => setType(e.target.value)}
             className={inputCls}
           >
-            {TYPES[category].map((t) => (
+            {typeOptions(types, category).map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
               </option>
@@ -83,10 +94,11 @@ export function NewLocationForm({
         </Field>
       </div>
 
-      {isStorage && (
+      {isGrid && <input type="hidden" name="grid" value="1" />}
+      {isGrid && (
         <div className="rounded-xl border border-brand-200 bg-brand-50/40 p-4">
           <p className="mb-3 text-sm font-medium text-slate-700">
-            Rozdělení {type === 'cabinet' ? 'skříně' : 'regálu'} na police
+            Rozdělení na police / přihrádky ({typeName.toLowerCase()})
           </p>
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-xs text-slate-500">

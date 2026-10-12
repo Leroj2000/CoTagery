@@ -1,6 +1,4 @@
-import { IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
-
-export const LOCATION_TYPES = ['city', 'street', 'building', 'room', 'box', 'shelf', 'store', 'venue', 'warehouse', 'office', 'home', 'rack', 'cabinet'] as const;
+import { IsOptional, IsString, IsUUID, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class CreateLocationDto {
   @IsString()
@@ -8,9 +6,10 @@ export class CreateLocationDto {
   @MaxLength(200)
   name!: string;
 
+  /** Klíč typu z číselníku firmy (`GET /location-types`); ověřuje služba. */
   @IsOptional()
-  @IsIn(LOCATION_TYPES)
-  type?: (typeof LOCATION_TYPES)[number];
+  @Matches(/^[a-z][a-z0-9_]{1,40}$/)
+  type?: string;
 
   @IsOptional()
   @IsString()

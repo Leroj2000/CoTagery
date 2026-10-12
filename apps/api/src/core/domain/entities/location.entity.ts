@@ -7,22 +7,12 @@ export class Location extends BaseTenantEntity {
   @Column({ type: 'text' })
   name!: string;
 
+  /**
+   * Klíč typu místa: systémový (`warehouse`, `rack`…), vlastní typ firmy (`c_…`,
+   * číselník `location_types`) nebo interní (`cell`, `access_point`).
+   */
   @Column({ type: 'text', default: 'store' })
-  type!:
-    | 'city'
-    | 'street'
-    | 'building'
-    | 'room'
-    | 'box'
-    | 'shelf'
-    | 'store'
-    | 'venue'
-    | 'warehouse'
-    | 'office'
-    | 'home'
-    | 'rack'
-    | 'cabinet'
-    | 'cell';
+  type!: string;
 
   @Column({ type: 'text', nullable: true })
   address!: string | null;

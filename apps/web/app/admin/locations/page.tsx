@@ -1,7 +1,7 @@
-import { MapPin } from 'lucide-react';
+import { MapPin, Settings2 } from 'lucide-react';
 import Link from 'next/link';
 import { locationPath } from '../../lib/location-path';
-import { LOCATION_TYPES_BY_CATEGORY } from './location-types';
+import { isGridType, typeLabel, type LocationTypeDef } from './location-types';
 import { apiFetch, getMyPermissions } from '../../lib/server-api';
 import type { Asset, Location } from '../../lib/types';
 import { PageHeader, Section, Badge, EmptyState } from '../ui';
@@ -11,12 +11,6 @@ import { EditLocationForm } from './edit-location-form';
 
 export const dynamic = 'force-dynamic';
 
-const LOCATION_TYPES = Object.values(LOCATION_TYPES_BY_CATEGORY).flat();
-
-const TYPE_LABEL = new Map(LOCATION_TYPES.map((t) => [t.value, t.label]));
-/** Typy s mřížkovým rozdělením na sekce. */
-const GRID_TYPES = new Set(['rack', 'cabinet']);
-
 interface TreeProps {
   nodes: Location[];
   byParent: Map<string | null, Location[]>;
@@ -24,10 +18,11 @@ interface TreeProps {
   canManage: boolean;
   parentOptions: { value: string; label: string; type?: string }[];
   assets: { id: string; name: string }[];
+  types: LocationTypeDef[];
 }
 
 /** Vykreslí lokace jako strom (rekurzivně, odsazené dle úrovně). */
-function Tree({ nodes, byParent, depth = 0, canManage, parentOptions, assets }: TreeProps) {
+function Tree({ nodes, byParent, depth = 0, canManage, parentOptions, assets, types }: TreeProps) {
   return (
     <>
       {nodes.map((n) => (
@@ -44,7 +39,7 @@ function Tree({ nodes, byParent, depth = 0, canManage, parentOptions, assets }: 
             >
               {n.name}
             </Link>
-            <Badge tone="slate">{TYPE_LABEL.get(n.type) ?? n.type}</Badge>
+            <Badge tone="slate">{typeLabel(types, n.type)}</Badge>
             {canManage && (
               <span className="ml-auto">
                 <EditLocationForm
@@ -54,11 +49,12 @@ function Tree({ nodes, byParent, depth = 0, canManage, parentOptions, assets }: 
                   address={n.address}
                   parentId={n.parentId}
                   parentOptions={parentOptions}
+                  types={types}
                 />
               </span>
             )}
           </div>
-          {GRID_TYPES.has(n.type) && (
+          {(isGridType(types, n.type) || (n.gridRows ?? 0) > 0) && (
             <LocationGrid
               locationId={n.id}
               hasGrid={n.gridRows != null && n.gridRows > 0}
@@ -73,6 +69,7 @@ function Tree({ nodes, byParent, depth = 0, canManage, parentOptions, assets }: 
             canManage={canManage}
             parentOptions={parentOptions}
             assets={assets}
+            types={types}
           />
         </div>
       ))}
@@ -81,10 +78,11 @@ function Tree({ nodes, byParent, depth = 0, canManage, parentOptions, assets }: 
 }
 
 export default async function LocationsPage() {
-  const [locations, assets, perms] = await Promise.all([
+  const [locations, assets, perms, types] = await Promise.all([
     apiFetch<Location[]>('/locations'),
     apiFetch<Asset[]>('/assets').catch(() => [] as Asset[]),
     getMyPermissions(),
+    apiFetch<LocationTypeDef[]>('/location-types').catch(() => [] as LocationTypeDef[]),
   ]);
   const canManage = perms.has('core.location.create');
   const assetOpts = assets.map((a) => ({ id: a.id, name: a.name }));
@@ -110,11 +108,21 @@ export default async function LocationsPage() {
         title="Místa"
         description="Stromová hierarchie lokací (Firma → Sklad → Regál → Police)."
         icon={<MapPin size={18} />}
+        action={
+          perms.has('core.location.update') ? (
+            <Link
+              href="/admin/locations/types"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              <Settings2 size={15} /> Typy míst
+            </Link>
+          ) : undefined
+        }
       />
 
       {canManage && (
         <Section title="Nové místo">
-          <NewLocationForm parentOptions={parentOptions} />
+          <NewLocationForm parentOptions={parentOptions} types={types} />
         </Section>
       )}
 
@@ -128,6 +136,7 @@ export default async function LocationsPage() {
             canManage={canManage}
             parentOptions={parentOptions}
             assets={assetOpts}
+            types={types}
           />
         )}
       </Section>
