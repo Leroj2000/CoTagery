@@ -5,6 +5,7 @@ import { Asset } from './entities/asset.entity';
 import { AssetSpec, type SpecItem } from './entities/asset-spec.entity';
 import { ManualFetchService } from './manual-fetch.service';
 import { sanitizeSpecs } from './specs.logic';
+import { EntitlementsService } from '../../core/plans/entitlements.service';
 
 export interface FetchSpecResult {
   spec: AssetSpec | null;
@@ -24,6 +25,7 @@ export class SpecsService {
   constructor(
     private readonly context: TenantContextService,
     private readonly fetcher: ManualFetchService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   private repo(): Repository<AssetSpec> {
@@ -63,6 +65,8 @@ export class SpecsService {
       };
     }
 
+    await this.entitlements.assertWithinLimit('ai_per_month');
+    await this.entitlements.recordAiRequest();
     const spec = await this.upsert(assetId, {
       status: 'fetching',
       specs: null,

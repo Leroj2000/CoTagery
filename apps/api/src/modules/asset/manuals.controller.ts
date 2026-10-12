@@ -21,6 +21,7 @@ import { RequirePermission } from '../../core/rbac/require-permission.decorator'
 import { ManualsService } from './manuals.service';
 import { isAllowedManualMime, MANUAL_MAX_BYTES } from './manuals.logic';
 import type { AssetManual } from './entities/asset-manual.entity';
+import { RequireModule } from '../../core/rbac/require-module.decorator';
 
 interface UploadedFileLike {
   buffer: Buffer;
@@ -93,6 +94,7 @@ export class ManualsController {
   }
 
   @Post('assets/:id/manuals/fetch-ai')
+  @RequireModule('ai')
   @RequirePermission('asset.media.manage')
   async fetchAi(@Param('id', ParseUUIDPipe) id: string): Promise<FetchAiResponse> {
     const res = await this.manuals.fetchAi(id);
@@ -105,9 +107,7 @@ export class ManualsController {
 
   @Get('manuals/:manualId/file')
   @RequirePermission('asset.item.view')
-  async file(
-    @Param('manualId', ParseUUIDPipe) manualId: string,
-  ): Promise<StreamableFile> {
+  async file(@Param('manualId', ParseUUIDPipe) manualId: string): Promise<StreamableFile> {
     const { buffer, mime } = await this.manuals.file(manualId);
     return new StreamableFile(buffer, { type: mime });
   }

@@ -1,6 +1,6 @@
 # ADR-0009 – Platform plány, entitlementy a limity (plan-driven gating modulů)
 
-- **Stav:** Návrh
+- **Stav:** Přijato (implementováno 2026-10-12, EPIC-20 v2)
 - **Datum:** 2026-08-24
 
 ## Kontext
@@ -130,3 +130,28 @@ neupgraduje). Modul mimo nový plán se přepne na `inactive` (data zůstávají
 4. **Napojení na Billing/Stripe:** kdy plán navázat na reálné předplatné a webhooky
    (platba → `applyPlan`), místo ručního přiřazení.
 5. **UI:** platform-admin obrazovka pro přiřazení plánu + tenant „hláška o limitu/upgrade".
+
+## Implementace (2026-10-12, EPIC-20 v2)
+Oproti návrhu výše se změnilo:
+- **Úrovně jsou v DB** (`platform_plans`), ne jen v kódu – superadmin mění ceny, limity a
+  moduly přímo v Platformě; kód drží jen klíče, popisky a výchozí seed
+  (`@tagery/shared/plans.ts`). Změna úrovně se hned promítne do všech firem na ní.
+- **Předplatné** = `tenant_subscriptions` (úroveň, stav `trialing/active/past_due/suspended/
+  canceled`, období, cena-snapshot, výjimky limitů i modulů, fakturační údaje) + historie
+  `tenant_subscription_events`. Pozastavené/zrušené se řídí úrovní Free; nic se nemaže.
+- **Zkušební doba**: nová firma dostane úroveň „Zkušební" (editovatelnou) na N dní, potom Free.
+  Přechody se vyhodnocují líně při čtení a hodinovým během.
+- **Override** limitů i modulů je per firma v `tenant_subscriptions` (odpověď na otevřenou
+  otázku 3). Moduly mají tři stavy: podle úrovně / povolit / zakázat.
+- **Projekce**: `organization_modules.allowed` (úroveň ⊕ výjimka); `state` zůstává volbou
+  vlastníka; `org_inactive_modules()` vrací `NOT allowed OR state='inactive'`. Vlastník
+  nepřepne modul s `allowed = false`.
+- **Funkce Tagery Věcí** (inventory, vehicles, purchase, import_export, ai, custom_roles,
+  branding) jsou řízené klíče jako moduly; vynucení `@RequireModule(...)`.
+- **Limity** (`assets, users, carriers, locations, storage_mb, ai_per_month`); úložiště se
+  počítá z evidence `storage_objects`, kterou plní obal úložiště `TrackingStorage` při každém
+  nahrání/smazání (kontrola kvóty před zápisem) a při startu API doplní dřívější soubory.
+- Limity → `402 plan_limit_reached`
+  v `EntitlementsService`; import položek nad limit řádky nezaloží.
+- **Platby** zatím ručně: faktura s QR platbou (SPAYD, číselná řada po letech), označení
+  zaplaceno prodlouží předplatné do konce fakturovaného období. Stripe = další fáze.

@@ -12,6 +12,7 @@ import { JwtAuthGuard, type RequestUser } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators';
 import { PermissionsGuard } from './permissions.guard';
 import { RequirePermission } from './require-permission.decorator';
+import { RequireModule } from './require-module.decorator';
 import { RolesService, type RolesOverview } from './roles.service';
 
 const ROLE_KEY = /^[a-z0-9_]{1,64}$/i;
@@ -75,12 +76,14 @@ export class RolesController {
 
   @Post()
   @RequirePermission('core.role.manage')
+  @RequireModule('custom_roles')
   create(@CurrentUser() user: RequestUser, @Body() dto: CreateRoleDto): Promise<RolesOverview> {
     return this.roles.create(user, dto);
   }
 
   @Put(':key')
   @RequirePermission('core.role.manage')
+  @RequireModule('custom_roles')
   update(
     @CurrentUser() user: RequestUser,
     @Param('key') key: string,
@@ -91,12 +94,14 @@ export class RolesController {
 
   @Post(':key/reset')
   @RequirePermission('core.role.manage')
+  @RequireModule('custom_roles')
   reset(@CurrentUser() user: RequestUser, @Param('key') key: string): Promise<RolesOverview> {
     return this.roles.reset(user, key);
   }
 
   @Delete(':key')
   @RequirePermission('core.role.manage')
+  @RequireModule('custom_roles')
   remove(@CurrentUser() user: RequestUser, @Param('key') key: string): Promise<RolesOverview> {
     return this.roles.remove(user, key);
   }

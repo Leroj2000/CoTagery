@@ -47,6 +47,8 @@ export interface RolesOverview {
     roleName: string;
     rank: number;
     canManage: boolean;
+    /** Úprava rolí je v předplatném (funkce `custom_roles`). */
+    customRolesEnabled: boolean;
     /** Oprávnění, která aktér smí v rolích zapínat/vypínat (= která sám má). */
     grantable: string[];
   };
@@ -154,6 +156,8 @@ export class RolesService {
     const allKeys = catalog.map((p) => p.key);
     const count = new Map(counts.map((c) => [c.key, c.n]));
     const isOwner = actor.info.key === OWNER_ROLE_KEY;
+    // Úprava rolí je funkce předplatného; přiřazování rolí funguje vždy.
+    const customRoles = await this.authz.isModuleActive(user, 'custom_roles');
     const roles = rows.map((r): RoleView => {
       const below = canManageRank(actor.info.rank, r.rank);
       return {
@@ -166,7 +170,7 @@ export class RolesService {
         allPermissions: r.all_permissions,
         permissions: r.all_permissions ? allKeys : (permsByRole.get(r.id) ?? []),
         memberCount: count.get(r.key) ?? 0,
-        editable: actor.canManage && r.key !== OWNER_ROLE_KEY && below,
+        editable: actor.canManage && customRoles && r.key !== OWNER_ROLE_KEY && below,
         assignable: actor.canManage && (below || (isOwner && r.key === OWNER_ROLE_KEY)),
       };
     });
@@ -178,7 +182,8 @@ export class RolesService {
         roleKey: actor.info.key,
         roleName: actor.info.name,
         rank: actor.info.rank,
-        canManage: actor.canManage,
+        canManage: actor.canManage && customRoles,
+        customRolesEnabled: customRoles,
         grantable: [...actor.perms].sort(),
       },
     };

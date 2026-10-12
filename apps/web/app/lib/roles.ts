@@ -23,6 +23,8 @@ export interface RolesOverview {
     roleName: string;
     rank: number;
     canManage: boolean;
+    /** Úprava rolí je v předplatném firmy. */
+    customRolesEnabled?: boolean;
     grantable: string[];
   };
 }

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
+import { SubscriptionBanner, type SubscriptionStatusView } from './subscription-banner';
 import { getMe, apiFetch, getMyPermissions } from '../lib/server-api';
 import type { Attention } from '../lib/types';
 import { BrandLink } from './brand-link';
@@ -65,6 +66,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const memberships = await apiFetch<Membership[]>('/auth/memberships').catch(() => []);
   const modules = await apiFetch<ModuleState[]>('/modules').catch(() => []);
   const permissions = await getMyPermissions();
+  const subscriptionStatus = await apiFetch<SubscriptionStatusView>('/subscription/status').catch(
+    () => null,
+  );
   const inactiveModules = new Set(
     modules.filter((m) => m.state === 'inactive').map((m) => m.moduleKey),
   );
@@ -136,6 +140,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         </header>
 
         <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-28 sm:p-6 sm:pb-28 lg:p-8">
+          <SubscriptionBanner
+            status={subscriptionStatus}
+            canManage={permissions.has('core.organization.view')}
+          />
           {children}
         </main>
         <MobileNav

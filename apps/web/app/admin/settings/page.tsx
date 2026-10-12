@@ -5,25 +5,30 @@ import { ActionForm } from '../action-form';
 import { updateTenant, updateRentalPayment, updateVatSettings, setModuleState } from '../actions';
 import { ActionButton } from '../action-button';
 import { TenantLogoForm } from './tenant-logo-form';
+import { SubscriptionSection } from './subscription-section';
+import type { TenantSubscriptionView } from '../../lib/platform';
 import { ExportSettingsForm } from './export-settings-form';
-import { resolveExportSettings } from '@tagery/shared';
+import { PLAN_FEATURES, PLAN_MODULES, resolveExportSettings } from '@tagery/shared';
 
 export const dynamic = 'force-dynamic';
 
 interface ModuleState {
   moduleKey: string;
   state: 'active' | 'inactive';
+  kind?: 'module' | 'feature';
+  ownerState?: 'active' | 'inactive';
+  allowed?: boolean;
+  lock?: 'not_in_plan' | 'disabled_by_platform' | null;
 }
 
-const MODULE_LABELS: Record<string, string> = {
-  access: 'Řízení přístupu',
-  billing: 'Předplatné a billing',
-  gallery: 'Sdílené galerie',
-  membership: 'Členství',
-  product: 'Produktové karty',
-  rental: 'Půjčovna',
-  ticketing: 'Vstupenky',
-};
+const ENTITLEMENT_INFO = new Map<string, { label: string; description: string }>(
+  [...PLAN_FEATURES, ...PLAN_MODULES].map((m) => [m.key, m]),
+);
+
+const LOCK_LABELS = {
+  not_in_plan: 'Není ve vašem předplatném',
+  disabled_by_platform: 'Vypnuto správcem Tagery',
+} as const;
 
 export default async function SettingsPage() {
   const [tenant, modules, permissions] = await Promise.all([
@@ -31,6 +36,10 @@ export default async function SettingsPage() {
     apiFetch<ModuleState[]>('/modules').catch(() => [] as ModuleState[]),
     getMyPermissions(),
   ]);
+  const subscription = permissions.has('core.organization.view')
+    ? await apiFetch<TenantSubscriptionView>('/subscription').catch(() => null)
+    : null;
+  const branding = modules.find((m) => m.moduleKey === 'branding');
   const maxMedia = Number(tenant.settings?.maxMediaPerEvent) || 5;
   const requireReturnPhoto = tenant.settings?.requireReturnPhoto === true;
   const rentalPayment = (tenant.settings?.rentalPayment ?? {}) as {
@@ -50,6 +59,13 @@ export default async function SettingsPage() {
           <Badge>{tenant.type}</Badge> · <Mono>{tenant.id.slice(0, 8)}…</Mono>
         </p>
       </div>
+
+      {subscription && (
+        <SubscriptionSection
+          view={subscription}
+          canSeeInvoices={permissions.has('core.organization.configure')}
+        />
+      )}
 
       <Section title="Základní údaje">
         <ActionForm
@@ -134,43 +150,77 @@ export default async function SettingsPage() {
         title="Logo firmy"
         description="Vkládá se doprostřed QR kódů na štítcích a v exportech."
       >
-        <TenantLogoForm
-          hasLogo={tenant.hasLogo === true}
-          canEdit={permissions.has('core.organization.configure')}
-        />
+        {branding && branding.state !== 'active' ? (
+          <p className="text-sm text-slate-500">
+            {branding.lock
+              ? `Logo v QR kódech: ${LOCK_LABELS[branding.lock].toLowerCase()}.`
+              : 'Funkce „Logo firmy" je vypnutá v části Funkce níže.'}
+          </p>
+        ) : (
+          <TenantLogoForm
+            hasLogo={tenant.hasLogo === true}
+            canEdit={permissions.has('core.organization.configure')}
+          />
+        )}
       </Section>
 
-      <Section
-        title="Rozšíření"
-        description="Tagery Věci jsou vždy aktivní. Další produktové moduly zapínejte jen tehdy, když je firma používá."
-      >
-        <div className="divide-y divide-slate-100">
-          {modules.map((module) => {
-            const active = module.state === 'active';
-            return (
-              <div
-                key={module.moduleKey}
-                className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
-              >
-                <div>
-                  <p className="text-sm font-medium text-slate-800">
-                    {MODULE_LABELS[module.moduleKey] ?? module.moduleKey}
-                  </p>
-                  <p className="text-xs text-slate-500">{active ? 'Aktivní' : 'Vypnuto'}</p>
-                </div>
-                {canConfigureModules && (
-                  <ActionButton
-                    action={setModuleState}
-                    hidden={{ moduleKey: module.moduleKey, state: active ? 'inactive' : 'active' }}
-                    label={active ? 'Vypnout' : 'Zapnout'}
-                    variant={active ? 'danger' : 'default'}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </Section>
+      {(['feature', 'module'] as const).map((kind) => {
+        const items = modules.filter((m) => (m.kind ?? 'module') === kind);
+        if (!items.length) return null;
+        return (
+          <Section
+            key={kind}
+            title={kind === 'feature' ? 'Funkce' : 'Rozšíření'}
+            description={
+              kind === 'feature'
+                ? 'Části Tagery Věcí podle předplatného. Povolené můžete vypnout, pokud je firma nepoužívá.'
+                : 'Další produktové moduly. Zapínejte jen ty, které firma používá.'
+            }
+          >
+            <div className="divide-y divide-slate-100">
+              {items.map((module) => {
+                const info = ENTITLEMENT_INFO.get(module.moduleKey);
+                const on = (module.ownerState ?? module.state) === 'active';
+                const locked = module.allowed === false;
+                return (
+                  <div
+                    key={module.moduleKey}
+                    className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-800">
+                        {info?.label ?? module.moduleKey}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {info?.description}
+                        {info?.description ? ' · ' : ''}
+                        {locked ? 'Nedostupné' : on ? 'Zapnuto' : 'Vypnuto'}
+                      </p>
+                    </div>
+                    {locked ? (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                        <Lock size={12} /> {LOCK_LABELS[module.lock ?? 'not_in_plan']}
+                      </span>
+                    ) : (
+                      canConfigureModules && (
+                        <ActionButton
+                          action={setModuleState}
+                          hidden={{
+                            moduleKey: module.moduleKey,
+                            state: on ? 'inactive' : 'active',
+                          }}
+                          label={on ? 'Vypnout' : 'Zapnout'}
+                          variant={on ? 'danger' : 'default'}
+                        />
+                      )
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        );
+      })}
 
       <Section title="Bankovní údaje pro půjčovnu">
         <p className="mb-3 text-sm text-neutral-500">
@@ -211,4 +261,4 @@ export default async function SettingsPage() {
   );
 }
 import Link from 'next/link';
-import { Printer } from 'lucide-react';
+import { Lock, Printer } from 'lucide-react';

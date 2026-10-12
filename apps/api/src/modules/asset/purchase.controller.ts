@@ -29,6 +29,7 @@ import {
 } from './purchase.service';
 import { UploadDocumentDto, UpsertPurchaseDto, WarrantyDto } from './dto/purchase.dto';
 import type { AssetDocument } from './entities/asset-document.entity';
+import { RequireModule } from '../../core/rbac/require-module.decorator';
 
 /** Doklady: PDF nebo obrázek (fotka záručního listu), stejná pravidla jako manuály. */
 function documentFileFilter(
@@ -46,6 +47,7 @@ function documentFileFilter(
 /** Pořízení (ceny, dodavatel), doklady a záruky položky. */
 @Controller()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequireModule('purchase')
 export class PurchaseController {
   constructor(private readonly purchases: PurchaseService) {}
 

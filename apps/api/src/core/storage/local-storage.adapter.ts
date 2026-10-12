@@ -1,4 +1,4 @@
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import type { StoragePort } from './storage.port';
 
@@ -27,6 +27,14 @@ export class LocalStorageAdapter implements StoragePort {
     } catch (err) {
       // Neexistující soubor není chyba (idempotentní mazání).
       if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+    }
+  }
+
+  async size(key: string): Promise<number | null> {
+    try {
+      return (await stat(this.resolveKey(key))).size;
+    } catch {
+      return null;
     }
   }
 

@@ -59,7 +59,13 @@ function serviceDistance(p: VehiclePlanState): string {
 }
 
 /** Inventura vozidel: stav vozidel k období, zápis tachometru a poznámek, uzavření. */
-export function VehicleInventory({ initialDetail }: { initialDetail: InventoryDetail }) {
+export function VehicleInventory({
+  initialDetail,
+  canExport = true,
+}: {
+  initialDetail: InventoryDetail;
+  canExport?: boolean;
+}) {
   const router = useRouter();
   const [detail, setDetail] = useState(initialDetail);
   const [closing, setClosing] = useState(false);
@@ -109,9 +115,11 @@ export function VehicleInventory({ initialDetail }: { initialDetail: InventoryDe
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <a href={`/api/inventory/${check.id}/export`} className={secondaryBtn}>
-          <FileSpreadsheet size={15} /> Stáhnout Excel
-        </a>
+        {canExport && (
+          <a href={`/api/inventory/${check.id}/export`} className={secondaryBtn}>
+            <FileSpreadsheet size={15} /> Stáhnout Excel
+          </a>
+        )}
         {open && (
           <button type="button" className={secondaryBtn} onClick={close} disabled={closing}>
             {closing ? <Loader2 size={15} className="animate-spin" /> : <Lock size={15} />}

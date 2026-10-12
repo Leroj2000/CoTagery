@@ -9,6 +9,7 @@ import {
   inQrLogoHole,
 } from '@tagery/shared';
 import { TenantService, type TenantLogo } from '../tenant/tenant.service';
+import { ModulesService } from '../../rbac/modules.service';
 
 /**
  * QR identifikátorů s logem aktuální firmy uprostřed (pokud ho má). Oddělené od
@@ -16,16 +17,24 @@ import { TenantService, type TenantLogo } from '../tenant/tenant.service';
  */
 @Injectable()
 export class BrandedQrService {
-  constructor(private readonly tenant: TenantService) {}
+  constructor(
+    private readonly tenant: TenantService,
+    private readonly modules: ModulesService,
+  ) {}
+
+  /** Logo firmy – jen s funkcí předplatného „Logo firmy" (branding). */
+  private async logo(): Promise<TenantLogo | null> {
+    return (await this.modules.isActive('branding')) ? this.tenant.logo() : null;
+  }
 
   /** SVG (bez pevných rozměrů – škáluje se viewBoxem). */
   async brandedSvg(data: string, margin = 1): Promise<string> {
-    return buildQrSvg(data, await this.tenant.logo(), margin);
+    return buildQrSvg(data, await this.logo(), margin);
   }
 
   /** PNG s celočíselnou velikostí modulu (≥ `width` px) – ostré, stejně široké moduly. */
   async brandedPng(data: string, width = 512, margin = 1): Promise<Buffer> {
-    const svg = buildQrSvg(data, await this.tenant.logo(), margin, width);
+    const svg = buildQrSvg(data, await this.logo(), margin, width);
     return sharp(Buffer.from(svg)).png().toBuffer();
   }
 }

@@ -10,4 +10,6 @@ export interface StoragePort {
   get(key: string): Promise<Buffer>;
   del(key: string): Promise<void>;
   url(key: string): string;
+  /** Velikost uloženého souboru v bajtech (`null` = neexistuje). Pro evidenci využití. */
+  size?(key: string): Promise<number | null>;
 }

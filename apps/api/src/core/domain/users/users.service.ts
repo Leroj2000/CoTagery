@@ -13,6 +13,7 @@ import { OrgMembership } from '../../auth/entities/membership.entity';
 import { RoleAssignment } from '../../auth/entities/role-assignment.entity';
 import { CategoryLinksService } from '../people/category-links.service';
 import type { InviteUserDto, UpdateRoleDto } from './dto/users.dto';
+import { EntitlementsService } from '../../plans/entitlements.service';
 
 /** Veřejný pohled na uživatele (bez password_hash). */
 export interface UserView {
@@ -58,6 +59,7 @@ export class UsersService {
     private readonly auth: AuthService,
     private readonly roles: RolesService,
     private readonly authz: AuthzService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   private repo(): Repository<User> {
@@ -112,6 +114,7 @@ export class UsersService {
     const role = membershipRoleKey((await this.roles.assertAssignable(actor, dto.tenantRole)).key);
     const existing = await this.repo().findOne({ where: { email: dto.email } });
     if (existing) throw new BadRequestException('Uživatel s tímto e-mailem už existuje');
+    await this.entitlements.assertWithinLimit('users');
 
     // Náhodný neznámý secret drží účet nepřihlásitelný i při chybě status gate.
     const passwordHash = await AuthService.hashPassword(randomBytes(32).toString('base64url'));

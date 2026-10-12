@@ -21,6 +21,7 @@ import {
   type TransferFile,
   type TransferFormat,
 } from './asset-io.service';
+import { RequireModule } from '../../core/rbac/require-module.decorator';
 
 function format(raw: string | undefined): TransferFormat {
   return raw === 'csv' ? 'csv' : 'xlsx';
@@ -39,6 +40,7 @@ function download(file: TransferFile): StreamableFile {
  */
 @Controller('assets')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequireModule('import_export')
 export class AssetIoController {
   constructor(private readonly io: AssetIoService) {}
 

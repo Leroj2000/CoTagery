@@ -31,6 +31,7 @@ import {
   type ColumnKey,
 } from './asset-io.logic';
 import { PurchaseService } from './purchase.service';
+import { EntitlementsService } from '../../core/plans/entitlements.service';
 import { normalizePlate } from './plate.logic';
 import {
   defaultStartBasis,
@@ -155,6 +156,7 @@ export class AssetIoService {
     private readonly authz: AuthzService,
     private readonly audit: AuditService,
     private readonly purchases: PurchaseService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   private repo<T extends object>(entity: { new (): T }): Repository<T> {
@@ -162,6 +164,12 @@ export class AssetIoService {
   }
 
   private async can(user: RequestUser, permission: string): Promise<boolean> {
+    // Sloupce pořízení i podle předplatného (funkce „Pořízení a záruky").
+    if (
+      permission.startsWith('asset.purchase.') &&
+      !(await this.authz.isModuleActive(user, 'purchase'))
+    )
+      return false;
     return (await this.authz.can(user, permission)).allowed;
   }
 
@@ -431,6 +439,7 @@ export class AssetIoService {
     }
 
     const plans = await this.plan(table, header.index, { canUpdate, usePurchase }, warnings);
+    await this.applyAssetLimit(plans, warnings);
     if (!dryRun) await this.apply(plans);
 
     const count = (a: ImportAction) => plans.filter((p) => p.action === a).length;
@@ -724,6 +733,21 @@ export class AssetIoService {
       plans.push(plan);
     }
     return plans;
+  }
+
+  /** Nové položky nad limit předplatného se označí jako chybné (nezaloží se). */
+  private async applyAssetLimit(plans: RowPlan[], warnings: string[]): Promise<void> {
+    const creates = plans.filter((p) => p.action === 'create');
+    if (!creates.length) return;
+    const remaining = await this.entitlements.remaining('assets');
+    if (remaining == null || creates.length <= remaining) return;
+    for (const p of creates.slice(Math.max(0, remaining))) {
+      p.action = 'error';
+      p.error = 'Překročen limit položek předplatného';
+    }
+    warnings.push(
+      `Limit položek předplatného: založit lze ještě ${Math.max(0, remaining)}, v souboru je ${creates.length} nových. Zbytek se nezaloží – požádejte o vyšší úroveň.`,
+    );
   }
 
   private async apply(plans: RowPlan[]): Promise<void> {

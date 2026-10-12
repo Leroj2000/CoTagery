@@ -25,7 +25,7 @@ export default async function AttentionPage() {
     apiFetch<Attention>('/assets/attention'),
     apiFetch<Person[]>('/people'),
     apiFetch<Location[]>('/locations'),
-    apiFetch<MaintenanceDue[]>('/maintenance/due'),
+    apiFetch<MaintenanceDue[]>('/maintenance/due').catch(() => [] as MaintenanceDue[]),
   ]);
   const warranties = await apiFetch<ExpiringWarranty[]>('/warranties/expiring').catch(() => []);
   const personName = new Map(people.map((p) => [p.id, p.name]));

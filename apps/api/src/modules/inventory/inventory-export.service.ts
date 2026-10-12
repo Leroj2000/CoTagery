@@ -163,7 +163,9 @@ export class InventoryExportService {
 
   async export(checkId: string, user: RequestUser): Promise<ExportFile> {
     const detail = await this.inventory.detail(checkId);
-    const canPurchase = (await this.authz.can(user, 'asset.purchase.view')).allowed;
+    const canPurchase =
+      (await this.authz.isModuleActive(user, 'purchase')) &&
+      (await this.authz.can(user, 'asset.purchase.view')).allowed;
     return detail.check.kind === 'vehicle'
       ? this.vehicles(detail, canPurchase)
       : this.stock(detail, canPurchase);

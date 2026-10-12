@@ -13,6 +13,7 @@ import type {
   GenerateBatchDto,
   NfcPairDto,
 } from './dto/carrier.dto';
+import { EntitlementsService } from '../../plans/entitlements.service';
 
 const UNIQUE_VIOLATION = '23505';
 const MAX_BATCH = 500;
@@ -28,6 +29,7 @@ export class DataCarriersService {
   constructor(
     private readonly context: TenantContextService,
     private readonly config: ConfigService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   private carriers(): Repository<DataCarrier> {
@@ -89,6 +91,7 @@ export class DataCarriersService {
 
   async createForObject(objectId: string, dto: CreateDataCarrierDto): Promise<DataCarrier> {
     await this.assertObject(objectId);
+    await this.entitlements.assertWithinLimit('carriers');
     return this.createCarrier(objectId, dto.carrierType ?? 'qr', 'active');
   }
 
@@ -108,6 +111,7 @@ export class DataCarriersService {
       throw new BadRequestException('Tento kód je už adoptovaný u jiné položky');
     }
 
+    await this.entitlements.assertWithinLimit('carriers');
     return this.createCarrier(objectId, dto.carrierType ?? 'qr', 'active', {
       externalCode,
       externalScheme: dto.externalScheme ?? 'custom',
@@ -149,6 +153,7 @@ export class DataCarriersService {
     if (dto.selfActivatable && !dto.moduleTemplate) {
       throw new BadRequestException('selfActivatable vyžaduje moduleTemplate');
     }
+    await this.entitlements.assertWithinLimit('carriers', dto.count);
     const carrierType = dto.carrierType ?? 'qr';
     const result: GeneratedCarrier[] = [];
     for (let i = 0; i < dto.count; i += 1) {

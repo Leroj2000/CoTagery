@@ -13,6 +13,7 @@ import { Asset } from './entities/asset.entity';
 import { AssetManual } from './entities/asset-manual.entity';
 import { ManualFetchService } from './manual-fetch.service';
 import { normalizeSource, validateManualFile } from './manuals.logic';
+import { EntitlementsService } from '../../core/plans/entitlements.service';
 
 export interface AddManualInput {
   buffer: Buffer;
@@ -41,6 +42,7 @@ export class ManualsService {
     private readonly context: TenantContextService,
     @Inject(STORAGE) private readonly storage: StoragePort,
     private readonly fetcher: ManualFetchService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   private repo(): Repository<AssetManual> {
@@ -172,6 +174,8 @@ export class ManualsService {
       return { manual, configured: true };
     }
 
+    await this.entitlements.assertWithinLimit('ai_per_month');
+    await this.entitlements.recordAiRequest();
     const manual = await this.repo().save(
       this.repo().create({
         tenantId: this.context.tenantId,

@@ -8,7 +8,10 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { RequestUser } from '../auth/jwt-auth.guard';
 import { AuthzService } from './authz.service';
-import { ALLOW_AUTHENTICATED_ONLY_KEY, REQUIRE_PERMISSION_KEY } from './require-permission.decorator';
+import {
+  ALLOW_AUTHENTICATED_ONLY_KEY,
+  REQUIRE_PERMISSION_KEY,
+} from './require-permission.decorator';
 import { REQUIRE_MODULE_KEY } from './require-module.decorator';
 
 /**
@@ -25,10 +28,10 @@ export class PermissionsGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const moduleKey = this.reflector.getAllAndOverride<string | undefined>(REQUIRE_MODULE_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const moduleKeys = this.reflector.getAllAndOverride<string[] | string | undefined>(
+      REQUIRE_MODULE_KEY,
+      [context.getHandler(), context.getClass()],
+    );
     const required = this.reflector.getAllAndOverride<string | undefined>(REQUIRE_PERMISSION_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -39,7 +42,8 @@ export class PermissionsGuard implements CanActivate {
     );
     const user = context.switchToHttp().getRequest<{ user?: RequestUser }>().user;
     if (!user) throw new UnauthorizedException('Chybí autentizace');
-    if (moduleKey) await this.authz.assertModuleActive(user, moduleKey);
+    for (const moduleKey of [moduleKeys ?? []].flat())
+      await this.authz.assertModuleActive(user, moduleKey);
     if (required) {
       await this.authz.assert(user, required);
       return true;

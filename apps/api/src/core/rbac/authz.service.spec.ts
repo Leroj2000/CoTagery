@@ -84,7 +84,7 @@ describe('AuthzService', () => {
     const svc = new AuthzService({ query } as unknown as DataSource);
 
     await expect(svc.assertModuleActive(user('OWNER'), 'rental')).rejects.toThrow(
-      /INACTIVE_MODULE/,
+      /Půjčovna/,
     );
     await expect(svc.isModuleActive(user('OWNER'), 'asset')).resolves.toBe(true);
   });

@@ -6,6 +6,7 @@ import type { InventoryCheck, Location, Person, Asset, Category } from '../../li
 import { PageHeader, Section, Table, Badge, EmptyState } from '../ui';
 import { ActionForm } from '../action-form';
 import { startInventorySubject, startVehicleInventory } from '../actions';
+import { getActiveModules, requireActiveModule } from '../module-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +31,10 @@ export default async function InventoryPage({
   searchParams: Promise<{ location?: string }>;
 }) {
   const { location } = await searchParams;
+  await requireActiveModule('inventory');
+  const active = await getActiveModules();
+  const canVehicles = active.has('vehicles');
+  const canExport = active.has('import_export');
   const [checks, locations, people, assets, categories] = await Promise.all([
     apiFetch<InventoryCheck[]>('/inventory'),
     apiFetch<Location[]>('/locations'),
@@ -104,67 +109,73 @@ export default async function InventoryPage({
           )}
         </Section>
 
-        <Section
-          title="Inventura vozidel"
-          description="Sepsání stavu vozidel k období: tachometr, ujeté km, dny a km do servisu / po servisu."
-        >
-          {vehicles.length === 0 ? (
-            <EmptyState>
-              Žádná vozidla. V{' '}
-              <Link href="/admin/categories" className="text-brand-700 hover:underline">
-                Kategoriích
-              </Link>{' '}
-              nastav u kategorie druh „Vozidlo“.
-            </EmptyState>
-          ) : (
-            <ActionForm
-              action={startVehicleInventory}
-              submitLabel="Založit inventuru vozidel"
-              fields={[
-                {
-                  name: 'vehicle',
-                  label: 'Vozidla',
-                  required: true,
-                  defaultValue: 'all',
-                  options: [
-                    { value: 'all', label: `Všechna vozidla (${vehicles.length})` },
-                    ...vehicles.map((v) => ({
-                      value: v.id,
-                      label: [v.name, v.registrationPlate ?? v.inventoryNumber]
-                        .filter(Boolean)
-                        .join(' · '),
-                    })),
-                  ],
-                },
-                {
-                  name: 'periodFrom',
-                  label: 'Období od',
-                  type: 'date',
-                  required: true,
-                  defaultValue: `${today.slice(0, 8)}01`,
-                },
-                {
-                  name: 'periodTo',
-                  label: 'Období do',
-                  type: 'date',
-                  required: true,
-                  defaultValue: today,
-                },
-              ]}
-            />
-          )}
-        </Section>
+        {canVehicles && (
+          <Section
+            title="Inventura vozidel"
+            description="Sepsání stavu vozidel k období: tachometr, ujeté km, dny a km do servisu / po servisu."
+          >
+            {vehicles.length === 0 ? (
+              <EmptyState>
+                Žádná vozidla. V{' '}
+                <Link href="/admin/categories" className="text-brand-700 hover:underline">
+                  Kategoriích
+                </Link>{' '}
+                nastav u kategorie druh „Vozidlo“.
+              </EmptyState>
+            ) : (
+              <ActionForm
+                action={startVehicleInventory}
+                submitLabel="Založit inventuru vozidel"
+                fields={[
+                  {
+                    name: 'vehicle',
+                    label: 'Vozidla',
+                    required: true,
+                    defaultValue: 'all',
+                    options: [
+                      { value: 'all', label: `Všechna vozidla (${vehicles.length})` },
+                      ...vehicles.map((v) => ({
+                        value: v.id,
+                        label: [v.name, v.registrationPlate ?? v.inventoryNumber]
+                          .filter(Boolean)
+                          .join(' · '),
+                      })),
+                    ],
+                  },
+                  {
+                    name: 'periodFrom',
+                    label: 'Období od',
+                    type: 'date',
+                    required: true,
+                    defaultValue: `${today.slice(0, 8)}01`,
+                  },
+                  {
+                    name: 'periodTo',
+                    label: 'Období do',
+                    type: 'date',
+                    required: true,
+                    defaultValue: today,
+                  },
+                ]}
+              />
+            )}
+          </Section>
+        )}
       </div>
 
       <Section
         title={`Inventury (${checks.length})`}
-        description="Uzavřenou i probíhající inventuru lze stáhnout do Excelu – co soubor obsahuje, nastavíš v Nastavení → Exporty."
+        description={
+          canExport
+            ? 'Uzavřenou i probíhající inventuru lze stáhnout do Excelu – co soubor obsahuje, nastavíš v Nastavení → Exporty.'
+            : undefined
+        }
       >
         {checks.length === 0 ? (
           <EmptyState>Zatím žádné inventury.</EmptyState>
         ) : (
           <Table
-            head={['Kdy', 'Inventura', 'Stav', 'Výsledek', 'Export']}
+            head={['Kdy', 'Inventura', 'Stav', 'Výsledek', ...(canExport ? ['Export'] : [])]}
             rows={checks.map((c) => [
               <Link
                 key="d"
@@ -191,13 +202,17 @@ export default async function InventoryPage({
                 <Badge tone="green">uzavřeno</Badge>
               ),
               <ResultCell key="r" check={c} />,
-              <a
-                key="x"
-                href={`/api/inventory/${c.id}/export`}
-                className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
-              >
-                <FileSpreadsheet size={14} /> Excel
-              </a>,
+              ...(canExport
+                ? [
+                    <a
+                      key="x"
+                      href={`/api/inventory/${c.id}/export`}
+                      className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
+                    >
+                      <FileSpreadsheet size={14} /> Excel
+                    </a>,
+                  ]
+                : []),
             ])}
           />
         )}

@@ -19,6 +19,8 @@ RUN pnpm --filter @tagery/api --prod deploy /out
 
 # --- runtime: štíhlý běhový image API ---
 FROM node:22-alpine AS runtime
+# Písmo s českou diakritikou pro PDF faktur (pdfkit).
+RUN apk add --no-cache font-dejavu
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=prune /out ./

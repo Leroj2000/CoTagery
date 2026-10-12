@@ -145,9 +145,11 @@ export function RolesManager({ initial }: { initial: RolesOverview }) {
         <Info size={16} className="mt-0.5 shrink-0 text-slate-400" />
         <p>
           Tvoje role: <strong className="text-slate-800">{data.actor.roleName}</strong>.{' '}
-          {data.actor.canManage
-            ? 'Upravovat a přidělovat můžeš jen role pod svou úrovní a zapnout jen oprávnění, která máš sám – ostatní jsou zamčená.'
-            : 'Role si můžeš prohlédnout; měnit je může jen role s oprávněním „Role a oprávnění → Spravovat".'}
+          {data.actor.customRolesEnabled === false
+            ? 'Úprava rolí (funkce „Vlastní role") není ve vašem předplatném – role můžete prohlížet a přidělovat lidem, ale ne měnit.'
+            : data.actor.canManage
+              ? 'Upravovat a přidělovat můžeš jen role pod svou úrovní a zapnout jen oprávnění, která máš sám – ostatní jsou zamčená.'
+              : 'Role si můžeš prohlédnout; měnit je může jen role s oprávněním „Role a oprávnění → Spravovat".'}
         </p>
       </div>
 

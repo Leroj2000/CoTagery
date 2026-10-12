@@ -19,9 +19,11 @@ import {
   CompleteMaintenanceDto,
   UpdateMaintenanceRuleDto,
 } from './dto/maintenance.dto';
+import { RequireModule } from '../../core/rbac/require-module.decorator';
 
 @Controller('maintenance')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequireModule('vehicles')
 export class MaintenanceController {
   constructor(private readonly maintenance: MaintenanceService) {}
 

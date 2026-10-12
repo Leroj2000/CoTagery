@@ -22,6 +22,14 @@ async function seed(): Promise<void> {
       console.log('Vytvořen demo tenant:', tenantId);
     }
 
+    // Předplatné demo firmy: Business bez konce (jinak by dostala zkušební dobu).
+    // Existující předplatné (nastavené superadminem) se nepřepisuje.
+    await dataSource.query(
+      `INSERT INTO tenant_subscriptions (tenant_id, plan_key, status, period_start, billing_period)
+       VALUES ($1, 'business', 'active', CURRENT_DATE, 'custom') ON CONFLICT (tenant_id) DO NOTHING`,
+      [tenantId],
+    );
+
     // Demo OWNER uživatel
     const email = 'owner@demo.tagery';
     let userId: string;

@@ -48,6 +48,7 @@ import type {
   SetPhotoPreviewDto,
 } from './dto/asset.dto';
 import { reverseGeocode } from './reverse-geocode';
+import { EntitlementsService } from '../../core/plans/entitlements.service';
 
 /** Jeden naskenovaný řádek workflow scanneru (validní nebo blocker). */
 export interface WorkflowItem {
@@ -98,6 +99,7 @@ export class AssetService {
     @Inject(STORAGE) private readonly storage: StoragePort,
     private readonly webhooks: WebhookService,
     private readonly carriers: DataCarriersService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   private repo<T extends object>(entity: { new (): T }): Repository<T> {
@@ -322,6 +324,7 @@ export class AssetService {
 
   /** Založí asset + jeho DigitalObject (nosič se přidá zvlášť přes /objects). */
   async create(dto: CreateAssetDto): Promise<Asset> {
+    await this.entitlements.assertWithinLimit('assets');
     await this.assertStorageLocation(dto.homeLocationId);
     // Kategorie z číselníku: přednost má categoryId (doplní denorm. název).
     const categoryId: string | null = dto.categoryId ?? null;

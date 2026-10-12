@@ -70,6 +70,7 @@ export const NAV_SECTIONS: NavSection[] = [
         href: '/admin/inventory',
         label: 'Inventury',
         icon: ClipboardCheck,
+        moduleKey: 'inventory',
         permission: 'asset.inventory.manage',
       },
       {

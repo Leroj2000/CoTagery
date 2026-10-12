@@ -23,9 +23,11 @@ import {
 } from './dto/inventory.dto';
 import type { InventoryCheck } from './entities/inventory-check.entity';
 import type { InventoryScan } from './entities/inventory-scan.entity';
+import { RequireModule } from '../../core/rbac/require-module.decorator';
 
 @Controller('inventory')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequireModule('inventory')
 export class InventoryController {
   constructor(
     private readonly inventory: InventoryService,
@@ -46,6 +48,7 @@ export class InventoryController {
 
   /** Inventura vozidel – všechna vozidla nebo jedno, k období od–do. */
   @Post('vehicles')
+  @RequireModule('vehicles')
   @RequirePermission('asset.inventory.manage')
   startVehicles(@Body() dto: StartVehicleInventoryDto): Promise<InventoryCheck> {
     return this.inventory.startVehicles(dto);
@@ -53,6 +56,7 @@ export class InventoryController {
 
   /** Zápis stavu tachometru / poznámky k vozidlu během inventury. */
   @Post(':id/vehicles/:assetId')
+  @RequireModule('vehicles')
   @RequirePermission('asset.inventory.manage')
   recordVehicle(
     @Param('id', ParseUUIDPipe) id: string,
@@ -64,6 +68,7 @@ export class InventoryController {
 
   /** Export inventury do Excelu (sloupce podle Nastavení → Exporty). */
   @Get(':id/export')
+  @RequireModule('import_export')
   @RequirePermission('asset.inventory.manage')
   async export(
     @Param('id', ParseUUIDPipe) id: string,

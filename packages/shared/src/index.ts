@@ -41,3 +41,4 @@ export * from './qr-logo';
 export * from './labels';
 export * from './roles';
 export * from './exports';
+export * from './plans';

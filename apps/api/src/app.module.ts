@@ -12,6 +12,7 @@ import { ResolverModule } from './core/resolver/resolver.module';
 import { AnalyticsModule } from './core/analytics/analytics.module';
 import { AccessControlModule } from './core/access/access-control.module';
 import { RbacModule } from './core/rbac/rbac.module';
+import { PlansModule } from './core/plans/plans.module';
 import { FabricationModule } from './core/fabrication/fabrication.module';
 import { ProductModule } from './modules/product/product.module';
 import { TicketingModule } from './modules/ticketing/ticketing.module';
@@ -48,6 +49,7 @@ import { HealthModule } from './health/health.module';
     AnalyticsModule,
     AccessControlModule,
     RbacModule,
+    PlansModule,
     FabricationModule,
     ProductModule,
     TicketingModule,

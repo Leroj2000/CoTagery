@@ -10,6 +10,7 @@ import { Location } from '../entities/location.entity';
 import type { CreateLocationDto } from './dto/create-location.dto';
 import type { UpdateLocationDto } from './dto/update-location.dto';
 import type { GenerateGridDto } from './dto/grid.dto';
+import { EntitlementsService } from '../../plans/entitlements.service';
 
 /** Buňka mřížky se souřadnicí a obsazeností. */
 export interface GridCell {
@@ -42,7 +43,10 @@ function cellLabel(row: number, col: number): string {
  */
 @Injectable()
 export class LocationsService {
-  constructor(private readonly context: TenantContextService) {}
+  constructor(
+    private readonly context: TenantContextService,
+    private readonly entitlements: EntitlementsService,
+  ) {}
 
   private repo(): Repository<Location> {
     return this.context.manager.getRepository(Location);
@@ -73,6 +77,7 @@ export class LocationsService {
 
   async create(dto: CreateLocationDto): Promise<Location> {
     if (!dto.name.trim()) throw new BadRequestException('Vyplň název místa.');
+    await this.entitlements.assertWithinLimit('locations');
     if (dto.parentId) {
       const parent = await this.get(dto.parentId);
       if (parent.type === 'cell')

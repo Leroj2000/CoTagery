@@ -6,6 +6,7 @@ import type { InventoryDetail, Location, Asset, Person } from '../../../lib/type
 import { PageHeader, Section, Badge, StatusBadge, Table, EmptyState } from '../../ui';
 import { InventoryScanner } from './inventory-scanner';
 import { VehicleInventory } from './vehicle-inventory';
+import { getActiveModules, requireActiveModule } from '../../module-access';
 
 function fmtDay(iso: string | null): string {
   if (!iso) return '—';
@@ -17,6 +18,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function InventoryDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await requireActiveModule('inventory');
+  const canExport = (await getActiveModules()).has('import_export');
 
   let detail: InventoryDetail;
   try {
@@ -51,7 +54,7 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
             />
           </div>
         </div>
-        <VehicleInventory initialDetail={detail} />
+        <VehicleInventory initialDetail={detail} canExport={canExport} />
       </div>
     );
   }
@@ -104,12 +107,14 @@ export default async function InventoryDetailPage({ params }: { params: Promise<
             icon={<ClipboardCheck size={18} />}
             action={
               <span className="flex items-center gap-2">
-                <a
-                  href={`/api/inventory/${check.id}/export`}
-                  className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  <FileSpreadsheet size={13} /> Excel
-                </a>
+                {canExport && (
+                  <a
+                    href={`/api/inventory/${check.id}/export`}
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    <FileSpreadsheet size={13} /> Excel
+                  </a>
+                )}
                 {open ? <Badge tone="amber">probíhá</Badge> : <Badge tone="green">uzavřeno</Badge>}
               </span>
             }

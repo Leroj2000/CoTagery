@@ -4,6 +4,7 @@ import { PermissionsGuard } from '../../core/rbac/permissions.guard';
 import { RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { SpecsService, type FetchSpecResult } from './specs.service';
 import type { AssetSpec } from './entities/asset-spec.entity';
+import { RequireModule } from '../../core/rbac/require-module.decorator';
 
 /** Technické specifikace položky „přes AI" (EPIC-19+). */
 @Controller('assets/:id/specs')
@@ -18,6 +19,7 @@ export class SpecsController {
   }
 
   @Post('fetch-ai')
+  @RequireModule('ai')
   @RequirePermission('asset.media.manage')
   fetchAi(@Param('id', ParseUUIDPipe) id: string): Promise<FetchSpecResult> {
     return this.specs.fetchAi(id);

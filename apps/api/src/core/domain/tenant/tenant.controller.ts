@@ -18,6 +18,7 @@ import { PermissionsGuard } from '../../rbac/permissions.guard';
 import { RequirePermission } from '../../rbac/require-permission.decorator';
 import { TenantService, type TenantView } from './tenant.service';
 import { UpdateTenantDto } from './dto/tenant.dto';
+import { RequireModule } from '../../rbac/require-module.decorator';
 
 /** Logo: jen PNG, max 2 MB (upload limit + MIME allowlist; obsah ověří sharp). */
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
@@ -59,6 +60,7 @@ export class TenantController {
    * potřebuje každý, kdo tiskne štítky, jinak by se štítky lišily podle role.
    */
   @Get('logo')
+  @RequireModule('branding')
   @RequirePermission('asset.item.view')
   async logo(): Promise<StreamableFile> {
     const logo = await this.tenant.logo();
@@ -67,6 +69,7 @@ export class TenantController {
   }
 
   @Post('logo')
+  @RequireModule('branding')
   @RequirePermission('core.organization.configure')
   @UseInterceptors(
     FileInterceptor('file', { limits: { fileSize: MAX_LOGO_BYTES }, fileFilter: pngOnlyFilter }),
@@ -77,6 +80,7 @@ export class TenantController {
   }
 
   @Delete('logo')
+  @RequireModule('branding')
   @RequirePermission('core.organization.configure')
   deleteLogo(): Promise<TenantView> {
     return this.tenant.deleteLogo();

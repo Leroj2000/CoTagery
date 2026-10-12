@@ -1,3 +1,4 @@
+import { ENTITLEMENT_KEYS, PLAN_FEATURES, PLAN_MODULES } from '@tagery/shared';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
@@ -38,16 +39,16 @@ export interface AuthzDecision {
  * role > systémová šablona). Entitlement modulu má přednost, scope se řeší
  * v dotazech, policy a aktivní membership v `TenantTransactionInterceptor`.
  */
-/** Moduly, které lze per-organizace vypnout (core/asset/object/carrier jsou vždy on). */
-export const CONTROLLED_MODULES = new Set([
-  'product',
-  'membership',
-  'ticketing',
-  'gallery',
-  'rental',
-  'billing',
-  'access',
-]);
+/**
+ * Moduly a funkce, které lze per-organizace vypnout (core/asset/object/carrier jsou
+ * vždy on). Rozšíření (`rental`…) se gatují i prefixem oprávnění, funkce Tagery
+ * Věcí (`inventory`, `vehicles`…) přes `@RequireModule` (EPIC-20).
+ */
+export const CONTROLLED_MODULES = new Set<string>(ENTITLEMENT_KEYS);
+
+const ENTITLEMENT_LABELS = new Map<string, string>(
+  [...PLAN_MODULES, ...PLAN_FEATURES].map((m) => [m.key, m.label]),
+);
 
 @Injectable()
 export class AuthzService {
@@ -179,7 +180,13 @@ export class AuthzService {
 
   async assertModuleActive(user: RequestUser, moduleKey: string): Promise<void> {
     if (!(await this.isModuleActive(user, moduleKey))) {
-      throw new ForbiddenException(`Modul není aktivní: ${moduleKey} (INACTIVE_MODULE)`);
+      const label = ENTITLEMENT_LABELS.get(moduleKey) ?? moduleKey;
+      throw new ForbiddenException({
+        statusCode: 403,
+        reasonCode: 'INACTIVE_MODULE',
+        moduleKey,
+        message: `„${label}“ není u vaší firmy zapnuté (předplatné nebo nastavení firmy).`,
+      });
     }
   }
 

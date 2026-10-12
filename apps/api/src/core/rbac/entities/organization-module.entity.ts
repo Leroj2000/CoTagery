@@ -23,6 +23,10 @@ export class OrganizationModule {
   @Column({ type: 'text', default: 'active' })
   state!: 'active' | 'inactive';
 
+  /** Povoleno předplatným (projekce úrovně ⊕ výjimky, EPIC-20); `state` = volba vlastníka. */
+  @Column({ type: 'boolean', default: true })
+  allowed!: boolean;
+
   @Column({ type: 'jsonb', name: 'limits_json', nullable: true })
   limitsJson!: Record<string, unknown> | null;
 

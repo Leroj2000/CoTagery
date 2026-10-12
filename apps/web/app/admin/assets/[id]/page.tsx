@@ -26,6 +26,7 @@ import { ReturnForm } from '../return-form';
 import { PrintLabelButton } from '../printing/print-label-button';
 import { MaintenancePanel } from './maintenance-panel';
 import { PurchasePanel } from './purchase-panel';
+import { getActiveModules } from '../../module-access';
 import { WarrantyHint } from './warranty-hint';
 import type { PurchaseView, Warranty } from '../../../lib/purchase';
 import type { AssetMedia, AssetManual, AssetSpec, Tenant, Observation } from '../../../lib/types';
@@ -112,7 +113,8 @@ export default async function AssetDetail({
   );
   const [categories, maintenance] = await Promise.all([
     apiFetch<Category[]>('/categories'),
-    apiFetch<MaintenanceSummary>(`/maintenance/assets/${id}`),
+    // Vozidla a stroje jsou funkce předplatného – bez ní API vrátí 403.
+    apiFetch<MaintenanceSummary>(`/maintenance/assets/${id}`).catch(() => null),
   ]);
   const issues = await apiFetch<Issue[]>(`/assets/${id}/issues`);
   const media = await apiFetch<AssetMedia[]>(`/assets/${id}/media`);
@@ -123,9 +125,11 @@ export default async function AssetDetail({
   const perms = await getMyPermissions();
   const canEdit = perms.has('asset.item.update');
   const canManagePhotos = perms.has('asset.media.manage');
-  const purchase = perms.has('asset.purchase.view')
-    ? await apiFetch<PurchaseView>(`/assets/${id}/purchase`).catch(() => null)
-    : null;
+  const active = await getActiveModules();
+  const purchase =
+    active.has('purchase') && perms.has('asset.purchase.view')
+      ? await apiFetch<PurchaseView>(`/assets/${id}/purchase`).catch(() => null)
+      : null;
   const warranties = await apiFetch<Warranty[]>(`/assets/${id}/warranties`).catch(() => []);
   const photos = await apiFetch<{
     items: {
@@ -378,12 +382,14 @@ export default async function AssetDetail({
         </details>
       )}
 
-      <PurchasePanel
-        assetId={asset.id}
-        view={purchase}
-        warranties={warranties}
-        canEdit={perms.has('asset.purchase.update')}
-      />
+      {active.has('purchase') && (
+        <PurchasePanel
+          assetId={asset.id}
+          view={purchase}
+          warranties={warranties}
+          canEdit={perms.has('asset.purchase.update')}
+        />
+      )}
 
       {/* Last Observation – kde byla naposledy VIDĚNA (≠ evidence výše) */}
       <Section
@@ -470,7 +476,11 @@ export default async function AssetDetail({
         <MediaTimeline assetId={asset.id} media={media} />
       </Section>
 
-      <AssetSpecs assetId={asset.id} initial={spec} canManage={canManagePhotos} />
+      <AssetSpecs
+        assetId={asset.id}
+        initial={spec}
+        canManage={canManagePhotos && active.has('ai')}
+      />
 
       <Section
         title="Manuály a návody"
@@ -748,7 +758,9 @@ export default async function AssetDetail({
         </div>
       </Section>
 
-      <MaintenancePanel assetId={asset.id} summary={maintenance} canEdit={canEdit} />
+      {maintenance && (
+        <MaintenancePanel assetId={asset.id} summary={maintenance} canEdit={canEdit} />
+      )}
 
       <Section
         title="Servis a revize"

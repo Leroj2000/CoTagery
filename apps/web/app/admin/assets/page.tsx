@@ -5,6 +5,7 @@ import { locationPath } from '../../lib/location-path';
 import type { Asset, Person, Location, Category } from '../../lib/types';
 import { PageHeader } from '../ui';
 import { AssetTransfer } from './asset-transfer';
+import { getActiveModules } from '../module-access';
 import { AssetsExplorer } from './assets-explorer';
 
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,7 @@ export default async function AssetsPage() {
     apiFetch<Category[]>('/categories'),
   ]);
   const perms = await getMyPermissions();
+  const active = await getActiveModules();
 
   const personName = new Map(people.map((p) => [p.id, p.name]));
   const locName = new Map(locations.map((l) => [l.id, locationPath(l.id, locations)]));
@@ -86,7 +88,11 @@ export default async function AssetsPage() {
           name: locName.get(l.id) ?? l.name,
           isCell: l.cellRow != null,
         }))}
-        actions={<AssetTransfer canImport={perms.has('asset.item.create')} />}
+        actions={
+          active.has('import_export') ? (
+            <AssetTransfer canImport={perms.has('asset.item.create')} />
+          ) : undefined
+        }
       />
     </div>
   );
