@@ -255,8 +255,34 @@ function VehicleCard({
           <dd className="text-xs text-slate-400">{fmtInstant(row.odometerEndAt)}</dd>
         </div>
         <div>
-          <dt className="text-xs text-slate-500">Ujeto</dt>
+          <dt className="text-xs text-slate-500">Ujeto za období</dt>
           <dd className="font-semibold">{row.distance != null ? km(row.distance) : '—'}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-slate-500">Ujeto od předchozího záznamu</dt>
+          <dd className="font-medium">
+            {row.distanceSincePrevious != null ? km(row.distanceSincePrevious) : '—'}
+          </dd>
+          {row.previousOdometer != null && (
+            <dd className="text-xs text-slate-400">
+              z {km(row.previousOdometer)} · {fmtInstant(row.previousOdometerAt ?? null)}
+            </dd>
+          )}
+        </div>
+        <div className="col-span-2">
+          <dt className="text-xs text-slate-500">Ujeto od pořízení</dt>
+          <dd className="font-medium">
+            {row.distanceSincePurchase != null ? km(row.distanceSincePurchase) : '—'}
+          </dd>
+          <dd className="text-xs text-slate-400">
+            {row.odometerAtPurchase == null
+              ? 'Chybí datum pořízení nebo odečet tachometru.'
+              : row.odometerAtPurchaseSource === 'new'
+                ? 'Pořízeno jako nové (0 km).'
+                : row.odometerAtPurchaseSource === 'first_after'
+                  ? `Odhad – první odečet po pořízení (${km(row.odometerAtPurchase)}).`
+                  : `Při pořízení ${km(row.odometerAtPurchase)}.`}
+          </dd>
         </div>
       </dl>
 

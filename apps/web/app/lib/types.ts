@@ -293,6 +293,12 @@ export interface VehicleInventoryRow {
   odometerEnd: number | null;
   odometerEndAt: string | null;
   distance: number | null;
+  previousOdometer?: number | null;
+  previousOdometerAt?: string | null;
+  distanceSincePrevious?: number | null;
+  odometerAtPurchase?: number | null;
+  odometerAtPurchaseSource?: 'reading' | 'new' | 'first_after' | null;
+  distanceSincePurchase?: number | null;
   plans: VehiclePlanState[];
   next: VehiclePlanState | null;
   servicesInPeriod: {

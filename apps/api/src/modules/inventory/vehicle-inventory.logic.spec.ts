@@ -1,6 +1,9 @@
 import { resolveExportSelection } from '@tagery/shared';
 import {
   daysBetween,
+  kmDiff,
+  odometerAtPurchase,
+  previousReading,
   mostUrgent,
   periodBounds,
   periodReadings,
@@ -43,6 +46,43 @@ describe('vehicle-inventory.logic', () => {
     // nic v období → konec = poslední před obdobím
     expect(periodReadings([readings[1]], start, end).end?.value).toBe(10000);
     expect(periodReadings([], start, end)).toEqual({ start: null, end: null });
+  });
+
+  it('předchozí záznam a ujeto od něj', () => {
+    const r = (value: number, at: string) => ({ value, observedAt: new Date(at) });
+    const list = [
+      r(13900, '2026-10-05T08:00:00Z'),
+      r(12000, '2026-09-15T08:00:00Z'),
+      r(14500, '2026-10-11T08:00:00Z'),
+    ];
+    const prev = previousReading(list, list[2]);
+    expect(prev?.value).toBe(13900);
+    expect(kmDiff(list[2].value, prev?.value)).toBe(600);
+    expect(previousReading([list[2]], list[2])).toBeNull();
+    expect(previousReading(list, null)).toBeNull();
+    expect(kmDiff(100, null)).toBeNull();
+  });
+
+  it('stav tachometru při pořízení', () => {
+    const r = (value: number, at: string) => ({ value, observedAt: new Date(at) });
+    const list = [r(85000, '2026-03-01T15:00:00Z'), r(86200, '2026-04-10T08:00:00Z')];
+    // odečet v den pořízení (Praha)
+    expect(odometerAtPurchase(list, { condition: 'used', purchasedOn: '2026-03-01' })).toEqual({
+      value: 85000,
+      source: 'reading',
+    });
+    // nová bez odečtu do pořízení = 0
+    expect(odometerAtPurchase(list, { condition: 'new', purchasedOn: '2026-02-01' })).toEqual({
+      value: 0,
+      source: 'new',
+    });
+    // použitá bez odečtu při koupi = první odečet po ní (odhad)
+    expect(odometerAtPurchase(list, { condition: 'used', purchasedOn: '2026-02-01' })).toEqual({
+      value: 85000,
+      source: 'first_after',
+    });
+    expect(odometerAtPurchase(list, { condition: 'used', purchasedOn: null })).toBeNull();
+    expect(odometerAtPurchase([], { condition: 'used', purchasedOn: '2026-02-01' })).toBeNull();
   });
 
   it('stav intervalu: km a dny do servisu, záporné = po servisu', () => {

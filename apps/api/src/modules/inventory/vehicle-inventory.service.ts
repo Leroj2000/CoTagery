@@ -7,13 +7,17 @@ import { Person } from '../../core/domain/entities/person.entity';
 import { Asset } from '../asset/entities/asset.entity';
 import { Category } from '../asset/entities/category.entity';
 import { MeterReading } from '../asset/entities/meter-reading.entity';
+import { AssetPurchase } from '../asset/entities/asset-purchase.entity';
 import { ServiceRecord } from '../asset/entities/service-record.entity';
 import { MaintenanceService } from '../asset/maintenance.service';
 import { MAINTENANCE_TEMPLATES } from '../asset/maintenance.logic';
 import { isIsoDate } from '../asset/purchase.logic';
 import { InventoryCheck } from './entities/inventory-check.entity';
 import {
+  kmDiff,
   mostUrgent,
+  odometerAtPurchase,
+  previousReading,
   periodBounds,
   periodReadings,
   planState,
@@ -138,6 +142,12 @@ export class VehicleInventoryService {
       where: { assetId: In(ids), performedAt: And(MoreThanOrEqual(start), LessThan(end)) },
       order: { performedAt: 'ASC' },
     });
+    const purchases = new Map(
+      (await this.repo(AssetPurchase).find({ where: { assetId: In(ids) } })).map((p) => [
+        p.assetId,
+        p,
+      ]),
+    );
     const locations = await this.repo(Location).find();
     const people = await this.repo(Person).find();
     const holderName = new Map<string, string>([
@@ -149,6 +159,8 @@ export class VehicleInventoryService {
       const own = readings.filter((r) => r.assetId === a.id);
       const { start: first, end: last } = periodReadings(own, start, end);
       const odometer = last?.value ?? null;
+      const previous = previousReading(own, last);
+      const atPurchase = odometerAtPurchase(own, purchases.get(a.id) ?? null);
       const plans = (summaries.get(a.id)?.plans ?? []).map((p) =>
         planState(p, odometer, referenceDay),
       );
@@ -164,8 +176,13 @@ export class VehicleInventoryService {
         odometerStartAt: first?.observedAt.toISOString() ?? null,
         odometerEnd: odometer,
         odometerEndAt: last?.observedAt.toISOString() ?? null,
-        distance:
-          first && last ? Math.max(0, Math.round((last.value - first.value) * 10) / 10) : null,
+        distance: kmDiff(last?.value, first?.value),
+        previousOdometer: previous?.value ?? null,
+        previousOdometerAt: previous?.observedAt.toISOString() ?? null,
+        distanceSincePrevious: kmDiff(last?.value, previous?.value),
+        odometerAtPurchase: atPurchase?.value ?? null,
+        odometerAtPurchaseSource: atPurchase?.source ?? null,
+        distanceSincePurchase: kmDiff(last?.value, atPurchase?.value),
         plans,
         next: mostUrgent(plans),
         servicesInPeriod: services

@@ -44,7 +44,18 @@ export interface VehicleInventoryRow {
   odometerStartAt: string | null;
   odometerEnd: number | null;
   odometerEndAt: string | null;
+  /** Ujeto za období (konec − začátek). */
   distance: number | null;
+  /** Odečet před posledním (u zmrazených řádků ze starší verze chybí). */
+  previousOdometer?: number | null;
+  previousOdometerAt?: string | null;
+  /** Ujeto od předchozího záznamu (poslední − předposlední odečet). */
+  distanceSincePrevious?: number | null;
+  /** Stav tachometru při pořízení a jak byl určen. */
+  odometerAtPurchase?: number | null;
+  odometerAtPurchaseSource?: PurchaseOdometerSource | null;
+  /** Ujeto od pořízení (poslední odečet − stav při pořízení). */
+  distanceSincePurchase?: number | null;
   plans: VehiclePlanState[];
   next: VehiclePlanState | null;
   servicesInPeriod: VehicleServiceInPeriod[];
@@ -141,6 +152,42 @@ export function periodReadings(
   const first = before.at(-1) ?? inside[0] ?? null;
   const last = inside.at(-1) ?? before.at(-1) ?? null;
   return { start: first, end: last };
+}
+
+/** Odečet těsně před `last` (předchozí záznam). */
+export function previousReading(readings: Reading[], last: Reading | null): Reading | null {
+  if (!last) return null;
+  const before = readings
+    .filter((r) => r !== last && r.observedAt.getTime() <= last.observedAt.getTime())
+    .sort((a, b) => a.observedAt.getTime() - b.observedAt.getTime());
+  return before.at(-1) ?? null;
+}
+
+/**
+ * Jak byl určen stav při pořízení: `reading` = odečet do dne pořízení,
+ * `new` = nová věc bez odečtu = 0 km, `first_after` = první odečet po
+ * pořízení (použitá věc bez odečtu při koupi – odhad).
+ */
+export type PurchaseOdometerSource = 'reading' | 'new' | 'first_after';
+
+/** Stav tachometru při pořízení; bez data pořízení `null`. */
+export function odometerAtPurchase(
+  readings: Reading[],
+  purchase: { condition: 'new' | 'used'; purchasedOn: string | null } | null,
+): { value: number; source: PurchaseOdometerSource } | null {
+  if (!purchase?.purchasedOn) return null;
+  const dayEnd = pragueMidnight(addDaysIso(purchase.purchasedOn, 1));
+  const sorted = [...readings].sort((a, b) => a.observedAt.getTime() - b.observedAt.getTime());
+  const atPurchase = sorted.filter((r) => r.observedAt < dayEnd).at(-1);
+  if (atPurchase) return { value: atPurchase.value, source: 'reading' };
+  if (purchase.condition === 'new') return { value: 0, source: 'new' };
+  const after = sorted.find((r) => r.observedAt >= dayEnd);
+  return after ? { value: after.value, source: 'first_after' } : null;
+}
+
+/** Rozdíl stavů tachometru zaokrouhlený na desetiny, nikdy záporný. */
+export function kmDiff(to: number | null | undefined, from: number | null | undefined) {
+  return to != null && from != null ? Math.max(0, Math.round((to - from) * 10) / 10) : null;
 }
 
 const STATUS_RANK: Record<MaintenanceStatus, number> = {

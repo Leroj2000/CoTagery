@@ -113,6 +113,19 @@ export const EXPORT_DEFINITIONS: Record<ExportKind, ExportDefinition> = {
       { key: 'odometerEnd', label: 'Tachometr na konci', default: true },
       { key: 'odometerEndAt', label: 'Odečet konce (datum)', default: true },
       { key: 'distance', label: 'Ujeto za období (km)', default: true },
+      {
+        key: 'distanceSincePrevious',
+        label: 'Ujeto od předchozího záznamu (km)',
+        default: true,
+        help: 'Poslední stav tachometru − předposlední záznam.',
+      },
+      { key: 'previousOdometerAt', label: 'Předchozí záznam (datum)', default: false },
+      {
+        key: 'distanceSincePurchase',
+        label: 'Ujeto od pořízení (km)',
+        default: true,
+        help: 'Poslední stav − stav při pořízení (nové = 0 km, použité = odečet ke dni pořízení, jinak první odečet po něm).',
+      },
       { key: 'nextService', label: 'Nejbližší servis', default: true },
       {
         key: 'kmToService',
