@@ -58,13 +58,19 @@ export class UsersController {
 
   @Post(':id/suspend')
   @RequirePermission('core.member.deactivate')
-  suspend(@Param('id', ParseUUIDPipe) id: string): Promise<UserView> {
-    return this.users.setStatus(id, 'suspended');
+  suspend(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: RequestUser,
+  ): Promise<UserView> {
+    return this.users.setStatus(user, id, 'suspended');
   }
 
   @Post(':id/activate')
   @RequirePermission('core.member.deactivate')
-  activate(@Param('id', ParseUUIDPipe) id: string): Promise<UserView> {
-    return this.users.setStatus(id, 'active');
+  activate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: RequestUser,
+  ): Promise<UserView> {
+    return this.users.setStatus(user, id, 'active');
   }
 }

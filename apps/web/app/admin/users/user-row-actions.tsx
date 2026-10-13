@@ -11,6 +11,7 @@ export function UserRowActions({
   status,
   options,
   canChangeRole,
+  canChangeStatus,
 }: {
   userId: string;
   role: string;
@@ -19,12 +20,14 @@ export function UserRowActions({
   options: { value: string; label: string }[];
   /** Je uživatel aktérovi podřízený (a není to on sám)? */
   canChangeRole: boolean;
+  /** Smí aktér pozastavit/aktivovat členství (podřízený, ne on sám)? */
+  canChangeStatus: boolean;
 }) {
   const [roleState, roleAction, rolePending] = useActionState<ActionState, FormData>(
     updateUserRole,
     null,
   );
-  const [, statusAction, statusPending] = useActionState<ActionState, FormData>(
+  const [statusState, statusAction, statusPending] = useActionState<ActionState, FormData>(
     setUserStatus,
     null,
   );
@@ -58,17 +61,22 @@ export function UserRowActions({
         </form>
       )}
 
-      <form action={statusAction} className="inline">
-        <input type="hidden" name="userId" value={userId} />
-        <input type="hidden" name="status" value={nextStatus} />
-        <button
-          type="submit"
-          disabled={statusPending}
-          className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 disabled:opacity-40"
-        >
-          {status === 'active' ? 'Pozastavit' : 'Aktivovat'}
-        </button>
-      </form>
+      {canChangeStatus && (
+        <form action={statusAction} className="inline">
+          <input type="hidden" name="userId" value={userId} />
+          <input type="hidden" name="status" value={nextStatus} />
+          <button
+            type="submit"
+            disabled={statusPending}
+            className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 disabled:opacity-40"
+          >
+            {status === 'active' ? 'Pozastavit' : 'Aktivovat'}
+          </button>
+          {statusState?.error && (
+            <span className="ml-1 text-xs text-red-600">{statusState.error}</span>
+          )}
+        </form>
+      )}
     </div>
   );
 }

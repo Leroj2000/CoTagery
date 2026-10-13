@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { apiFetch, ApiError, getMe } from '../../lib/server-api';
+import { apiFetch, ApiError, getMe, getMyPermissions } from '../../lib/server-api';
 import type { AdminUser } from '../../lib/types';
 import { roleName, type RolesOverview } from '../../lib/roles';
 import { ROLE_OPTIONS } from '../options';
@@ -9,6 +9,12 @@ import { inviteUser } from '../actions';
 import { UserRowActions } from './user-row-actions';
 
 export const dynamic = 'force-dynamic';
+
+const STATUS_LABELS: Record<string, string> = {
+  active: 'aktivní',
+  suspended: 'pozastaveno',
+  pending: 'čeká na aktivaci',
+};
 
 export default async function UsersPage() {
   let users: AdminUser[] = [];
@@ -22,9 +28,10 @@ export default async function UsersPage() {
 
   // Role firmy: názvy + které smím přidělit (hierarchie). Bez přístupu k rolím
   // zůstane výchozí seznam a hierarchii stejně ohlídá API.
-  const [roles, me] = await Promise.all([
+  const [roles, me, perms] = await Promise.all([
     apiFetch<RolesOverview>('/roles').catch(() => null),
     getMe().catch(() => null),
+    getMyPermissions(),
   ]);
   const roleOptions = roles
     ? roles.roles.filter((r) => r.assignable).map((r) => ({ value: r.key, label: r.name }))
@@ -32,6 +39,12 @@ export default async function UsersPage() {
   const actorIsOwner = roles?.actor.roleKey === 'owner';
   const canChange = (u: AdminUser): boolean => {
     if (!roles?.actor.canManage || u.id === me?.user.id) return false;
+    const target = roles.roles.find((r) => r.key === u.tenantRole.toLowerCase());
+    return actorIsOwner || (!!target && target.rank < roles.actor.rank);
+  };
+  // Pozastavit lze jen podřízeného (vlastník kohokoli), nikdy sebe – stejně jako server.
+  const canChangeStatus = (u: AdminUser): boolean => {
+    if (!perms.has('core.member.deactivate') || !roles || u.id === me?.user.id) return false;
     const target = roles.roles.find((r) => r.key === u.tenantRole.toLowerCase());
     return actorIsOwner || (!!target && target.rank < roles.actor.rank);
   };
@@ -89,7 +102,11 @@ export default async function UsersPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge>{label(u.tenantRole)}</Badge>
-                  <span className="text-xs text-slate-400">{u.status}</span>
+                  <span
+                    className={`text-xs ${u.status === 'suspended' ? 'font-medium text-red-600' : 'text-slate-400'}`}
+                  >
+                    {STATUS_LABELS[u.status] ?? u.status}
+                  </span>
                 </div>
                 <div className="shrink-0">
                   <UserRowActions
@@ -98,6 +115,7 @@ export default async function UsersPage() {
                     status={u.status}
                     options={roleOptions}
                     canChangeRole={canChange(u)}
+                    canChangeStatus={canChangeStatus(u)}
                   />
                 </div>
               </li>

@@ -71,7 +71,8 @@ export class UsersService {
     // přes `org_memberships` (to RLS má) – jinak by výpis vracel uživatele všech
     // firem (cross-tenant únik). Role je efektivní role v této org (z membershipu).
     const rows = (await this.context.manager.query(
-      `SELECT u.id, u.email, u.name, m.role, u.status, u.created_at
+      `SELECT u.id, u.email, u.name, m.role,
+              CASE WHEN u.status = 'pending' THEN 'pending' ELSE m.status END AS status, u.created_at
          FROM org_memberships m
          JOIN users u ON u.id = m.user_id
         ORDER BY u.created_at DESC
@@ -203,10 +204,37 @@ export class UsersService {
     return { ...toView(saved), tenantRole: role };
   }
 
-  async setStatus(id: string, status: 'active' | 'suspended'): Promise<UserView> {
+  /**
+   * Pozastaví / aktivuje členství uživatele v AKTUÁLNÍ firmě. Identita (`users`)
+   * je společná všem firmám, proto se mění stav membershipu, ne účtu – v jiných
+   * firmách člověk dál pracuje. Hierarchii rolí hlídá RolesService.
+   */
+  async setStatus(
+    actor: RequestUser,
+    id: string,
+    status: 'active' | 'suspended',
+  ): Promise<UserView> {
     const user = await this.get(id);
-    user.status = status;
-    return toView(await this.repo().save(user));
+    await this.roles.assertManageableMember(actor, id, status);
+    const mRepo = this.context.manager.getRepository(OrgMembership);
+    const m = await mRepo.findOne({ where: { userId: id } });
+    if (!m) throw new NotFoundException('Uživatel neexistuje');
+    const before = m.status;
+    m.status = status;
+    await mRepo.save(m);
+    this.authz.invalidate(this.context.tenantId!);
+    await this.audit.record({
+      action: status === 'suspended' ? 'member.suspended' : 'member.activated',
+      targetType: 'user',
+      targetId: id,
+      before: { status: before },
+      after: { status },
+    });
+    return {
+      ...toView(user),
+      tenantRole: m.role,
+      status: user.status === 'pending' ? 'pending' : status,
+    };
   }
 
   private async get(id: string): Promise<User> {

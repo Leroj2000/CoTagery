@@ -364,6 +364,38 @@ export class RolesService {
    * Ověří, že aktér smí uživateli přidělit roli `roleKey` (pozvánka i změna).
    * Vrací info o roli. `targetUserId` = měněný uživatel (jinak nová pozvánka).
    */
+  /**
+   * Smí aktér spravovat členství uživatele (pozastavit / aktivovat)? Ne sobě,
+   * jen podřízeným (vlastník všem); poslední aktivní vlastník se pozastavit nedá.
+   */
+  async assertManageableMember(
+    user: RequestUser,
+    targetUserId: string,
+    nextStatus: 'active' | 'suspended',
+  ): Promise<void> {
+    if (targetUserId === user.userId)
+      throw new ForbiddenException('Vlastní členství nelze pozastavit ani aktivovat.');
+    const [target] = (await this.context.manager.query(
+      `SELECT role FROM org_memberships WHERE user_id = $1`,
+      [targetUserId],
+    )) as { role: string }[];
+    if (!target) throw new NotFoundException('Uživatel neexistuje');
+    const actor = await this.authz.roleInfo(user);
+    const current = await this.authz.roleInfoFor(this.tenantId, target.role);
+    if (actor.key !== OWNER_ROLE_KEY && !canManageRank(actor.rank, current.rank))
+      throw new ForbiddenException(
+        'Členství nadřízeného nebo rovnocenného uživatele může měnit jen nadřízená role.',
+      );
+    if (nextStatus === 'suspended' && current.key === OWNER_ROLE_KEY) {
+      const [{ n }] = (await this.context.manager.query(
+        `SELECT count(*)::int AS n FROM org_memberships
+          WHERE lower(role) = 'owner' AND status = 'active' AND user_id <> $1`,
+        [targetUserId],
+      )) as { n: number }[];
+      if (n === 0) throw new ConflictException('Firma musí mít aspoň jednoho aktivního vlastníka.');
+    }
+  }
+
   async assertAssignable(
     user: RequestUser,
     roleKey: string,
