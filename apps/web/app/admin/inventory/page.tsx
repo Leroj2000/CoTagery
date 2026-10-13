@@ -1,6 +1,7 @@
+import { NoAccess } from '../no-access';
 import Link from 'next/link';
 import { Car, ClipboardCheck, FileSpreadsheet } from 'lucide-react';
-import { apiFetch } from '../../lib/server-api';
+import { apiFetch, getMyPermissions } from '../../lib/server-api';
 import { locationPath } from '../../lib/location-path';
 import type { InventoryCheck, Location, Person, Asset, Category } from '../../lib/types';
 import { PageHeader, Section, Table, Badge, EmptyState } from '../ui';
@@ -30,6 +31,8 @@ export default async function InventoryPage({
 }: {
   searchParams: Promise<{ location?: string }>;
 }) {
+  if (!(await getMyPermissions()).has('asset.inventory.manage'))
+    return <NoAccess what="Inventury" />;
   const { location } = await searchParams;
   await requireActiveModule('inventory');
   const active = await getActiveModules();

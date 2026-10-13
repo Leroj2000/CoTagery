@@ -29,7 +29,7 @@ import { PurchasePanel } from './purchase-panel';
 import { getActiveModules } from '../../module-access';
 import { WarrantyHint } from './warranty-hint';
 import type { PurchaseView, Warranty } from '../../../lib/purchase';
-import type { AssetMedia, AssetManual, AssetSpec, Tenant, Observation } from '../../../lib/types';
+import type { AssetMedia, AssetManual, AssetSpec, Observation } from '../../../lib/types';
 import {
   addCarrierToObject,
   adoptCarrier,
@@ -121,7 +121,10 @@ export default async function AssetDetail({
   const manuals = await apiFetch<AssetManual[]>(`/assets/${id}/manuals`).catch(() => []);
   const spec = await apiFetch<AssetSpec | null>(`/assets/${id}/specs`).catch(() => null);
   const observations = await apiFetch<Observation[]>(`/assets/${id}/observations`).catch(() => []);
-  const tenant = await apiFetch<Tenant>('/tenant');
+  // Jen provozní pravidla – nastavení firmy (`/tenant`) vidí jen owner/admin.
+  const rules = await apiFetch<{ requireReturnPhoto: boolean }>('/assets/rules').catch(() => ({
+    requireReturnPhoto: false,
+  }));
   const perms = await getMyPermissions();
   const canEdit = perms.has('asset.item.update');
   const canManagePhotos = perms.has('asset.media.manage');
@@ -142,7 +145,7 @@ export default async function AssetDetail({
     }[];
     max: number;
   }>(`/assets/${id}/photos`).catch(() => ({ items: [], max: 5 }));
-  const requireReturnPhoto = tenant.settings?.requireReturnPhoto === true;
+  const requireReturnPhoto = rules.requireReturnPhoto;
   const actions = asset.actions ?? [];
   const canReturn = actions.includes('return');
   const otherActions = actions.filter((a) => a !== 'return');

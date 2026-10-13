@@ -1,5 +1,6 @@
 import { Webhook } from 'lucide-react';
-import { apiFetch } from '../../lib/server-api';
+import { apiFetch, getMyPermissions } from '../../lib/server-api';
+import { NoAccess } from '../no-access';
 import type { WebhookEndpoint, WebhookDelivery } from '../../lib/types';
 import { PageHeader, Section, Table, Badge, Mono, EmptyState } from '../ui';
 import { ActionForm } from '../action-form';
@@ -15,6 +16,7 @@ function fmtDateTime(iso: string): string {
 }
 
 export default async function WebhooksPage() {
+  if (!(await getMyPermissions()).has('core.integration.manage')) return <NoAccess what="Integrace" />;
   const [endpoints, deliveries] = await Promise.all([
     apiFetch<WebhookEndpoint[]>('/webhooks'),
     apiFetch<WebhookDelivery[]>('/webhooks/deliveries'),

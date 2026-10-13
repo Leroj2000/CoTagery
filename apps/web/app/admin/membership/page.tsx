@@ -1,4 +1,5 @@
-import { apiFetch } from '../../lib/server-api';
+import { apiFetch, getMyPermissions } from '../../lib/server-api';
+import { NoAccess } from '../no-access';
 import type {
   MembershipTier,
   Member,
@@ -18,6 +19,7 @@ function fmtDate(iso: string): string {
 }
 
 export default async function MembershipPage() {
+  if (!(await getMyPermissions()).has('membership.card.manage')) return <NoAccess what="Členství" />;
   const [tiers, members, memberships, unassigned] = await Promise.all([
     apiFetch<MembershipTier[]>('/memberships/tiers'),
     apiFetch<Member[]>('/memberships/members'),

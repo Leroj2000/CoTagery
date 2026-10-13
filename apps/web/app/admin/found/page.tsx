@@ -1,5 +1,6 @@
 import { MapPinned } from 'lucide-react';
-import { apiFetch } from '../../lib/server-api';
+import { apiFetch, getMyPermissions } from '../../lib/server-api';
+import { NoAccess } from '../no-access';
 import type { FoundReport } from '../../lib/types';
 import { PageHeader, Section, Table, Badge, Mono, EmptyState } from '../ui';
 import { ActionButton } from '../action-button';
@@ -12,6 +13,7 @@ function fmtDateTime(iso: string): string {
 }
 
 export default async function FoundPage() {
+  if (!(await getMyPermissions()).has('found.report.handle')) return <NoAccess what="Nálezy" />;
   const reports = await apiFetch<FoundReport[]>('/found-reports');
 
   return (

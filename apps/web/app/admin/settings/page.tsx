@@ -1,3 +1,4 @@
+import { NoAccess } from '../no-access';
 import { apiFetch, getMyPermissions } from '../../lib/server-api';
 import type { Tenant } from '../../lib/types';
 import { Section, Badge, Mono } from '../ui';
@@ -31,6 +32,8 @@ const LOCK_LABELS = {
 } as const;
 
 export default async function SettingsPage() {
+  if (!(await getMyPermissions()).has('core.organization.view'))
+    return <NoAccess what="Nastavení firmy" />;
   const [tenant, modules, permissions] = await Promise.all([
     apiFetch<Tenant & { hasLogo?: boolean }>('/tenant'),
     apiFetch<ModuleState[]>('/modules').catch(() => [] as ModuleState[]),

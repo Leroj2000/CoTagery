@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { apiFetch } from '../../lib/server-api';
+import { apiFetch, getMyPermissions } from '../../lib/server-api';
+import { NoAccess } from '../no-access';
 import type { Subscription, UsageMeter, MembershipTier, Member } from '../../lib/types';
 import { Section, Table, Mono } from '../ui';
 import { ActionForm } from '../action-form';
@@ -12,6 +13,7 @@ function fmtDate(iso: string | null): string {
 }
 
 export default async function BillingPage() {
+  if (!(await getMyPermissions()).has('billing.subscription.manage')) return <NoAccess what="Předplatné členů" />;
   const [subs, usage, tiers, members] = await Promise.all([
     apiFetch<Subscription[]>('/billing/subscriptions'),
     apiFetch<UsageMeter[]>('/billing/usage'),

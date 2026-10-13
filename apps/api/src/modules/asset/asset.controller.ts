@@ -111,6 +111,17 @@ export class AssetController {
     return this.assets.attention();
   }
 
+  /**
+   * Provozní pravidla pro práci s položkami (bez nastavení firmy, které čte jen
+   * `core.organization.view`) – detail položky potřebuje vědět, zda je foto při
+   * vrácení povinné. (Musí být před :id.)
+   */
+  @Get('rules')
+  @RequirePermission('asset.item.view')
+  async rules(): Promise<{ requireReturnPhoto: boolean }> {
+    return { requireReturnPhoto: await this.assets.requireReturnPhoto() };
+  }
+
   @Get(':id')
   @RequirePermission('asset.item.view')
   async get(

@@ -1,7 +1,8 @@
+import { NoAccess } from '../../no-access';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Car, Check, X, HelpCircle, ClipboardCheck, FileSpreadsheet } from 'lucide-react';
-import { apiFetch, ApiError } from '../../../lib/server-api';
+import { apiFetch, ApiError, getMyPermissions } from '../../../lib/server-api';
 import type { InventoryDetail, Location, Asset, Person } from '../../../lib/types';
 import { PageHeader, Section, Badge, StatusBadge, Table, EmptyState } from '../../ui';
 import { InventoryScanner } from './inventory-scanner';
@@ -17,6 +18,8 @@ function fmtDay(iso: string | null): string {
 export const dynamic = 'force-dynamic';
 
 export default async function InventoryDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  if (!(await getMyPermissions()).has('asset.inventory.manage'))
+    return <NoAccess what="Inventury" />;
   const { id } = await params;
   await requireActiveModule('inventory');
   const canExport = (await getActiveModules()).has('import_export');

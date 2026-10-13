@@ -1,5 +1,6 @@
+import { NoAccess } from '../no-access';
 import Link from 'next/link';
-import { apiFetch } from '../../lib/server-api';
+import { apiFetch, getMyPermissions } from '../../lib/server-api';
 import type { AccessPoint } from '../../lib/types';
 import { Section, Table, Badge, Mono } from '../ui';
 import { ActionForm } from '../action-form';
@@ -8,6 +9,8 @@ import { createAccessPoint } from '../actions';
 export const dynamic = 'force-dynamic';
 
 export default async function AccessPage() {
+  if (!(await getMyPermissions()).has('access.point.manage'))
+    return <NoAccess what="Řízení přístupu" />;
   const points = await apiFetch<AccessPoint[]>('/access-points');
 
   return (
