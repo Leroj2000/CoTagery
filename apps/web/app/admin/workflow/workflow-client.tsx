@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Loader2,
   Camera,
@@ -17,7 +17,7 @@ import {
   Check,
 } from 'lucide-react';
 import type { WorkflowValidation } from '../../lib/types';
-import { StatusBadge, Badge } from '../ui';
+import { Badge } from '../ui';
 import { useBarcodeScanner } from '../scan/use-scanner';
 
 interface Opt {
@@ -33,11 +33,36 @@ interface Item {
 
 type ActionKey = 'loan' | 'return' | 'move';
 
-const ACTIONS: { key: ActionKey; label: string; icon: typeof PackageCheck; needs: 'person' | 'location' | null; confirm: string }[] = [
+const ACTIONS: {
+  key: ActionKey;
+  label: string;
+  icon: typeof PackageCheck;
+  needs: 'person' | 'location' | null;
+  confirm: string;
+}[] = [
   { key: 'loan', label: 'Vydávám', icon: PackageCheck, needs: 'person', confirm: 'Vydat' },
   { key: 'return', label: 'Vracím', icon: Undo2, needs: null, confirm: 'Vrátit' },
   { key: 'move', label: 'Přesouvám', icon: MoveRight, needs: 'location', confirm: 'Přesunout' },
 ];
+
+/** Stavy, ze kterých akce projde (zrcadlí `applyMovement` na API). */
+const ELIGIBLE: Record<ActionKey, string[]> = {
+  loan: ['available', 'assigned', 'reserved'],
+  return: ['loaned', 'assigned', 'in_transfer', 'reserved'],
+  move: ['available', 'assigned'],
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  available: 'Skladem',
+  assigned: 'Přiděleno',
+  loaned: 'Vypůjčeno',
+  reserved: 'Rezervováno',
+  in_transfer: 'Na cestě',
+  service: 'Servis',
+  damaged: 'Poškozeno',
+  lost: 'Ztraceno',
+  retired: 'Vyřazeno',
+};
 
 const inputCls =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
@@ -60,7 +85,10 @@ export function WorkflowClient({
   const [manual, setManual] = useState('');
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ ok: number; failed: { assetId: string; error: string }[] } | null>(null);
+  const [result, setResult] = useState<{
+    ok: number;
+    failed: { assetId: string; error: string }[];
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const reqIdRef = useRef(0);
@@ -102,6 +130,25 @@ export function WorkflowClient({
       if (id === reqIdRef.current) setError(e instanceof Error ? e.message : 'Chyba validace');
     }
   }, [action, cfg.needs, targetId, dueAt]);
+
+  // Změna cíle / termínu → přepočítat už vybrané položky.
+  useEffect(() => {
+    if (codesRef.current.length > 0 || pickedRef.current.size > 0) void revalidate();
+  }, [revalidate]);
+
+  // Položky, se kterými zvolená akce jde, nahoře; ostatní pod nimi.
+  const listed = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const ok = ELIGIBLE[action];
+    return assets
+      .filter((a) => a.name.toLowerCase().includes(q))
+      .map((a) => ({ ...a, eligible: ok.includes(a.status) }))
+      .sort((a, b) => Number(b.eligible) - Number(a.eligible));
+  }, [assets, query, action]);
+  const eligibleCount = useMemo(
+    () => assets.filter((a) => ELIGIBLE[action].includes(a.status)).length,
+    [assets, action],
+  );
 
   const addCode = useCallback(
     (raw: string) => {
@@ -151,7 +198,14 @@ export function WorkflowClient({
     setError(null);
   }, []);
 
-  const { videoRef, camOn, camSupported, error: camError, start, stop } = useBarcodeScanner(addCode, {
+  const {
+    videoRef,
+    camOn,
+    camSupported,
+    error: camError,
+    start,
+    stop,
+  } = useBarcodeScanner(addCode, {
     continuous: true,
   });
 
@@ -221,7 +275,11 @@ export function WorkflowClient({
               <label className="text-xs font-medium text-slate-600">
                 {cfg.needs === 'person' ? 'Komu *' : 'Kam *'}
               </label>
-              <select value={targetId} onChange={(e) => setTargetId(e.target.value)} className={inputCls}>
+              <select
+                value={targetId}
+                onChange={(e) => setTargetId(e.target.value)}
+                className={inputCls}
+              >
                 <option value="">— vyber —</option>
                 {targetOptions.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -233,7 +291,12 @@ export function WorkflowClient({
             {action === 'loan' && (
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-slate-600">Vrátit do (volitelné)</label>
-                <input type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} className={inputCls} />
+                <input
+                  type="date"
+                  value={dueAt}
+                  onChange={(e) => setDueAt(e.target.value)}
+                  className={inputCls}
+                />
               </div>
             )}
           </div>
@@ -269,9 +332,7 @@ export function WorkflowClient({
           ) : (
             <button
               onClick={start}
-              disabled={!targetReady}
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700 disabled:opacity-50 sm:w-auto sm:justify-start"
-              title={targetReady ? '' : 'Nejdřív vyber cíl'}
             >
               <Camera size={16} /> Skenovat kamerou
             </button>
@@ -282,7 +343,8 @@ export function WorkflowClient({
         </div>
         {!camSupported && (
           <p className="mt-2 text-xs text-amber-600">
-            Kamera není dostupná (chybí HTTPS nebo přístup ke kameře) – použij ruční zadání / HW čtečku níže.
+            Kamera není dostupná (chybí HTTPS nebo přístup ke kameře) – použij ruční zadání / HW
+            čtečku níže.
           </p>
         )}
 
@@ -301,25 +363,31 @@ export function WorkflowClient({
               onChange={(e) => setManual(e.target.value)}
               placeholder="Kód ručně / HW čtečka + Enter"
               className={`${inputCls} pl-9`}
-              disabled={!targetReady}
             />
           </div>
           <button
             type="submit"
-            disabled={!targetReady || !manual.trim()}
+            disabled={!manual.trim()}
             className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-900 disabled:opacity-50"
           >
             Přidat
           </button>
         </form>
         {!targetReady && (
-          <p className="mt-2 text-xs text-slate-400">Nejdřív vyber {cfg.needs === 'person' ? 'příjemce' : 'cílové místo'}.</p>
+          <p className="mt-2 text-xs text-amber-700">
+            Před potvrzením vyber nahoře{' '}
+            {cfg.needs === 'person' ? 'komu (příjemce)' : 'kam (cílové místo)'}.
+          </p>
         )}
 
         {/* Nebo vyber ze seznamu (sjednocený výdej – web) */}
         <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60">
           <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-slate-600">
-            Nebo vyber ze seznamu ({picked.size})
+            Nebo vyber ze seznamu{' '}
+            <span className="font-normal text-slate-400">
+              ({eligibleCount} lze {cfg.confirm.toLowerCase()}
+              {picked.size > 0 ? ` · vybráno ${picked.size}` : ''})
+            </span>
           </summary>
           <div className="border-t border-slate-200 p-3">
             <div className="relative mb-2">
@@ -329,32 +397,38 @@ export function WorkflowClient({
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Hledat položku…"
                 className={`${inputCls} pl-8`}
-                disabled={!targetReady}
               />
             </div>
             <div className="max-h-52 overflow-y-auto rounded-lg border border-slate-200 bg-white">
-              {assets
-                .filter((a) => a.name.toLowerCase().includes(query.toLowerCase()))
-                .slice(0, 60)
-                .map((a) => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    onClick={() => togglePick(a.id)}
-                    disabled={!targetReady}
-                    className="flex w-full items-center gap-2 border-b border-slate-100 px-3 py-2 text-left text-sm last:border-0 hover:bg-slate-50 disabled:opacity-50"
+              {listed.length === 0 && (
+                <p className="px-3 py-4 text-center text-sm text-slate-400">
+                  Žádná položka neodpovídá hledání.
+                </p>
+              )}
+              {listed.slice(0, 60).map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => togglePick(a.id)}
+                  className={`flex w-full items-center gap-2 border-b border-slate-100 px-3 py-2 text-left text-sm last:border-0 hover:bg-slate-50 ${
+                    a.eligible ? '' : 'opacity-60'
+                  }`}
+                >
+                  <span
+                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                      picked.has(a.id)
+                        ? 'border-brand-500 bg-brand-500 text-white'
+                        : 'border-slate-300'
+                    }`}
                   >
-                    <span
-                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                        picked.has(a.id) ? 'border-brand-500 bg-brand-500 text-white' : 'border-slate-300'
-                      }`}
-                    >
-                      {picked.has(a.id) && <Check size={11} />}
-                    </span>
-                    <span className="flex-1 truncate text-slate-700">{a.name}</span>
-                    <StatusBadge status={a.status} />
-                  </button>
-                ))}
+                    {picked.has(a.id) && <Check size={11} />}
+                  </span>
+                  <span className="flex-1 truncate text-slate-700">{a.name}</span>
+                  <Badge tone={a.eligible ? 'green' : 'slate'}>
+                    {STATUS_LABELS[a.status] ?? a.status}
+                  </Badge>
+                </button>
+              ))}
             </div>
           </div>
         </details>
@@ -372,7 +446,10 @@ export function WorkflowClient({
                 <AlertCircle size={15} /> {validation.blockedCount} blokováno
               </span>
             )}
-            <button onClick={reset} className="ml-auto inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600">
+            <button
+              onClick={reset}
+              className="ml-auto inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600"
+            >
               <Trash2 size={13} /> Vyčistit
             </button>
           </div>
@@ -387,9 +464,11 @@ export function WorkflowClient({
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-slate-800">{it.name ?? it.code}</p>
-                  {!it.ok && it.reason && <p className="truncate text-xs text-amber-700">{it.reason}</p>}
+                  {!it.ok && it.reason && (
+                    <p className="truncate text-xs text-amber-700">{it.reason}</p>
+                  )}
                 </div>
-                {it.status && <StatusBadge status={it.status} />}
+                {it.status && <Badge tone="slate">{STATUS_LABELS[it.status] ?? it.status}</Badge>}
                 <button
                   onClick={() => (picked.has(it.code) ? togglePick(it.code) : removeCode(it.code))}
                   className="text-slate-300 hover:text-red-500"
@@ -403,11 +482,12 @@ export function WorkflowClient({
 
           <button
             onClick={confirm}
-            disabled={busy || okCount === 0}
+            disabled={busy || okCount === 0 || !targetReady}
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
           >
             {busy && <Loader2 size={16} className="animate-spin" />}
-            {cfg.confirm} {okCount} {okCount === 1 ? 'položku' : okCount >= 2 && okCount <= 4 ? 'položky' : 'položek'}
+            {cfg.confirm} {okCount}{' '}
+            {okCount === 1 ? 'položku' : okCount >= 2 && okCount <= 4 ? 'položky' : 'položek'}
           </button>
         </div>
       )}
@@ -424,7 +504,9 @@ export function WorkflowClient({
           <div>
             <p className="font-medium">Hotovo – {result.ok} položek zpracováno.</p>
             {result.failed.length > 0 && (
-              <p className="mt-0.5 text-amber-700">{result.failed.length} se nepodařilo (souběžná změna stavu).</p>
+              <p className="mt-0.5 text-amber-700">
+                {result.failed.length} se nepodařilo (souběžná změna stavu).
+              </p>
             )}
             <Badge tone="green">Můžeš skenovat další dávku</Badge>
           </div>
