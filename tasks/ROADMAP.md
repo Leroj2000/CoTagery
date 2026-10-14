@@ -35,8 +35,9 @@
 | EPIC-17 | BILLING | Sdílené předplatné (recurring přes PSP) – řídí platnost členství (ADR-0007) | ⬜ |
 | EPIC-18 | AUTHZ-V2 | Multi-org identita + permissions/scope/entitlement/policy/audit (fáze 0–4 hotové, e2e) | ✅ |
 | EPIC-19 | RENTAL-MARKETPLACE | Veřejná půjčovna a objednávky jsou implementované, ale mimo základní MVP a výchozí stav | 🟡 |
-| EPIC-20 | PLATFORM-PLANS | SaaS plány firem, entitlementy a limity (config katalog → `organization_modules` + limity) | ⬜ |
+| EPIC-20 | PLATFORM-PLANS | Předplatné firem: úrovně, moduly/funkce, limity, zkušební doba, faktury s QR (F1–F3 hotovo, Stripe zbývá) | 🟡 |
 | EPIC-21 | MARKETPLACE-NETWORK | Opt-in, follow, feed a discovery implementované; post-MVP moderace zbývá | 🟡 |
+| EPIC-22 | CONVERSATIONAL-CHANNELS | Ovládání přes WhatsApp, Telegram a AI asistenty (MCP) nad společnou vrstvou akcí | ⬜ |
 
 ---
 
@@ -75,8 +76,9 @@
 ### Fáze 3 – Rozšíření (post-MVP)
 Loyalty, Payment (plná PSP integrace), Inventory, Trace/DPP, GS1 Digital Link, SAML SSO, custom domény, billing tenantů, PWA, veřejné API + webhooky.
 
-- **EPIC-20 PLATFORM-PLANS** ⬜ – SaaS plány firem, entitlementy a limity (config katalog řídí `organization_modules` + vynucení limitů). Návrh: [ADR-0009](../docs/architecture/decisions/0009-platform-plans-entitlements.md); spec: `tasks/EPIC-20-PLATFORM-PLANS/`. Platform-admin vrstva pro přiřazení plánu už hotová.
+- **EPIC-20 PLATFORM-PLANS** 🟡 – předplatné firem: úrovně v DB (ceny, limity, moduly/funkce), výjimky per firma, zkušební doba → Free, splatnost/pozastavení, prodloužení, faktury s QR platbou, limit úložiště (F1–F3 hotovo 2026-10-12; F4 Stripe zbývá). [ADR-0009](../docs/architecture/decisions/0009-platform-plans-entitlements.md); spec: `tasks/EPIC-20-PLATFORM-PLANS/`.
 - **EPIC-21 MARKETPLACE-NETWORK** ⬜ – síť/discovery nad půjčovnou: účet nájemce sleduje firmy (B2C) + feed publikovaných inzerátů + procházení/hledání. Staví na EPIC-19 (`public_listings` SECURITY DEFINER) a EPIC-10 (`renter_profiles`); mantinel = jen veřejná projekce. Spec: `tasks/EPIC-21-MARKETPLACE-NETWORK/`.
+- **EPIC-22 CONVERSATIONAL-CHANNELS** ⬜ – zakládání a správa položek přes WhatsApp/Telegram (fotka + text → návrh → potvrzení) a přes AI asistenty (MCP konektor pro ChatGPT/Claude s OAuth). Jedna společná vrstva akcí nad stávajícími službami (oprávnění, RLS, limity, audit). Pilot Telegram → MCP → WhatsApp (placená extra služba); jedno sdílené číslo/bot s vícevrstvou izolací firem, čeština + angličtina. Spec: `tasks/EPIC-22-CONVERSATIONAL-CHANNELS/`.
 
 ## Cross-cutting (průběžně)
 Observability (OpenTelemetry, per-tenant metriky) · i18n (CS/EN) · přístupnost (WCAG 2.1 AA) · bezpečnostní a izolační testy (Stage 04) u každého datového EPICu.
