@@ -5,6 +5,14 @@ import type { Reservation } from '../../lib/types';
 import { Badge, EmptyState, Table } from '../ui';
 import { ActionButton } from '../action-button';
 import { fulfillReservation, setReservationStatus } from '../actions';
+import type { PlaceNode } from '../../lib/location-path';
+import {
+  CategorySelect,
+  LocationSelect,
+  makeAssetFilter,
+  type AssetFacet,
+  type FilterOption,
+} from './reservation-filters';
 
 const PAGE_SIZE = 25;
 const STATUS_TONE: Record<string, 'amber' | 'green' | 'red' | 'slate'> = {
@@ -13,6 +21,14 @@ const STATUS_TONE: Record<string, 'amber' | 'green' | 'red' | 'slate'> = {
   fulfilled: 'green',
   rejected: 'red',
   cancelled: 'slate',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Čeká',
+  approved: 'Schváleno',
+  fulfilled: 'Vydáno',
+  rejected: 'Zamítnuto',
+  cancelled: 'Zrušeno',
 };
 
 function fmtDate(iso: string | null): string {
@@ -25,13 +41,25 @@ export function ReservationsList({
   reservations,
   assetNames,
   personNames,
+  assets,
+  categories,
+  locations,
+  places,
 }: {
   reservations: Reservation[];
   assetNames: Record<string, string>;
   personNames: Record<string, string>;
+  assets: AssetFacet[];
+  categories: FilterOption[];
+  locations: FilterOption[];
+  places: PlaceNode[];
 }) {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
+  const [category, setCategory] = useState('');
+  const [location, setLocation] = useState('');
+  const assetById = useMemo(() => new Map(assets.map((a) => [a.id, a])), [assets]);
+  const matches = useMemo(() => makeAssetFilter(places), [places]);
   const [order, setOrder] = useState<'newest' | 'from-asc' | 'from-desc'>('newest');
   const [page, setPage] = useState(1);
 
@@ -39,6 +67,7 @@ export function ReservationsList({
     const needle = query.trim().toLocaleLowerCase('cs');
     return reservations
       .filter((item) => !status || item.status === status)
+      .filter((item) => matches(assetById.get(item.assetId), category, location))
       .filter((item) => {
         if (!needle) return true;
         return `${assetNames[item.assetId] ?? ''} ${item.requestedById ? (personNames[item.requestedById] ?? '') : ''} ${item.purpose ?? ''}`
@@ -50,7 +79,18 @@ export function ReservationsList({
         const result = (a.fromAt ?? '').localeCompare(b.fromAt ?? '');
         return order === 'from-asc' ? result : -result;
       });
-  }, [reservations, status, query, order, assetNames, personNames]);
+  }, [
+    reservations,
+    status,
+    query,
+    order,
+    assetNames,
+    personNames,
+    category,
+    location,
+    matches,
+    assetById,
+  ]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
@@ -64,7 +104,7 @@ export function ReservationsList({
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         <input
           value={query}
           onChange={(event) => reset(() => setQuery(event.target.value))}
@@ -83,6 +123,16 @@ export function ReservationsList({
           <option value="rejected">Zamítnuto</option>
           <option value="cancelled">Zrušeno</option>
         </select>
+        <CategorySelect
+          options={categories}
+          value={category}
+          onChange={(v) => reset(() => setCategory(v))}
+        />
+        <LocationSelect
+          options={locations}
+          value={location}
+          onChange={(v) => reset(() => setLocation(v))}
+        />
         <select
           value={order}
           onChange={(event) => reset(() => setOrder(event.target.value as typeof order))}
@@ -107,7 +157,7 @@ export function ReservationsList({
             `${fmtDate(item.fromAt)} – ${fmtDate(item.toAt)}`,
             item.purpose ?? '—',
             <Badge key="status" tone={STATUS_TONE[item.status] ?? 'slate'}>
-              {item.status}
+              {STATUS_LABELS[item.status] ?? item.status}
             </Badge>,
             item.status === 'pending' ? (
               <span key="actions" className="flex gap-1">
