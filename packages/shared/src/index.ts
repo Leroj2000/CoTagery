@@ -43,3 +43,4 @@ export * from './roles';
 export * from './exports';
 export * from './plans';
 export * from './location-types';
+export * from './notifications';

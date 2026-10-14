@@ -72,10 +72,15 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const inactiveModules = new Set(
     modules.filter((m) => m.state === 'inactive').map((m) => m.moduleKey),
   );
+  // Notifikace: owner, manager jen s povolením ownera (rozhoduje API).
+  const notificationAccess = await apiFetch<{ canManage: boolean }>('/notifications/access').catch(
+    () => ({ canManage: false }),
+  );
   const hiddenNav = NAV_ITEMS.filter(
     (item) =>
       (item.moduleKey && inactiveModules.has(item.moduleKey)) ||
-      (item.permission && !permissions.has(item.permission)),
+      (item.permission && !permissions.has(item.permission)) ||
+      (item.href === '/admin/settings/notifications' && !notificationAccess.canManage),
   ).map((item) => item.href);
 
   // Čekající položky → čísla v kolečku v navigaci a na záložce „Menu".

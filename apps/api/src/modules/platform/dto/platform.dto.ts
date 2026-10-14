@@ -206,3 +206,18 @@ export class UpdatePlatformSettingsDto {
   @IsObject()
   supplier?: Record<string, string>;
 }
+
+/** Text systémového e-mailu (null/chybí = výchozí). */
+export class PlatformTemplateDto {
+  @IsOptional()
+  @ValidateIf((_o, v) => v !== null)
+  @IsString()
+  @MaxLength(200)
+  subject?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_o, v) => v !== null)
+  @IsString()
+  @MaxLength(5000)
+  body?: string | null;
+}

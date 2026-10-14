@@ -2,12 +2,15 @@ import { apiFetch } from '../../lib/server-api';
 import type { PlatformSettings } from '../../lib/platform';
 import { PlatformShell, requirePlatformAdmin } from '../platform-shell';
 import { SettingsForm } from './settings-form';
+import { SystemEmails } from './system-emails';
+import type { NotificationSettingView } from '../../lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
 export default async function PlatformSettingsPage() {
   await requirePlatformAdmin('/platform/settings');
   const settings = await apiFetch<PlatformSettings>('/platform/settings');
+  const emails = await apiFetch<NotificationSettingView[]>('/platform/notifications');
   return (
     <PlatformShell active="/platform/settings">
       <div className="mb-6">
@@ -16,7 +19,10 @@ export default async function PlatformSettingsPage() {
           Dodavatel na fakturách za předplatné, DPH a pravidla zkušební doby a splatnosti.
         </p>
       </div>
-      <SettingsForm settings={settings} />
+      <div className="flex flex-col gap-6">
+        <SettingsForm settings={settings} />
+        <SystemEmails initial={emails} />
+      </div>
     </PlatformShell>
   );
 }

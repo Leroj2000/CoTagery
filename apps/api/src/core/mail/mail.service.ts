@@ -12,6 +12,20 @@ export interface AccountActionMail extends PasswordResetMail {
   organizationName: string;
 }
 
+export interface OutgoingMail {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+  /** Data pro webhook transport (n8n) – zachovává dřívější tvar `{type, …}`. */
+  webhookPayload?: Record<string, unknown>;
+}
+
+export interface SendResult {
+  status: 'sent' | 'logged' | 'failed';
+  error?: string;
+}
+
 /**
  * Odesílání e-mailů. Priorita transportu:
  *  1) SMTP (SMTP_HOST + SMTP_USER + SMTP_PASSWORD) – ostrý provoz,
@@ -47,97 +61,49 @@ export class MailService {
     );
   }
 
-  async sendPasswordReset(mail: PasswordResetMail): Promise<void> {
-    // Odkaz vždy do logu (audit/fallback), i když se pošle e-mailem.
-    this.logger.log(`Reset hesla pro ${mail.to}: ${mail.url}`);
-
+  /**
+   * Odešle hotový e-mail. Pořadí: SMTP → webhook (`PASSWORD_RESET_WEBHOOK_URL`,
+   * např. n8n, dostane `webhookPayload`) → jen log. Nikdy nevyhazuje – vrací výsledek.
+   */
+  async sendRaw(mail: OutgoingMail): Promise<SendResult> {
     if (this.transporter) {
       try {
         await this.transporter.sendMail({
           from: `Tagery <${this.from()}>`,
           to: mail.to,
-          subject: 'Reset hesla – Tagery',
-          text:
-            `Ahoj ${mail.name},\n\n` +
-            `pro nastavení nového hesla klikni na odkaz (platí 1 hodinu):\n${mail.url}\n\n` +
-            `Pokud jsi o reset nežádal(a), tento e-mail ignoruj.\n\nTagery`,
-          html:
-            `<p>Ahoj ${mail.name},</p>` +
-            `<p>pro nastavení nového hesla klikni na odkaz (platí 1 hodinu):</p>` +
-            `<p><a href="${mail.url}">Nastavit nové heslo</a></p>` +
-            `<p style="color:#64748b;font-size:12px">Pokud jsi o reset nežádal(a), tento e-mail ignoruj.</p>` +
-            `<p>Tagery</p>`,
+          subject: mail.subject,
+          text: mail.text,
+          html: mail.html,
         });
-        return;
+        return { status: 'sent' };
       } catch (err) {
         this.logger.error(`SMTP odeslání selhalo: ${String(err)}`);
+        if (!this.config.get<string>('PASSWORD_RESET_WEBHOOK_URL'))
+          return { status: 'failed', error: String(err) };
       }
     }
-
     const hook = this.config.get<string>('PASSWORD_RESET_WEBHOOK_URL');
-    if (hook) {
+    if (hook && mail.webhookPayload) {
       try {
-        await fetch(hook, {
+        const res = await fetch(hook, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            type: 'password_reset',
+            ...mail.webhookPayload,
             to: mail.to,
-            name: mail.name,
-            url: mail.url,
+            subject: mail.subject,
+            text: mail.text,
+            html: mail.html,
           }),
         });
+        return res.ok ? { status: 'sent' } : { status: 'failed', error: `webhook ${res.status}` };
       } catch (err) {
-        this.logger.warn(`Odeslání reset webhooku selhalo: ${String(err)}`);
+        this.logger.warn(`Odeslání přes webhook selhalo: ${String(err)}`);
+        return { status: 'failed', error: String(err) };
       }
     }
-  }
-
-  async sendEmailVerification(mail: AccountActionMail): Promise<void> {
-    await this.sendAccountAction(
-      mail,
-      'Ověření e-mailu – Tagery',
-      'Ověřit e-mail',
-      'ověření e-mailu',
-    );
-  }
-
-  async sendInvitation(mail: AccountActionMail): Promise<void> {
-    await this.sendAccountAction(
-      mail,
-      `Pozvánka do ${mail.organizationName} – Tagery`,
-      'Přijmout pozvánku',
-      'přijetí pozvánky',
-    );
-  }
-
-  private async sendAccountAction(
-    mail: AccountActionMail,
-    subject: string,
-    button: string,
-    type: string,
-  ): Promise<void> {
-    this.logger.log(`${subject} pro ${mail.to}: ${mail.url}`);
-    if (this.transporter) {
-      try {
-        await this.transporter.sendMail({
-          from: `Tagery <${this.from()}>`,
-          to: mail.to,
-          subject,
-          text: `Ahoj ${mail.name},\n\npro ${type} ve firmě ${mail.organizationName} otevři tento jednorázový odkaz (platí 24 hodin):\n${mail.url}\n\nTagery`,
-          html: `<p>Ahoj ${mail.name},</p><p>Pro ${type} ve firmě <strong>${mail.organizationName}</strong> použij tento jednorázový odkaz (platí 24 hodin):</p><p><a href="${mail.url}">${button}</a></p><p>Tagery</p>`,
-        });
-        return;
-      } catch (err) {
-        this.logger.error(`SMTP odeslání selhalo: ${String(err)}`);
-      }
-    }
-    const hook = this.config.get<string>('PASSWORD_RESET_WEBHOOK_URL');
-    if (hook)
-      await fetch(hook, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ type, ...mail }),
-      }).catch((err) => this.logger.warn(`Webhook selhal: ${String(err)}`));
+    // Bez transportu (vývoj): obsah jen do logu.
+    this.logger.log(`E-mail (bez transportu) pro ${mail.to}: ${mail.subject}\n${mail.text}`);
+    return { status: 'logged' };
   }
 }

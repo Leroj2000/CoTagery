@@ -18,7 +18,7 @@ import {
   AccountActionToken,
   type AccountActionPurpose,
 } from './entities/account-action-token.entity';
-import { MailService } from '../mail/mail.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { MVP_DEFAULT_INACTIVE_MODULES } from '../rbac/modules.service';
 import type { RegisterOrganizationDto } from './dto/onboarding.dto';
 
@@ -66,7 +66,7 @@ export class AuthService {
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
-    private readonly mail: MailService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /** Veřejná samoobslužná registrace firmy; účet se aktivuje až ověřením e-mailu. */
@@ -116,11 +116,14 @@ export class AuthService {
       );
       await runner.commitTransaction();
       const base = this.config.get<string>('PUBLIC_WEB_URL') ?? 'http://localhost:3000';
-      await this.mail.sendEmailVerification({
+      await this.notifications.send('email_verification', {
+        tenantId,
         to: email,
-        name: dto.ownerName.trim(),
-        organizationName: dto.organizationName.trim(),
-        url: `${base}/verify-email?token=${raw}`,
+        vars: {
+          jmeno: dto.ownerName.trim(),
+          firma: dto.organizationName.trim(),
+          odkaz: `${base}/verify-email?token=${raw}`,
+        },
       });
     } catch (error) {
       await runner.rollbackTransaction();
@@ -159,11 +162,14 @@ export class AuthService {
       }),
     );
     const base = this.config.get<string>('PUBLIC_WEB_URL') ?? 'http://localhost:3000';
-    await this.mail.sendInvitation({
+    await this.notifications.send('invitation', {
+      tenantId,
       to: user.email,
-      name: user.name,
-      organizationName,
-      url: `${base}/accept-invite?token=${raw}`,
+      vars: {
+        jmeno: user.name,
+        firma: organizationName,
+        odkaz: `${base}/accept-invite?token=${raw}`,
+      },
     });
   }
 
@@ -253,10 +259,10 @@ export class AuthService {
       }),
     );
     const base = this.config.get<string>('PUBLIC_WEB_URL') ?? 'http://localhost:3000';
-    await this.mail.sendPasswordReset({
+    await this.notifications.send('password_reset', {
+      tenantId: null,
       to: user.email,
-      name: user.name,
-      url: `${base}/reset-password?token=${raw}`,
+      vars: { jmeno: user.name, odkaz: `${base}/reset-password?token=${raw}` },
     });
   }
 

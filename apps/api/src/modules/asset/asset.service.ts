@@ -51,6 +51,13 @@ import { reverseGeocode } from './reverse-geocode';
 import { EntitlementsService } from '../../core/plans/entitlements.service';
 
 /** Jeden naskenovaný řádek workflow scanneru (validní nebo blocker). */
+/** Háčky pro e-mailové notifikace (implementuje AssetNotificationsService). */
+export interface AssetNotifier {
+  assetIssued(asset: Asset, personId: string, dueAt: Date | null): Promise<void>;
+  reservationCreated(r: Reservation): Promise<void>;
+  reservationDecided(r: Reservation): Promise<void>;
+}
+
 export interface WorkflowItem {
   code: string;
   assetId: string | null;
@@ -94,6 +101,13 @@ export interface ScanResult {
 
 @Injectable()
 export class AssetService {
+  /** E-mailové notifikace (registruje AssetNotificationsService – bez cyklické DI). */
+  private notifier: AssetNotifier | null = null;
+
+  setNotifier(notifier: AssetNotifier): void {
+    this.notifier = notifier;
+  }
+
   constructor(
     private readonly context: TenantContextService,
     @Inject(STORAGE) private readonly storage: StoragePort,
@@ -791,6 +805,13 @@ export class AssetService {
       await this.repo(DigitalObject).update({ id: asset.digitalObjectId }, { status: 'archived' });
     }
 
+    if (
+      after.holderType === 'person' &&
+      after.holderId &&
+      ['loan', 'assign', 'handover'].includes(dto.type)
+    )
+      await this.notifier?.assetIssued(saved, after.holderId, after.dueAt);
+
     await this.webhooks.emit('movement.created', {
       assetId: asset.id,
       assetName: asset.name,
@@ -876,7 +897,7 @@ export class AssetService {
       throw new BadRequestException('Rezervace musí mít platný interval od–do');
     }
     const repo = this.repo(Reservation);
-    return repo.save(
+    const saved = await repo.save(
       repo.create({
         tenantId: this.context.tenantId,
         assetId: dto.assetId,
@@ -887,6 +908,8 @@ export class AssetService {
         status: 'pending',
       }),
     );
+    await this.notifier?.reservationCreated(saved);
+    return saved;
   }
 
   async setReservationStatus(
@@ -919,7 +942,9 @@ export class AssetService {
         throw new BadRequestException('Termín se překrývá s jinou schválenou rezervací');
     }
     res.status = status;
-    return repo.save(res);
+    const saved = await repo.save(res);
+    await this.notifier?.reservationDecided(saved);
+    return saved;
   }
 
   // --- Hromadný výdej (bulk movement) ---

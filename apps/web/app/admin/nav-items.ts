@@ -18,6 +18,7 @@ import {
   Settings,
   MapPinned,
   Shapes,
+  Mail,
   Webhook,
   ScanLine,
   Rocket,
@@ -168,6 +169,11 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'Integrace',
         icon: Webhook,
         permission: 'core.integration.manage',
+      },
+      {
+        href: '/admin/settings/notifications',
+        label: 'Notifikace',
+        icon: Mail,
       },
       {
         href: '/admin/settings',

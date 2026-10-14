@@ -26,7 +26,7 @@ function build() {
     update: jest.fn(),
     create: jest.fn((x: unknown) => x),
   };
-  const mail = { sendPasswordReset: jest.fn() };
+  const mail = { send: jest.fn() };
   // my_memberships() → prázdné = fallback na domovskou org uživatele.
   const dataSource = { query: jest.fn().mockResolvedValue([]) } as unknown as DataSource;
   const exp = Math.floor(Date.now() / 1000) + 900;

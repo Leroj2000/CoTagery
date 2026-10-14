@@ -27,9 +27,14 @@ import {
   UpdatePlanDto,
   UpdatePlatformSettingsDto,
   UpdateSubscriptionDto,
+  PlatformTemplateDto,
 } from './dto/platform.dto';
 import { SubscriptionService, type PlatformSettings } from '../../core/plans/subscription.service';
 import { InvoicesService, type PlatformInvoice } from '../../core/plans/invoices.service';
+import {
+  NotificationsService,
+  type NotificationSettingView,
+} from '../../core/notifications/notifications.service';
 import type { EntitlementKey } from '@tagery/shared';
 
 /**
@@ -44,6 +49,7 @@ export class PlatformController {
     private readonly platform: PlatformService,
     private readonly subscriptions: SubscriptionService,
     private readonly invoices: InvoicesService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   @Get('tenants')
@@ -143,5 +149,42 @@ export class PlatformController {
     @CurrentUser() user: RequestUser,
   ): Promise<PlatformSettings> {
     return this.subscriptions.updateSettings(dto as Partial<PlatformSettings>, user.userId);
+  }
+
+  // --- Texty systémových e-mailů Tagery (ověření e-mailu, obnovení hesla) ---
+
+  @Get('notifications')
+  platformNotifications(): Promise<NotificationSettingView[]> {
+    return this.notifications.platformTemplates();
+  }
+
+  @Put('notifications/:key')
+  updatePlatformNotification(
+    @Param('key') key: string,
+    @Body() dto: PlatformTemplateDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<NotificationSettingView[]> {
+    return this.notifications.updatePlatformTemplate(
+      key,
+      dto.subject ?? null,
+      dto.body ?? null,
+      user.userId,
+    );
+  }
+
+  @Post('notifications/:key/preview')
+  previewPlatformNotification(@Param('key') key: string, @Body() dto: PlatformTemplateDto) {
+    return this.notifications.preview(null, key, dto.subject ?? '', dto.body ?? '');
+  }
+
+  @Post('notifications/:key/test')
+  testPlatformNotification(
+    @Param('key') key: string,
+    @Body() dto: PlatformTemplateDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.notifications.test(user, key, dto.subject ?? '', dto.body ?? '', {
+      platform: true,
+    });
   }
 }

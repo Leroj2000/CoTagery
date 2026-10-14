@@ -21,6 +21,7 @@ import { Tenant } from '../../core/domain/entities/tenant.entity';
 import { AssetService } from './asset.service';
 import { CategoriesService } from './categories.service';
 import { MaintenanceService } from './maintenance.service';
+import { AssetNotificationsService } from './asset-notifications.service';
 import { MediaService } from './media.service';
 import { ManualsService } from './manuals.service';
 import { ManualFetchService } from './manual-fetch.service';
@@ -93,6 +94,7 @@ import { PersonalWorkflowsController } from './personal-workflows.controller';
     AssetService,
     CategoriesService,
     MaintenanceService,
+    AssetNotificationsService,
     MediaService,
     ManualsService,
     ManualFetchService,
