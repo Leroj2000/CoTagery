@@ -21,6 +21,8 @@ interface Row {
   photoKey?: string | null;
   role?: string;
   person?: Person;
+  /** Uživatel firmy (má přihlášení). */
+  isUser?: boolean;
 }
 
 export default async function PeoplePage() {
@@ -39,9 +41,16 @@ export default async function PeoplePage() {
   // Názvy rolí (i vlastních rolí firmy); bez přístupu k rolím zůstane klíč.
   const roles = await apiFetch<RolesOverview>('/roles').catch(() => null);
 
+  // Každý uživatel firmy má svou osobu (propojení přes userId) – jeden řádek
+  // na člověka. Samostatně jen uživatel, jehož osoba ještě nevznikla.
+  const userById = new Map(users.map((u) => [u.id, u]));
+  const linkedUserIds = new Set(people.map((p) => p.userId).filter(Boolean));
+  const roleLabel = (key: string) => (roles ? roleName(roles.roles, key) : key);
+
   const rows: Row[] = [
-    ...people.map(
-      (p): Row => ({
+    ...people.map((p): Row => {
+      const user = p.userId ? userById.get(p.userId) : undefined;
+      return {
         kind: 'person',
         id: p.id,
         name: p.name,
@@ -49,18 +58,21 @@ export default async function PeoplePage() {
         categoryIds: p.categoryIds ?? [],
         photoKey: p.photoFileKey,
         person: p,
-      }),
-    ),
-    ...users.map(
-      (u): Row => ({
+        isUser: !!p.userId,
+        role: user ? roleLabel(user.tenantRole) : undefined,
+      };
+    }),
+    ...users
+      .filter((u) => !linkedUserIds.has(u.id))
+      .map((u): Row => ({
         kind: 'user',
         id: u.id,
         name: u.name,
         subtitle: u.email,
         categoryIds: u.categoryIds ?? [],
-        role: roles ? roleName(roles.roles, u.tenantRole) : u.tenantRole,
-      }),
-    ),
+        isUser: true,
+        role: roleLabel(u.tenantRole),
+      })),
   ].sort((a, b) => a.name.localeCompare(b.name, 'cs'));
 
   return (
@@ -78,7 +90,10 @@ export default async function PeoplePage() {
       )}
 
       {canManage && (
-        <Section title="Kategorie osob" description="Vlastní číselník – přidávej a maž dle potřeby.">
+        <Section
+          title="Kategorie osob"
+          description="Vlastní číselník – přidávej a maž dle potřeby."
+        >
           <PersonCategoriesManager categories={categories} />
         </Section>
       )}
@@ -95,7 +110,11 @@ export default async function PeoplePage() {
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-slate-400">
                   {r.kind === 'person' && r.photoKey ? (
-                    <img src={`/api/person-photo/${r.id}`} alt="" className="h-full w-full object-cover" />
+                    <img
+                      src={`/api/person-photo/${r.id}`}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
                   ) : (
                     <UserRound size={20} />
                   )}
@@ -103,7 +122,7 @@ export default async function PeoplePage() {
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-2 truncate text-sm font-medium text-slate-800">
                     {r.name}
-                    {r.kind === 'user' && <Badge tone="brand">Uživatel</Badge>}
+                    {r.isUser && <Badge tone="brand">Uživatel</Badge>}
                     {r.role && <Badge tone="slate">{r.role}</Badge>}
                   </p>
                   <p className="truncate text-xs text-slate-500">{r.subtitle}</p>
@@ -127,9 +146,18 @@ export default async function PeoplePage() {
                         id={r.id}
                         fields={[
                           { name: 'name', label: 'Jméno', defaultValue: r.name },
-                          { name: 'email', label: 'E-mail', type: 'email', defaultValue: r.person?.email ?? '' },
+                          {
+                            name: 'email',
+                            label: 'E-mail',
+                            type: 'email',
+                            defaultValue: r.person?.email ?? '',
+                          },
                           { name: 'phone', label: 'Telefon', defaultValue: r.person?.phone ?? '' },
-                          { name: 'company', label: 'Firma', defaultValue: r.person?.company ?? '' },
+                          {
+                            name: 'company',
+                            label: 'Firma',
+                            defaultValue: r.person?.company ?? '',
+                          },
                         ]}
                       />
                     </>

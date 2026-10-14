@@ -54,8 +54,10 @@ export class PeopleService {
 
   /** Nahradí kategorie osoby (many-to-many). */
   async setCategories(id: string, categoryIds: string[]): Promise<void> {
-    await this.get(id); // ověří existenci + tenant scope
+    const person = await this.get(id); // ověří existenci + tenant scope
     await this.links.set('person', id, categoryIds);
+    // Osoba uživatele: stejné zařazení i u uživatele (filtr skupin uživatelů).
+    if (person.userId) await this.links.set('user', person.userId, categoryIds);
   }
 
   async get(id: string): Promise<Person> {

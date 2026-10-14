@@ -12,6 +12,7 @@ import { User } from '../../auth/entities/user.entity';
 import { OrgMembership } from '../../auth/entities/membership.entity';
 import { RoleAssignment } from '../../auth/entities/role-assignment.entity';
 import { CategoryLinksService } from '../people/category-links.service';
+import { Person } from '../entities/person.entity';
 import type { InviteUserDto, UpdateRoleDto } from './dto/users.dto';
 import { EntitlementsService } from '../../plans/entitlements.service';
 
@@ -108,6 +109,11 @@ export class UsersService {
       .findOne({ where: { userId } });
     if (!m) throw new NotFoundException('Uživatel neexistuje');
     await this.links.set('user', userId, categoryIds);
+    // Uživatel je zároveň osobou firmy – zařazení drž stejné.
+    const person = await this.context.manager
+      .getRepository(Person)
+      .findOne({ where: { tenantId: this.context.tenantId, userId } });
+    if (person) await this.links.set('person', person.id, categoryIds);
   }
 
   async invite(actor: RequestUser, dto: InviteUserDto): Promise<{ user: UserView }> {

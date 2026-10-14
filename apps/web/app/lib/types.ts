@@ -174,6 +174,8 @@ export interface Person {
   company: string | null;
   categoryIds: string[];
   photoFileKey: string | null;
+  /** Osoba uživatele firmy (člena) – jinak null. */
+  userId?: string | null;
 }
 
 export interface PersonCategory {
