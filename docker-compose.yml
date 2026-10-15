@@ -30,6 +30,10 @@ x-api-env: &api-env
   MANUAL_FETCH_WEBHOOK_SECRET: ${MANUAL_FETCH_WEBHOOK_SECRET:-}
   # Interní adresa API pro callback z n8n (n8n běží v jiném stacku, viz síť n8n_default).
   MANUAL_CALLBACK_BASE_URL: ${MANUAL_CALLBACK_BASE_URL:-}
+  # Reverzní překlad GPS → adresa. Endpoint je konfigurovatelný, aby šel veřejný
+  # Nominatim bez změny aplikace nahradit vlastní nebo komerční instancí.
+  GEOCODING_REVERSE_URL: ${GEOCODING_REVERSE_URL:-https://nominatim.openstreetmap.org/reverse}
+  GEOCODING_USER_AGENT: ${GEOCODING_USER_AGENT:-Tagery/0.1}
   # Lokálně výchozí Mailpit; v produkci přepiš skutečným SMTP providerem.
   SMTP_HOST: ${SMTP_HOST:-mailpit}
   SMTP_PORT: ${SMTP_PORT:-1025}
