@@ -28,6 +28,7 @@ import { InventoryModule } from './modules/inventory/inventory.module';
 import { FoundModule } from './modules/found/found.module';
 import { WalletModule } from './modules/wallet/wallet.module';
 import { NetworkModule } from './modules/network/network.module';
+import { CalendarModule } from './modules/calendar/calendar.module';
 import { WebhooksModule } from './core/webhooks/webhooks.module';
 import { HealthModule } from './health/health.module';
 
@@ -67,6 +68,7 @@ import { HealthModule } from './health/health.module';
     FoundModule,
     WalletModule,
     NetworkModule,
+    CalendarModule,
     HealthModule,
   ],
 })

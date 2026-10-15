@@ -117,6 +117,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   'core.person': 'Osoby',
   'core.person_group': 'Skupiny osob',
   'core.group': 'Skupiny uživatelů',
+  'core.calendar': 'Kalendář',
   'core.audit': 'Auditní záznam',
   'core.module': 'Moduly',
   'core.integration': 'Integrace a webhooky',
