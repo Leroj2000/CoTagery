@@ -38,6 +38,7 @@
 | EPIC-20 | PLATFORM-PLANS | Předplatné firem: úrovně, moduly/funkce, limity, zkušební doba, faktury s QR (F1–F3 hotovo, Stripe zbývá) | 🟡 |
 | EPIC-21 | MARKETPLACE-NETWORK | Opt-in, follow, feed a discovery implementované; post-MVP moderace zbývá | 🟡 |
 | EPIC-22 | CONVERSATIONAL-CHANNELS | Ovládání přes WhatsApp, Telegram a AI asistenty (MCP) nad společnou vrstvou akcí | ⬜ |
+| EPIC-23 | VEHICLE-LOGBOOK | Kniha jízd vozidel nad odečty tachometru: jízdy, řidič, účel, tankování, uzávěrka a export pro daně | ⬜ |
 
 ---
 
@@ -79,6 +80,7 @@ Loyalty, Payment (plná PSP integrace), Inventory, Trace/DPP, GS1 Digital Link, 
 - **EPIC-20 PLATFORM-PLANS** 🟡 – předplatné firem: úrovně v DB (ceny, limity, moduly/funkce), výjimky per firma, zkušební doba → Free, splatnost/pozastavení, prodloužení, faktury s QR platbou, limit úložiště (F1–F3 hotovo 2026-10-12; F4 Stripe zbývá). [ADR-0009](../docs/architecture/decisions/0009-platform-plans-entitlements.md); spec: `tasks/EPIC-20-PLATFORM-PLANS/`.
 - **EPIC-21 MARKETPLACE-NETWORK** ⬜ – síť/discovery nad půjčovnou: účet nájemce sleduje firmy (B2C) + feed publikovaných inzerátů + procházení/hledání. Staví na EPIC-19 (`public_listings` SECURITY DEFINER) a EPIC-10 (`renter_profiles`); mantinel = jen veřejná projekce. Spec: `tasks/EPIC-21-MARKETPLACE-NETWORK/`.
 - **EPIC-22 CONVERSATIONAL-CHANNELS** ⬜ – zakládání a správa položek přes WhatsApp/Telegram (fotka + text → návrh → potvrzení) a přes AI asistenty (MCP konektor pro ChatGPT/Claude s OAuth). Jedna společná vrstva akcí nad stávajícími službami (oprávnění, RLS, limity, audit). Pilot Telegram → MCP → WhatsApp (placená extra služba); jedno sdílené číslo/bot s vícevrstvou izolací firem, čeština + angličtina. Spec: `tasks/EPIC-22-CONVERSATIONAL-CHANNELS/`.
+- **EPIC-23 VEHICLE-LOGBOOK** ⬜ – kniha jízd ke každému vozidlu: datum/čas, řidič (osoba), stav tachometru od–do, trasa, účel služební/soukromá, volitelně tankování s účtenkou. Jízdy zapisují odečty do stávajících `asset_meter_readings` (kontinuita, stejná validace, servisní plány a inventura vozidel beze změny), nezapsané km, uzávěrka měsíce a export XLSX/PDF jako podklad pro daně (ZDP §24, DPH). Vazba na rezervace a kalendář (po merge `feature/calendar`). Spec: `tasks/EPIC-23-VEHICLE-LOGBOOK/`.
 
 ## Cross-cutting (průběžně)
 Observability (OpenTelemetry, per-tenant metriky) · i18n (CS/EN) · přístupnost (WCAG 2.1 AA) · bezpečnostní a izolační testy (Stage 04) u každého datového EPICu.
