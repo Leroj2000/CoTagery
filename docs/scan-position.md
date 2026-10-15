@@ -31,6 +31,17 @@ Pro ruční bod odešli `position.source: "manual"` se souřadnicemi a `captured
 
 Mapa používá Leaflet a dlaždice OpenStreetMap s viditelnou atribucí. Načítá se až po kliknutí „Otevřít mapu“ a upozornění na přenos IP/oblasti poskytovateli. Bez načtené mapy lze stále vybrat místo nebo pokračovat bez polohy. Pro větší provoz je nutné zvolit odpovídajícího poskytovatele v souladu s [pravidly OSM dlaždic](https://operations.osmfoundation.org/policies/tiles/).
 
+## Adresy a historie poloh
+
+Detail položky překládá poslední GPS bod na nejbližší známou ulici, číslo domu a obec. Historie je na samostatné stránce: seznam záznamů je vlevo a mapa GPS bodů vpravo. Kliknutí na záznam vybere odpovídající bod. Záznamy bez souřadnic zůstávají v seznamu, ale nemají bod na mapě.
+
+Reverzní geokódování volá API server, nikoli prohlížeč. Výsledek ukládá do `asset_observations.address_label`, takže se stejný GPS bod neposílá poskytovateli při každém zobrazení. Nevyřešené adresy se na historii doplňují postupně v jedné frontě, nejvýše jedním požadavkem za sekundu. Souřadnice tím opouštějí infrastrukturu Tagery směrem ke geokódovacímu poskytovateli; pro produkční nebo citlivé použití nastav vlastní či smluvní Nominatim-kompatibilní službu.
+
+- `GEOCODING_REVERSE_URL` – výchozí `https://nominatim.openstreetmap.org/reverse`
+- `GEOCODING_USER_AGENT` – identifikace instalace vůči poskytovateli
+
+Endpoint je konfigurovatelný bez změny aplikace. Veřejný Nominatim je vhodný jen pro malý provoz a podléhá [usage policy](https://operations.osmfoundation.org/policies/nominatim/); Tagery dodržuje atribuci, identifikovaný User-Agent, cache a limit jednoho požadavku za sekundu.
+
 QR/čárový kód, resolver URL a existující externí aliasy používají stejné vyhledávání; NFC lze číst podle spárovaného `nfcUid`. RFID EPC se nejprve adoptuje jako externí kód (`custom`). USB čtečka emulující klávesnici může kód vložit do interního skeneru. Přímé ovladače NFC/RFID hardwaru ani trvalé sledování tato verze neobsahuje.
 
 Metadata jsou uložená v `asset_observations.capture_context`, pod stávajícím tenantovým RLS. Nemění držitele ani pohybový ledger. Kontrakt lze použít pro budoucí docházku; docházková pravidla ani ověření stanovišť zatím nejsou implementované. Inventurní a veřejné skeny zatím zachovávají původní chování bez souřadnic.
