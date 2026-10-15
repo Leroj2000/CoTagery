@@ -22,3 +22,14 @@ export function maskExternalRef(value: string | null | undefined): string | null
   if (value.length <= 4) return '…';
   return `${value.slice(0, 2)}…${value.slice(-2)}`;
 }
+
+/**
+ * TypeORM u Postgres vrací pro UPDATE/DELETE … RETURNING dvojici `[rows, count]`
+ * (u SELECT/INSERT jen pole řádků). Sjednotí obojí na pole řádků.
+ */
+export function returningRows<T>(result: unknown): T[] {
+  if (Array.isArray(result) && result.length === 2 && Array.isArray(result[0])) {
+    return result[0] as T[];
+  }
+  return (result ?? []) as T[];
+}

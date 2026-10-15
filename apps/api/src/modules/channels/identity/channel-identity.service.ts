@@ -1,3 +1,4 @@
+import { returningRows } from '../channel.types';
 import { createHash, randomInt } from 'node:crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
@@ -92,11 +93,13 @@ export class ChannelIdentityService {
   ): Promise<ChannelIdentity | null> {
     if (!/^\d{6}$/.test(code)) return null;
     return this.dataSource.transaction(async (m) => {
-      const codes: { id: string; user_id: string }[] = await m.query(
-        `UPDATE channel_link_codes SET used_at = now()
+      const codes: { id: string; user_id: string }[] = returningRows(
+        await m.query(
+          `UPDATE channel_link_codes SET used_at = now()
           WHERE code_hash = $1 AND channel = $2 AND used_at IS NULL AND expires_at > now()
           RETURNING id, user_id`,
-        [hashLinkCode(channel, code), channel],
+          [hashLinkCode(channel, code), channel],
+        ),
       );
       if (codes.length === 0) return null;
       const userId = codes[0].user_id;
@@ -126,11 +129,13 @@ export class ChannelIdentityService {
   }
 
   async findActive(channel: IdentityChannel, externalId: string): Promise<ChannelIdentity | null> {
-    const rows: IdentityRow[] = await this.dataSource.query(
-      `UPDATE channel_identities SET last_seen_at = now()
+    const rows: IdentityRow[] = returningRows(
+      await this.dataSource.query(
+        `UPDATE channel_identities SET last_seen_at = now()
         WHERE channel = $1 AND external_id = $2 AND revoked_at IS NULL
         RETURNING id, user_id, channel, external_id, display_name, current_tenant_id`,
-      [channel, externalId],
+        [channel, externalId],
+      ),
     );
     return rows[0] ? toIdentity(rows[0]) : null;
   }
@@ -185,10 +190,12 @@ export class ChannelIdentityService {
 
   /** Odpojení z webu – jen vlastní identitu uživatele. */
   async revokeForUser(userId: string, identityId: string): Promise<void> {
-    const rows: unknown[] = await this.dataSource.query(
-      `UPDATE channel_identities SET revoked_at = now(), updated_at = now()
+    const rows: unknown[] = returningRows(
+      await this.dataSource.query(
+        `UPDATE channel_identities SET revoked_at = now(), updated_at = now()
         WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL RETURNING id`,
-      [identityId, userId],
+        [identityId, userId],
+      ),
     );
     if (rows.length === 0) throw new NotFoundException('Propojení neexistuje');
   }
@@ -218,13 +225,14 @@ export class ChannelIdentityService {
     conversationId: string,
   ): Promise<{ tenantId: string | null; state: Record<string, unknown> } | null> {
     if (!/^[0-9a-f-]{36}$/i.test(conversationId)) return null;
-    const rows: { tenant_id: string | null; state: Record<string, unknown> }[] =
+    const rows: { tenant_id: string | null; state: Record<string, unknown> }[] = returningRows(
       await this.dataSource.query(
         `DELETE FROM channel_conversations
           WHERE id = $1 AND identity_id = $2 AND expires_at > now()
           RETURNING tenant_id, state`,
         [conversationId, identityId],
-      );
+      ),
+    );
     return rows[0] ? { tenantId: rows[0].tenant_id, state: rows[0].state } : null;
   }
 

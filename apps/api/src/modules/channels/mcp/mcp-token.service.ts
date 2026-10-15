@@ -1,3 +1,4 @@
+import { returningRows } from '../channel.types';
 import { createHash, randomBytes } from 'node:crypto';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
@@ -58,11 +59,13 @@ export class McpTokenService {
   /** Ověří bearer token → {userId, tenantId}; null = neplatný/zrušený/prošlý. */
   async verify(token: string): Promise<{ id: string; userId: string; tenantId: string } | null> {
     if (!token.startsWith(MCP_TOKEN_PREFIX) || token.length > 100) return null;
-    const rows: { id: string; user_id: string; tenant_id: string }[] = await this.dataSource.query(
-      `UPDATE mcp_access_tokens SET last_used_at = now()
+    const rows: { id: string; user_id: string; tenant_id: string }[] = returningRows(
+      await this.dataSource.query(
+        `UPDATE mcp_access_tokens SET last_used_at = now()
         WHERE token_hash = $1 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())
         RETURNING id, user_id, tenant_id`,
-      [hashMcpToken(token)],
+        [hashMcpToken(token)],
+      ),
     );
     return rows[0]
       ? { id: rows[0].id, userId: rows[0].user_id, tenantId: rows[0].tenant_id }
@@ -100,10 +103,12 @@ export class McpTokenService {
   }
 
   async revokeForUser(userId: string, id: string): Promise<void> {
-    const rows: unknown[] = await this.dataSource.query(
-      `UPDATE mcp_access_tokens SET revoked_at = now()
+    const rows: unknown[] = returningRows(
+      await this.dataSource.query(
+        `UPDATE mcp_access_tokens SET revoked_at = now()
         WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL RETURNING id`,
-      [id, userId],
+        [id, userId],
+      ),
     );
     if (rows.length === 0) throw new NotFoundException('Token nenalezen');
   }
