@@ -34,6 +34,16 @@ export const envSchema = z
     SMTP_USER: z.string().optional(),
     SMTP_PASSWORD: z.string().optional(),
     SMTP_FROM: z.string().optional(),
+    // EPIC-22 Telegram bot – bez TELEGRAM_WEBHOOK_SECRET je webhook vypnutý (404).
+    TELEGRAM_BOT_TOKEN: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
+    TELEGRAM_WEBHOOK_SECRET: z.preprocess(
+      (v) => (v === '' ? undefined : v),
+      z
+        .string()
+        .regex(/^[A-Za-z0-9_-]{24,256}$/)
+        .optional(),
+    ),
+    TELEGRAM_BOT_USERNAME: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
     // Sdílené tajemství pro ověření podpisu PSP webhooků (EPIC-17, stub PSP).
     BILLING_WEBHOOK_SECRET: z.string().min(8).default('whsec_stub'),
     // Volitelný webhook (n8n) pro AI stažení manuálu k položce. Když prázdné,
