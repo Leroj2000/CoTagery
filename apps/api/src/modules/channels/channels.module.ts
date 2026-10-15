@@ -10,6 +10,9 @@ import { TelegramBotService } from './telegram/telegram-bot.service';
 import { HttpTelegramApi } from './telegram/telegram-http.api';
 import { TelegramWebhookController } from './telegram/telegram.controller';
 import { TELEGRAM_API } from './telegram/telegram.types';
+import { McpServerService } from './mcp/mcp-server.service';
+import { McpTokenService } from './mcp/mcp-token.service';
+import { McpController } from './mcp/mcp.controller';
 
 /**
  * EPIC-22: ovládání přes kanály (Telegram, MCP). Jádro = ActionRegistry +
@@ -17,13 +20,15 @@ import { TELEGRAM_API } from './telegram/telegram.types';
  */
 @Module({
   imports: [AssetModule],
-  controllers: [ChannelsController, TelegramWebhookController],
+  controllers: [ChannelsController, TelegramWebhookController, McpController],
   providers: [
     V1ActionsProvider,
     ActionRegistry,
     ActionExecutorService,
     ChannelIdentityService,
     TelegramBotService,
+    McpTokenService,
+    McpServerService,
     {
       provide: TELEGRAM_API,
       inject: [ConfigService],
