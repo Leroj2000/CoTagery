@@ -153,6 +153,8 @@ export interface Observation {
   observedAt: string;
   locationName: string | null;
   actorName: string | null;
+  addressLabel: string | null;
+  addressResolvedAt: string | null;
 }
 
 export interface Reservation {
