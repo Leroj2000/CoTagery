@@ -444,7 +444,7 @@ export class CalendarService {
       600,
       3600,
     );
-    const ipOk = await this.rateLimit.allow(`calendar:ip:${ip}`, 300, 3600);
+    const ipOk = await this.rateLimit.allow(`calendar:ip:${ip}`, 3000, 3600);
     if (!tokenOk || !ipOk) {
       throw new HttpException(
         'Příliš mnoho požadavků, zkuste později',
