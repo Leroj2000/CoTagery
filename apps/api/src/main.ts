@@ -22,6 +22,9 @@ async function bootstrap(): Promise<void> {
       { path: 'r/:code', method: RequestMethod.GET },
       { path: 'r/:code/activate', method: RequestMethod.POST },
       { path: 'r/:code/found', method: RequestMethod.POST },
+      // EPIC-22 MCP endpoint (Streamable HTTP) – /mcp mimo /api/v1.
+      { path: 'mcp', method: RequestMethod.POST },
+      { path: 'mcp', method: RequestMethod.GET },
     ],
   });
   const config = app.get(ConfigService);

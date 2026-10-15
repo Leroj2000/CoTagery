@@ -32,6 +32,16 @@ export const PLAN_FEATURES = [
   { key: 'ai', label: 'AI dohledání', description: 'Návody a specifikace dohledané přes AI.' },
   { key: 'custom_roles', label: 'Vlastní role', description: 'Úprava rolí a oprávnění firmy.' },
   { key: 'branding', label: 'Logo firmy', description: 'Logo v QR kódech a na štítcích.' },
+  {
+    key: 'channel_telegram',
+    label: 'Telegram bot',
+    description: 'Hledání a zakládání položek přes Telegram.',
+  },
+  {
+    key: 'channel_mcp',
+    label: 'AI asistenti (MCP)',
+    description: 'Připojení ChatGPT, Claude a dalších asistentů přes MCP.',
+  },
 ] as const;
 
 export type PlanModuleKey = (typeof PLAN_MODULES)[number]['key'];
@@ -105,6 +115,8 @@ export const DEFAULT_PLANS: PlanDefinition[] = [
       'custom_roles',
       'branding',
       'rental',
+      'channel_telegram',
+      'channel_mcp',
     ],
     limits: {
       assets: 500,
@@ -164,6 +176,8 @@ export const DEFAULT_PLANS: PlanDefinition[] = [
       'custom_roles',
       'branding',
       'rental',
+      'channel_telegram',
+      'channel_mcp',
     ],
     limits: {
       assets: 5000,
