@@ -39,3 +39,14 @@ Pořadí podle spec: jádro akcí → Telegram → MCP. Každý krok = commit se
 ## Mimo tento průchod
 AI parser (text + fotka → návrh), fotky z kanálů, WhatsApp (F3), `users.locale` + angličtina,
 OAuth pro MCP, akce `asset.issue`/`asset.return`, Caddy cesty (`/mcp`, webhook) – při nasazení.
+
+## Stav (2026-10-15)
+
+- [x] Krok 1 – ActionRegistry, akce v1, executor (RBAC, RLS, politiky, moduly, audit).
+- [x] Krok 2 – ChannelIdentity, propojovací kódy, Telegram webhook + bot s potvrzováním.
+- [x] Krok 3 – MCP (`POST /mcp`, JSON-RPC, bez SSE) s osobními tokeny `tgm_…`.
+  TODO: OAuth 2.1 (PKCE, DCR, protected resource metadata) místo osobních tokenů.
+- [ ] Krok 4 – web UI „Propojené kanály“ (API endpointy hotové: `/channels/telegram/link-code`,
+  `/channels/identities`, `/channels/mcp-tokens`).
+- [ ] Nasazení: Caddy route `/mcp` → api, `setWebhook` Telegramu, env `TELEGRAM_*`, úklid
+  `channel_processed_updates` (zatím neroste řízeně).
