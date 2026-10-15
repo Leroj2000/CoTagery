@@ -8,6 +8,7 @@ import {
   PackageCheck,
   ClipboardCheck,
   CalendarClock,
+  CalendarDays,
   Boxes,
   QrCode,
   CreditCard,
@@ -74,6 +75,12 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: ClipboardCheck,
         moduleKey: 'inventory',
         permission: 'asset.inventory.manage',
+      },
+      {
+        href: '/admin/calendar',
+        label: 'Kalendář',
+        icon: CalendarDays,
+        permission: 'core.calendar.view',
       },
       {
         href: '/admin/reservations',
