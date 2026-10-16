@@ -5,12 +5,13 @@ import {
   mcpEndpoint,
   type ChannelIdentityDto,
   type McpTokenDto,
+  type OAuthGrantDto,
 } from '../../../lib/channels';
 import { ActionButton } from '../../action-button';
 import { getActiveModules } from '../../module-access';
 import { IntegrationsTabs } from '../integrations-tabs';
 import { Badge, EmptyState, Mono, PageHeader, Section, Table } from '../../ui';
-import { revokeChannelIdentity, revokeMcpToken } from './actions';
+import { revokeChannelIdentity, revokeMcpToken, revokeOAuthGrant } from './actions';
 import { CopyField } from './copy-field';
 import { McpTokenForm } from './mcp-token-form';
 import { TelegramLink } from './telegram-link';
@@ -44,6 +45,7 @@ export default async function ChannelsPage() {
     apiFetch<ChannelIdentityDto[]>('/channels/identities').catch(() => []),
     apiFetch<McpTokenDto[]>('/channels/mcp-tokens').catch(() => []),
   ]);
+  const grants = await apiFetch<OAuthGrantDto[]>('/channels/oauth-grants').catch(() => []);
   const endpoint = mcpEndpoint(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001');
 
   return (
@@ -108,6 +110,34 @@ export default async function ChannelsPage() {
       >
         {mcp ? (
           <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-3">
+              <p className="text-sm font-medium text-slate-800">Připojené aplikace (OAuth)</p>
+              {grants.length === 0 ? (
+                <EmptyState>
+                  Zatím žádná. ChatGPT nebo Claude připojíš přidáním konektoru s adresou níže –
+                  přihlášení a výběr firmy proběhne tady v Tagery.
+                </EmptyState>
+              ) : (
+                <Table
+                  head={['Aplikace', 'Firma', 'Povoleno', 'Naposledy použita', '']}
+                  rows={grants.map((g) => [
+                    g.clientName,
+                    g.organizationName ?? '–',
+                    fmt(g.createdAt),
+                    fmt(g.lastUsedAt),
+                    <ActionButton
+                      key="r"
+                      action={revokeOAuthGrant}
+                      hidden={{ id: g.id }}
+                      label="Zrušit přístup"
+                      variant="danger"
+                      confirm="Zrušit přístup této aplikace? Bude se muset znovu připojit."
+                    />,
+                  ])}
+                />
+              )}
+            </div>
+            <p className="text-sm font-medium text-slate-800">Osobní tokeny</p>
             <McpTokenForm endpoint={endpoint} />
             {tokens.length === 0 ? (
               <EmptyState>Zatím nemáš žádný token.</EmptyState>
@@ -136,24 +166,27 @@ export default async function ChannelsPage() {
               <CopyField label="Adresa MCP serveru (Streamable HTTP)" value={endpoint} />
               <ol className="list-decimal space-y-1.5 pl-5 text-xs text-slate-600">
                 <li>
-                  <strong>Claude</strong> (Claude Code):{' '}
+                  <strong>ChatGPT</strong>: Nastavení → Konektory (Aplikace) → Vytvořit, adresa
+                  výše, ověření <strong>OAuth</strong>. Client ID ani secret nevyplňuj – ChatGPT se
+                  zaregistruje sám. Pak se přihlásíš do Tagery a vybereš firmu.
+                </li>
+                <li>
+                  <strong>Claude</strong>: Nastavení → Konektory → Přidat vlastní konektor s adresou
+                  výše; přihlášení proběhne stejně přes Tagery.
+                </li>
+                <li>
+                  Klienti bez OAuth (např. skripty) použijí osobní token:{' '}
+                  <Mono>Authorization: Bearer TVŮJ_TOKEN</Mono>, v Claude Code{' '}
                   <Mono>
                     claude mcp add --transport http tagery {endpoint} --header &quot;Authorization:
                     Bearer TVŮJ_TOKEN&quot;
                   </Mono>
-                  . V aplikacích Claude přidej vlastní konektor s touto adresou, pokud umožňuje
-                  zadat hlavičku Authorization.
-                </li>
-                <li>
-                  <strong>ChatGPT</strong> a další klienti: přidej vzdálený MCP server s adresou
-                  výše a autentizací <Mono>Authorization: Bearer TVŮJ_TOKEN</Mono>.
+                  .
                 </li>
                 <li>
                   Akce, které mění data (založení, přesun, závada), asistent před provedením
-                  potvrzuje s tebou. Klienti vyžadující přihlášení přes OAuth zatím podporované
-                  nejsou.
+                  potvrzuje s tebou. Přístup aplikace i token můžeš kdykoli zrušit tady.
                 </li>
-                <li>Token nikomu neposílej; když unikne, hned ho tady zruš.</li>
               </ol>
             </div>
           </div>

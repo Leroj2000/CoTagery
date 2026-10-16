@@ -1,4 +1,10 @@
-import { formatRemaining, mcpEndpoint, parseExpiryDays } from './channels';
+import {
+  formatRemaining,
+  mcpEndpoint,
+  parseExpiryDays,
+  pickOAuthParams,
+  redirectHost,
+} from './channels';
 
 describe('channels helpers', () => {
   it('mcpEndpoint odřízne /api/v1 a koncová lomítka', () => {
@@ -18,5 +24,21 @@ describe('channels helpers', () => {
     expect(parseExpiryDays('never')).toBeNull();
     expect(parseExpiryDays('hack')).toBe(90);
     expect(parseExpiryDays(null)).toBe(90);
+  });
+});
+
+describe('OAuth helpers', () => {
+  it('pickOAuthParams vybere jen známé parametry', () => {
+    expect(pickOAuthParams({ client_id: 'c', state: ['s1', 's2'], evil: 'x', scope: '' })).toEqual({
+      client_id: 'c',
+      state: 's1',
+    });
+  });
+
+  it('redirectHost', () => {
+    expect(redirectHost('https://chatgpt.com/connector_platform_oauth_redirect')).toBe(
+      'chatgpt.com',
+    );
+    expect(redirectHost('nonsense')).toBe('nonsense');
   });
 });

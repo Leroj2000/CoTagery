@@ -75,3 +75,15 @@ export async function revokeMcpToken(_p: ActionState, fd: FormData): Promise<Act
     return fail(e);
   }
 }
+
+export async function revokeOAuthGrant(_p: ActionState, fd: FormData): Promise<ActionState> {
+  try {
+    await apiFetch(`/channels/oauth-grants/${encodeURIComponent(str(fd, 'id'))}`, {
+      method: 'DELETE',
+    });
+    revalidatePath(PATH);
+    return { ok: true, message: 'Přístup aplikace zrušen.' };
+  } catch (e) {
+    return fail(e);
+  }
+}

@@ -8,6 +8,12 @@ import { Logo } from '../ui/logo';
 const inputCls =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
 
+/** Návrat po přihlášení jen na vlastní stránky (administrace, souhlas OAuth). */
+function safeFrom(from: string): string {
+  if (from.startsWith('//')) return '/admin';
+  return from.startsWith('/admin') || from.startsWith('/oauth/authorize') ? from : '/admin';
+}
+
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
@@ -32,7 +38,7 @@ function LoginForm() {
         setError('Neplatný e-mail nebo heslo.');
         return;
       }
-      router.replace(from.startsWith('/admin') ? from : '/admin');
+      router.replace(safeFrom(from));
       router.refresh();
     } catch (err: unknown) {
       setError(String(err));

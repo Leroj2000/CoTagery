@@ -126,5 +126,5 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/platform/:path*', '/api/:path*'],
+  matcher: ['/admin/:path*', '/platform/:path*', '/api/:path*', '/oauth/:path*'],
 };
