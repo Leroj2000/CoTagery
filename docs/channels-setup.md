@@ -110,13 +110,53 @@ a jiný proces.
 Vypnutí: `curl -sS "https://api.telegram.org/bot${TG_TOKEN}/deleteWebhook"` a smazat
 `TELEGRAM_WEBHOOK_SECRET` z `.env` + znovu vytvořit API (webhook pak vrací 404).
 
-## 3. MCP (AI asistenti)
+## 3. MCP (AI asistenti) a OAuth 2.1
 
-- Adresa: `https://app.tagery.tech/mcp` (Streamable HTTP, jen JSON odpovědi, bez SSE).
-- Autentizace: `Authorization: Bearer tgm_…` – osobní token z **Integrace → Propojené kanály**;
-  platí pro jednu firmu a s oprávněními uživatele. OAuth 2.1 zatím není (TODO).
-- Claude Code:
+- Adresa MCP serveru: `https://app.tagery.tech/mcp` (Streamable HTTP, jen JSON, bez SSE).
+- **OAuth 2.1** (ChatGPT, Claude): klient si server najde sám – `/mcp` vrací 401 s
+  `WWW-Authenticate: Bearer resource_metadata="…/.well-known/oauth-protected-resource/mcp"`.
+  - metadata zdroje (RFC 9728): `/.well-known/oauth-protected-resource[/mcp]`,
+  - metadata serveru (RFC 8414): `/.well-known/oauth-authorization-server`,
+  - dynamická registrace klientů (RFC 7591): `POST /oauth/register` – redirect URI jen
+    https na `chatgpt.com`, `chat.openai.com`, `platform.openai.com`, `claude.ai`,
+    `claude.com` (+ subdomény) nebo http loopback; další hostitelé přes env
+    `OAUTH_REDIRECT_HOSTS` (čárkou),
+  - autorizace: `/oauth/authorize` = stránka souhlasu na webu (přihlášení, výběr firmy),
+    jen `response_type=code` s PKCE `S256`, scope `mcp`,
+  - token: `POST /oauth/token` (`authorization_code`, `refresh_token` s rotací),
+    revokace `POST /oauth/revoke` (RFC 7009).
+  - Access token platí 1 h, refresh 30 dní; v DB jen hashe. Token je vázaný na
+    uživatele, firmu, klienta a resource `https://app.tagery.tech/mcp`.
+  - Issuer = `PUBLIC_WEB_URL` (lze přepsat `OAUTH_ISSUER`).
+- Osobní tokeny `tgm_…` dál fungují (`Authorization: Bearer tgm_…`), např. pro Claude Code:
   `claude mcp add --transport http tagery https://app.tagery.tech/mcp --header "Authorization: Bearer tgm_…"`
+- Povolené aplikace i tokeny uživatel ruší v **Integrace → Propojené kanály**.
+
+### Caddy cesty pro OAuth
+
+V bloku `app.tagery.tech` (před závěrečným `handle` webu) – metadata, registrace,
+token a revokace jdou na API, `/oauth/authorize` zůstává na webu:
+
+```caddy
+	# EPIC-22: OAuth 2.1 pro MCP -> tagery API (souhlas /oauth/authorize obsluhuje web)
+	handle /.well-known/oauth-* {
+		reverse_proxy tagery-api-1:3001 {
+			import fwd
+		}
+	}
+	@mcp_oauth_api path /oauth/register /oauth/token /oauth/revoke
+	handle @mcp_oauth_api {
+		reverse_proxy tagery-api-1:3001 {
+			import fwd
+		}
+	}
+```
+
+### ChatGPT
+
+Nastavení → Aplikace a konektory → Vytvořit (vyžaduje zapnutý vývojářský režim, podle
+tarifu): URL `https://app.tagery.tech/mcp`, ověření **OAuth**. Client ID ani secret se
+nevyplňují – ChatGPT se zaregistruje přes DCR. Poté přihlášení do Tagery a výběr firmy.
 
 ## Funkce předplatného
 

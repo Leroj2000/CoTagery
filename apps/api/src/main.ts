@@ -25,6 +25,13 @@ async function bootstrap(): Promise<void> {
       // EPIC-22 MCP endpoint (Streamable HTTP) – /mcp mimo /api/v1.
       { path: 'mcp', method: RequestMethod.POST },
       { path: 'mcp', method: RequestMethod.GET },
+      // EPIC-22 OAuth 2.1 pro MCP – veřejné endpointy na kořeni domény.
+      { path: '.well-known/oauth-protected-resource', method: RequestMethod.GET },
+      { path: '.well-known/oauth-protected-resource/mcp', method: RequestMethod.GET },
+      { path: '.well-known/oauth-authorization-server', method: RequestMethod.GET },
+      { path: 'oauth/register', method: RequestMethod.POST },
+      { path: 'oauth/token', method: RequestMethod.POST },
+      { path: 'oauth/revoke', method: RequestMethod.POST },
     ],
   });
   const config = app.get(ConfigService);

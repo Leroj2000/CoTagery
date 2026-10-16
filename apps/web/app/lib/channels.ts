@@ -61,3 +61,62 @@ export const CHANNEL_LABELS: Record<string, string> = {
   telegram: 'Telegram',
   whatsapp: 'WhatsApp',
 };
+
+export interface OAuthGrantDto {
+  id: string;
+  clientName: string;
+  clientUri: string | null;
+  tenantId: string;
+  organizationName: string | null;
+  scope: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
+/** Odpověď API na kontrolu parametrů autorizačního požadavku. */
+export type OAuthAuthorizeCheck =
+  | {
+      ok: true;
+      clientId: string;
+      clientName: string;
+      clientUri: string | null;
+      redirectUri: string;
+      scope: string;
+      resource: string;
+      state?: string;
+    }
+  | { ok: false; error: string; description: string; redirectTo: string | null };
+
+/** Parametry autorizačního požadavku, které se předávají dál beze změny. */
+export const OAUTH_AUTHORIZE_PARAMS = [
+  'response_type',
+  'client_id',
+  'redirect_uri',
+  'code_challenge',
+  'code_challenge_method',
+  'scope',
+  'state',
+  'resource',
+] as const;
+
+/** Vybere jen známé OAuth parametry (první hodnota, max. 2000 znaků). */
+export function pickOAuthParams(
+  src: Record<string, string | string[] | undefined>,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const key of OAUTH_AUTHORIZE_PARAMS) {
+    const raw = src[key];
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (typeof value === 'string' && value) out[key] = value.slice(0, 2000);
+  }
+  return out;
+}
+
+/** Hostitel návratové adresy pro zobrazení na stránce souhlasu. */
+export function redirectHost(uri: string): string {
+  try {
+    return new URL(uri).host;
+  } catch {
+    return uri;
+  }
+}
