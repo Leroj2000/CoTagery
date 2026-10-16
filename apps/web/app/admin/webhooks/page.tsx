@@ -1,6 +1,7 @@
+import { redirect } from 'next/navigation';
 import { Webhook } from 'lucide-react';
 import { apiFetch, getMyPermissions } from '../../lib/server-api';
-import { NoAccess } from '../no-access';
+import { IntegrationsTabs } from './integrations-tabs';
 import type { WebhookEndpoint, WebhookDelivery } from '../../lib/types';
 import { PageHeader, Section, Table, Badge, Mono, EmptyState } from '../ui';
 import { ActionForm } from '../action-form';
@@ -16,7 +17,9 @@ function fmtDateTime(iso: string): string {
 }
 
 export default async function WebhooksPage() {
-  if (!(await getMyPermissions()).has('core.integration.manage')) return <NoAccess what="Integrace" />;
+  // Bez oprávnění na webhooky zůstává v Integracích jen osobní záložka kanálů.
+  if (!(await getMyPermissions()).has('core.integration.manage'))
+    redirect('/admin/webhooks/channels');
   const [endpoints, deliveries] = await Promise.all([
     apiFetch<WebhookEndpoint[]>('/webhooks'),
     apiFetch<WebhookDelivery[]>('/webhooks/deliveries'),
@@ -29,6 +32,7 @@ export default async function WebhooksPage() {
         description="Doménové události posílané do vašich systémů (n8n, Make, Zapier…)."
         icon={<Webhook size={18} />}
       />
+      <IntegrationsTabs current="webhooks" canManageWebhooks />
 
       <Section title="Nový endpoint" description={`Události: ${EVENTS.join(', ')} (prázdné = vše)`}>
         <ActionForm
@@ -36,7 +40,11 @@ export default async function WebhooksPage() {
           submitLabel="Přidat endpoint"
           fields={[
             { name: 'url', label: 'URL', required: true, type: 'url', placeholder: 'https://…' },
-            { name: 'events', label: 'Události (čárkou, prázdné = vše)', placeholder: 'movement.created, inventory.mismatch' },
+            {
+              name: 'events',
+              label: 'Události (čárkou, prázdné = vše)',
+              placeholder: 'movement.created, inventory.mismatch',
+            },
           ]}
         />
       </Section>
@@ -49,11 +57,25 @@ export default async function WebhooksPage() {
             head={['URL', 'Události', 'Secret', 'Akce']}
             rows={endpoints.map((e) => [
               <Mono key="u">{e.url}</Mono>,
-              e.events.length ? e.events.map((ev) => <Badge key={ev} tone="brand">{ev}</Badge>) : <Badge tone="slate">vše</Badge>,
+              e.events.length ? (
+                e.events.map((ev) => (
+                  <Badge key={ev} tone="brand">
+                    {ev}
+                  </Badge>
+                ))
+              ) : (
+                <Badge tone="slate">vše</Badge>
+              ),
               <Mono key="s">{e.secret.slice(0, 14)}…</Mono>,
               <span key="a" className="flex gap-1">
                 <ActionButton action={testWebhook} hidden={{ id: e.id }} label="Test" />
-                <ActionButton action={deleteWebhook} hidden={{ id: e.id }} label="Smazat" variant="danger" confirm="Smazat endpoint?" />
+                <ActionButton
+                  action={deleteWebhook}
+                  hidden={{ id: e.id }}
+                  label="Smazat"
+                  variant="danger"
+                  confirm="Smazat endpoint?"
+                />
               </span>,
             ])}
           />
@@ -66,12 +88,18 @@ export default async function WebhooksPage() {
         ) : (
           <Table
             head={['Kdy', 'Událost', 'Stav', 'HTTP']}
-            rows={deliveries.slice(0, 30).map((d) => [
-              fmtDateTime(d.createdAt),
-              <Mono key="e">{d.event}</Mono>,
-              d.ok ? <Badge tone="green">OK</Badge> : <Badge tone="red">{d.error ?? 'chyba'}</Badge>,
-              d.statusCode ?? '—',
-            ])}
+            rows={deliveries
+              .slice(0, 30)
+              .map((d) => [
+                fmtDateTime(d.createdAt),
+                <Mono key="e">{d.event}</Mono>,
+                d.ok ? (
+                  <Badge tone="green">OK</Badge>
+                ) : (
+                  <Badge tone="red">{d.error ?? 'chyba'}</Badge>
+                ),
+                d.statusCode ?? '—',
+              ])}
           />
         )}
       </Section>

@@ -5,7 +5,7 @@ import { apiFetch, ApiError, getMe } from '../../../lib/server-api';
 import { parseExpiryDays, type McpTokenDto, type TelegramLinkCode } from '../../../lib/channels';
 import type { ActionState } from '../../action-form';
 
-const PATH = '/admin/settings/channels';
+const PATH = '/admin/webhooks/channels';
 
 function str(fd: FormData, key: string): string {
   return (fd.get(key) as string | null)?.trim() ?? '';

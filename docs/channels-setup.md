@@ -3,7 +3,8 @@
 Kód je nasazený a migrace `ChannelFeatures1929400000000`, `ChannelIdentities1929500000000`
 a `McpAccessTokens1929600000000` jsou spuštěné. Pro provoz zbývá zpřístupnit dvě cesty
 v Caddy a nastavit Telegram bota. Uživatelé pak kanály spravují v aplikaci na stránce
-**Nastavení a správa → Propojené kanály** (`/admin/settings/channels`).
+**Integrace → Propojené kanály** (`/admin/webhooks/channels`; stará adresa
+`/admin/settings/channels` přesměrovává).
 
 ## 1. Caddy – cesty `/mcp` a Telegram webhook
 
@@ -103,7 +104,7 @@ a jiný proces.
    # pending_update_count 0, žádné last_error_message
    unset TG_TOKEN TG_SECRET
    ```
-7. Test: v aplikaci otevři **Propojené kanály → Propojit Telegram**, klepni na odkaz do
+7. Test: v aplikaci otevři **Integrace → Propojené kanály → Propojit Telegram**, klepni na odkaz do
    Telegramu a „Start“. Bot odpoví potvrzením propojení; zkus poslat název položky.
 
 Vypnutí: `curl -sS "https://api.telegram.org/bot${TG_TOKEN}/deleteWebhook"` a smazat
@@ -112,7 +113,7 @@ Vypnutí: `curl -sS "https://api.telegram.org/bot${TG_TOKEN}/deleteWebhook"` a s
 ## 3. MCP (AI asistenti)
 
 - Adresa: `https://app.tagery.tech/mcp` (Streamable HTTP, jen JSON odpovědi, bez SSE).
-- Autentizace: `Authorization: Bearer tgm_…` – osobní token z **Propojené kanály**;
+- Autentizace: `Authorization: Bearer tgm_…` – osobní token z **Integrace → Propojené kanály**;
   platí pro jednu firmu a s oprávněními uživatele. OAuth 2.1 zatím není (TODO).
 - Claude Code:
   `claude mcp add --transport http tagery https://app.tagery.tech/mcp --header "Authorization: Bearer tgm_…"`
