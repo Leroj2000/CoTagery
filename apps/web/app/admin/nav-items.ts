@@ -28,6 +28,7 @@ import {
   UserRound,
   Printer,
   KeyRound,
+  Link2,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -176,6 +177,11 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'Integrace',
         icon: Webhook,
         permission: 'core.integration.manage',
+      },
+      {
+        href: '/admin/settings/channels',
+        label: 'Propojené kanály',
+        icon: Link2,
       },
       {
         href: '/admin/settings/notifications',
