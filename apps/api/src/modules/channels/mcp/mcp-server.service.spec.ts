@@ -6,6 +6,7 @@ import { defineAction } from '../actions/channel-action';
 import { McpServerService } from './mcp-server.service';
 import { McpController } from './mcp.controller';
 import type { McpTokenService } from './mcp-token.service';
+import type { OAuthService } from '../oauth/oauth.service';
 
 const actor = { userId: 'u', channel: 'mcp' as const, tenantId: 't', externalRef: 'tok' };
 
@@ -145,7 +146,13 @@ describe('McpController', () => {
         t === 'tgm_ok' ? { id: 'k', userId: 'u1', tenantId: 't1' } : null,
       ),
     } as unknown as McpTokenService;
-    const ctrl = new McpController(server, tokens, { allow: async () => true } as never);
+    const oauth = {
+      resourceMetadataUrl: () => 'https://t.example/.well-known/oauth-protected-resource/mcp',
+      verifyAccessToken: jest.fn(async (t: string) =>
+        t === 'tgo_ok' ? { grantId: 'g', userId: 'u2', tenantId: 't2' } : null,
+      ),
+    } as unknown as OAuthService;
+    const ctrl = new McpController(server, tokens, { allow: async () => true } as never, oauth);
     const r1 = res();
     await expect(
       ctrl.post(undefined, { jsonrpc: '2.0', id: 1, method: 'ping' }, r1),

@@ -43,6 +43,9 @@ export const envSchema = z
         .regex(/^[A-Za-z0-9_-]{24,256}$/)
         .optional(),
     ),
+    // EPIC-22 OAuth pro MCP: issuer (výchozí PUBLIC_WEB_URL) a další povolení hostitelé redirect URI.
+    OAUTH_ISSUER: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().optional()),
+    OAUTH_REDIRECT_HOSTS: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
     TELEGRAM_BOT_USERNAME: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
     // Sdílené tajemství pro ověření podpisu PSP webhooků (EPIC-17, stub PSP).
     BILLING_WEBHOOK_SECRET: z.string().min(8).default('whsec_stub'),
