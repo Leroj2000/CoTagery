@@ -50,3 +50,12 @@ OAuth pro MCP, akce `asset.issue`/`asset.return`, Caddy cesty (`/mcp`, webhook) 
   `/channels/identities`, `/channels/mcp-tokens`).
 - [ ] Nasazení: Caddy route `/mcp` → api, `setWebhook` Telegramu, env `TELEGRAM_*`, úklid
   `channel_processed_updates` (zatím neroste řízeně).
+
+## Kontrola pokrytí MCP (manifest)
+
+- Manifest `apps/api/src/modules/channels/actions/mcp-coverage.ts` obsahuje výslovné rozhodnutí pro **každé oprávnění** (`MCP_PERMISSION_COVERAGE`) a **každý API controller** (`MCP_CONTROLLER_COVERAGE`): `{ actions: [...] }` (klíče z `ActionRegistry`) nebo `{ excluded: "krátký důvod" }`.
+- Test `mcp-coverage.spec.ts` (běží v `pnpm test`, tedy v CI) bez bootu aplikace:
+  - sesbírá klíče oprávnění z migrací katalogu (`INSERT INTO "permissions"`) a z metadat `@RequirePermission`,
+  - naimportuje všechny `*.controller.ts` a podle Nest metadat (`__controller__`) najde controllery a jejich routy,
+  - selže, pokud něco v manifestu chybí (vypíše chybějící položky a kam je doplnit), pokud manifest obsahuje zastaralé záznamy, odkazuje na neexistující akci, nebo akce v registru není uvedena u svého oprávnění.
+- Granularita controllerů je po třídách; nová routa s novým oprávněním je zachycena kontrolou oprávnění.

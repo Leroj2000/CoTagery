@@ -24,3 +24,8 @@ Telegram větev je pouze pro čtení; její prompty a odpovědi se do stavu zapi
   okamžitě. Při aktivním čekání používej krátké kontroly a průběžné aktualizace.
 - Do sdíleného stavu nedávej tokeny, hesla, soukromé soubory nebo skryté uvažování.
   Uživatel má vědět, že běžné Telegram prompty a textové odpovědi jsou sdílené lokálně.
+
+## MCP manifest (EPIC-22)
+
+- Každé **nové oprávnění** (migrace katalogu / `@RequirePermission`) a každý **nový API controller** vyžaduje záznam v `apps/api/src/modules/channels/actions/mcp-coverage.ts`: buď `{ actions: ["…"] }` (existující akce v `ActionRegistry`), nebo `{ excluded: "krátký český důvod" }`.
+- Kontroluje to `mcp-coverage.spec.ts` v `pnpm test`; bez doplnění manifestu CI selže. Při přidání nové routy do existujícího controlleru zvaž, zda nemá být pokrytá MCP akcí.
