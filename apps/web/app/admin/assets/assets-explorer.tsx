@@ -11,7 +11,14 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  ImageIcon,
 } from 'lucide-react';
+import {
+  LIST_THUMB_CELL_CLASS,
+  LIST_THUMB_CLASS,
+  LIST_THUMB_PLACEHOLDER_CLASS,
+  LIST_THUMB_PX,
+} from './list-thumb';
 import type { Asset } from '../../lib/types';
 
 /** Stav položky → český label + barva badge (vzor MyStock). */
@@ -336,7 +343,7 @@ export function AssetsExplorer({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
-              <th className="w-10 py-2"></th>
+              <th className={LIST_THUMB_CELL_CLASS}></th>
               <th className="py-2 pr-3 font-medium">Název</th>
               <th className="py-2 pr-3 font-medium">Kategorie</th>
               <th className="py-2 pr-3 font-medium">Kód</th>
@@ -363,19 +370,19 @@ export function AssetsExplorer({
                     key={a.id}
                     className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60"
                   >
-                    <td className="py-2.5">
+                    <td className={LIST_THUMB_CELL_CLASS}>
                       {a.photoKey ? (
                         <Image
                           src={`/api/asset-photo/${a.id}`}
                           alt={a.name}
-                          width={36}
-                          height={36}
+                          width={LIST_THUMB_PX}
+                          height={LIST_THUMB_PX}
                           unoptimized
-                          className="h-9 w-9 rounded-lg border border-slate-200 object-cover"
+                          className={LIST_THUMB_CLASS}
                         />
                       ) : (
-                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-[10px] text-slate-400">
-                          —
+                        <span className={LIST_THUMB_PLACEHOLDER_CLASS} aria-label="Bez fotky">
+                          <ImageIcon size={16} aria-hidden="true" />
                         </span>
                       )}
                     </td>
