@@ -896,3 +896,66 @@ export async function inviteUser(_p: ActionState, fd: FormData): Promise<ActionS
     return { error: e instanceof ApiError ? e.message : 'Neočekávaná chyba' };
   }
 }
+
+// ── Pneumatiky položky ───────────────────────────────────────────────────────
+function tireBody(fd: FormData): Record<string, unknown> {
+  const opt = (k: string) => str(fd, k) || null;
+  return {
+    setLabel: str(fd, 'setLabel'),
+    season: str(fd, 'season'),
+    axle: str(fd, 'axle') || 'all',
+    width: num(fd, 'width'),
+    aspectRatio: num(fd, 'aspectRatio') ?? null,
+    rimDiameter: num(fd, 'rimDiameter'),
+    construction: str(fd, 'construction') || 'R',
+    loadIndex: opt('loadIndex'),
+    speedIndex: opt('speedIndex')?.toUpperCase() ?? null,
+    brand: opt('brand'),
+    dot: opt('dot'),
+    treadDepthMm: num(fd, 'treadDepthMm') ?? null,
+    quantity: num(fd, 'quantity') ?? 4,
+    note: opt('note'),
+  };
+}
+
+export async function addTire(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const assetId = str(fd, 'assetId');
+  return run(
+    `/assets/${assetId}/tires`,
+    { ...tireBody(fd), mounted: str(fd, 'mounted') === 'yes' },
+    `/admin/assets/${assetId}`,
+    'Pneumatiky přidány.',
+  );
+}
+
+export async function updateTire(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const assetId = str(fd, 'assetId');
+  return run(
+    `/assets/${assetId}/tires/${str(fd, 'tireId')}`,
+    tireBody(fd),
+    `/admin/assets/${assetId}`,
+    'Pneumatiky upraveny.',
+    'PATCH',
+  );
+}
+
+export async function deleteTire(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const assetId = str(fd, 'assetId');
+  return run(
+    `/assets/${assetId}/tires/${str(fd, 'tireId')}`,
+    null,
+    `/admin/assets/${assetId}`,
+    'Řádek pneumatik smazán.',
+    'DELETE',
+  );
+}
+
+export async function mountTireSet(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const assetId = str(fd, 'assetId');
+  return run(
+    `/assets/${assetId}/tires/mount`,
+    { setLabel: str(fd, 'setLabel') },
+    `/admin/assets/${assetId}`,
+    'Přezuto.',
+  );
+}

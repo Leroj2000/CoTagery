@@ -30,6 +30,9 @@ import { LastObservationCard } from './last-observation-card';
 import { PurchasePanel } from './purchase-panel';
 import { getActiveModules } from '../../module-access';
 import { WarrantyHint } from './warranty-hint';
+import { TiresPanel } from './tires-panel';
+import { mountedTireSummary, showsTires } from '../../../lib/tires';
+import type { AssetTireView } from '@tagery/shared';
 import type { PurchaseView, Warranty } from '../../../lib/purchase';
 import type { AssetMedia, AssetManual, AssetSpec, Observation } from '../../../lib/types';
 import {
@@ -117,6 +120,12 @@ export default async function AssetDetail({
   const media = await apiFetch<AssetMedia[]>(`/assets/${id}/media`);
   const manuals = await apiFetch<AssetManual[]>(`/assets/${id}/manuals`).catch(() => []);
   const spec = await apiFetch<AssetSpec | null>(`/assets/${id}/specs`).catch(() => null);
+  const equipmentKind =
+    categories.find((c) => c.id === asset.categoryId)?.equipmentKind ?? maintenance?.kind;
+  const tires = showsTires(equipmentKind)
+    ? await apiFetch<AssetTireView[]>(`/assets/${id}/tires`).catch(() => [] as AssetTireView[])
+    : null;
+  const tireSummary = tires ? mountedTireSummary(tires) : null;
   const observations = await apiFetch<Observation[]>(`/assets/${id}/observations`).catch(() => []);
   // Jen provozní pravidla – nastavení firmy (`/tenant`) vidí jen owner/admin.
   const rules = await apiFetch<{ requireReturnPhoto: boolean }>('/assets/rules').catch(() => ({
@@ -189,6 +198,7 @@ export default async function AssetDetail({
             description={
               [
                 asset.registrationPlate && `SPZ ${asset.registrationPlate}`,
+                tireSummary && `Pneu ${tireSummary}`,
                 asset.manufacturer,
                 asset.model,
                 asset.serialNumber,
@@ -729,6 +739,8 @@ export default async function AssetDetail({
       {maintenance && (
         <MaintenancePanel assetId={asset.id} summary={maintenance} canEdit={canEdit} />
       )}
+
+      {tires && <TiresPanel assetId={asset.id} tires={tires} canEdit={canEdit} />}
 
       <Section
         title="Servis a revize"
