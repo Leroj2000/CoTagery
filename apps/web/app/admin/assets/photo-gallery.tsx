@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { Camera, ChevronLeft, ChevronRight, Loader2, Star, Trash2, ImagePlus } from 'lucide-react';
+import { PHOTO_GRID_CLASS, photoImageClass, photoTileClass } from './photo-layout';
 
 interface GalleryPhoto {
   id: string;
@@ -156,14 +157,11 @@ export function PhotoGallery({
       {photos.length === 0 ? (
         <p className="text-sm text-slate-400">Zatím žádné fotky.</p>
       ) : (
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
+        <div className={PHOTO_GRID_CLASS}>
           {photos.map((p, i) => (
             // Hlavní fotka přes celou šířku, ostatní jako náhledy pod ní. Ovládací
             // prvky jsou v liště pod fotkou, nikdy přes ni.
-            <div
-              key={p.id}
-              className={`group flex flex-col overflow-hidden rounded-xl border border-slate-200 ${i === 0 ? 'col-span-full' : ''}`}
-            >
+            <div key={p.id} className={photoTileClass(i)}>
               <button
                 type="button"
                 className={`block w-full ${cropPhoto === p.id ? 'cursor-crosshair ring-2 ring-brand-500' : ''}`}
@@ -181,7 +179,7 @@ export function PhotoGallery({
                     e.stopPropagation();
                     void setPreview(p, e);
                   }}
-                  className={`w-full bg-slate-100 object-contain transition-transform ${i === 0 ? 'aspect-[4/3] max-h-[460px]' : 'aspect-square'}`}
+                  className={photoImageClass(i)}
                   style={{
                     objectPosition: `${p.previewX}% ${p.previewY}%`,
                     transform: `scale(${p.previewZoom ?? 1})`,
