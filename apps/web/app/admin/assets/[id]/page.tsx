@@ -203,7 +203,7 @@ export default async function AssetDetail({
       </div>
 
       {/* Fotky a hlavní QR identifikátor jsou společně viditelné hned na začátku detailu. */}
-      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(260px,320px)]">
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(220px,260px)]">
         <PhotoGallery
           assetId={asset.id}
           photos={photos.items}
@@ -224,17 +224,23 @@ export default async function AssetDetail({
         >
           {qrCarrier ? (
             <div className="flex flex-col gap-3">
-              <div className="flex justify-center rounded-xl bg-slate-50 p-3 ring-1 ring-inset ring-slate-100">
-                <Image
-                  src={`/api/qr/${qrCarrier.id}`}
-                  alt={`QR kód položky ${asset.name}`}
-                  width={156}
-                  height={156}
-                  unoptimized
-                  className="rounded-lg border border-slate-200 bg-white p-1 shadow-sm"
-                />
-              </div>
-              <div className="flex items-center justify-between gap-2">
+              {/* Na detailu jen malý náhled (signalizuje, že QR existuje); ke skenování
+                  slouží vytištěný štítek, kde je QR co největší. */}
+              <div className="flex items-center justify-between gap-3">
+                <Link
+                  href="#identifikator"
+                  title="QR identifikátor – správa a tisk štítku"
+                  className="shrink-0"
+                >
+                  <Image
+                    src={`/api/qr/${qrCarrier.id}`}
+                    alt={`QR kód položky ${asset.name}`}
+                    width={56}
+                    height={56}
+                    unoptimized
+                    className="rounded-md border border-slate-200 bg-white p-0.5"
+                  />
+                </Link>
                 <div>
                   <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
                     Kód štítku

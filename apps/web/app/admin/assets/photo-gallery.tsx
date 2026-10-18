@@ -158,9 +158,11 @@ export function PhotoGallery({
       ) : (
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
           {photos.map((p, i) => (
+            // Hlavní fotka přes celou šířku, ostatní jako náhledy pod ní. Ovládací
+            // prvky jsou v liště pod fotkou, nikdy přes ni.
             <div
               key={p.id}
-              className="group relative overflow-hidden rounded-xl border border-slate-200"
+              className={`group flex flex-col overflow-hidden rounded-xl border border-slate-200 ${i === 0 ? 'col-span-full' : ''}`}
             >
               <button
                 type="button"
@@ -179,7 +181,7 @@ export function PhotoGallery({
                     e.stopPropagation();
                     void setPreview(p, e);
                   }}
-                  className="aspect-square w-full bg-slate-100 object-contain transition-transform"
+                  className={`w-full bg-slate-100 object-contain transition-transform ${i === 0 ? 'aspect-[4/3] max-h-[460px]' : 'aspect-square'}`}
                   style={{
                     objectPosition: `${p.previewX}% ${p.previewY}%`,
                     transform: `scale(${p.previewZoom ?? 1})`,
@@ -187,13 +189,15 @@ export function PhotoGallery({
                   }}
                 />
               </button>
-              {i === 0 && (
-                <span className="absolute left-1 top-1 inline-flex items-center gap-1 rounded-md bg-brand-600/90 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                  <Star size={10} /> Hlavní
-                </span>
+              {i === 0 && !canManage && (
+                <div className="border-t border-slate-200 bg-slate-50 p-1">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                    <Star size={10} /> Hlavní
+                  </span>
+                </div>
               )}
               {canManage && (
-                <div className="absolute inset-x-0 bottom-0 flex justify-between gap-1 bg-gradient-to-t from-black/60 to-transparent p-1">
+                <div className="flex flex-wrap items-center justify-between gap-1 border-t border-slate-200 bg-slate-50 p-1">
                   {i !== 0 ? (
                     <button
                       onClick={() => setMain(p.id)}
@@ -208,7 +212,9 @@ export function PhotoGallery({
                       )}
                     </button>
                   ) : (
-                    <span />
+                    <span className="inline-flex items-center gap-1 rounded-md bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      <Star size={10} /> Hlavní
+                    </span>
                   )}
                   <button
                     onClick={() => setCropPhoto(cropPhoto === p.id ? null : p.id)}
