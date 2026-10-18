@@ -31,6 +31,16 @@ import {
 const SHEET_PX_PER_MM = 12;
 /** Min. velikost modulu QR v px; když by ji logo nesplnilo, QR se vykreslí bez loga. */
 const MIN_MODULE_PX_WITH_LOGO = 3;
+/**
+ * Klidová zóna QR v modulech. Stačí 1: QR leží na bílém štítku s okrajem `pad`
+ * a mezerou `gap` k textu, takže skutečná bílá plocha kolem matice je ≥ 2 moduly.
+ * Ušetřené moduly jdou do větší velikosti modulu (lepší čitelnost).
+ */
+export const QR_MARGIN_MODULES = 1;
+/** Max. podíl šířky štítku pro QR – zbytek zůstává textovému sloupci. */
+const QR_MAX_WIDTH_SHARE = 0.56;
+/** Nejmenší zmenšení písma buňky, aby se nejdelší slovo vešlo bez dělení. */
+const MIN_FONT_SCALE = 0.75;
 
 /** Rozměr bitmapy štítku v px. */
 export function labelPixelSize(format: LabelFormat): { w: number; h: number } {
@@ -45,7 +55,10 @@ export function labelPixelSize(format: LabelFormat): { w: number; h: number } {
 export function labelGeometry(w: number, h: number) {
   const pad = Math.max(4, Math.round(h * 0.033));
   const caption = Math.max(9, Math.round(h * 0.058));
-  const qrMax = Math.max(40, Math.min(h - 2 * pad - caption - 2, Math.floor(w * 0.49)));
+  const qrMax = Math.max(
+    40,
+    Math.min(h - 2 * pad - caption - 2, Math.floor(w * QR_MAX_WIDTH_SHARE)),
+  );
   // Základ písma: u vysokých štítků se neřídí výškou, ale šířkou textového sloupce.
   const base = Math.min(h, w * 0.625);
   const font = {
@@ -187,15 +200,20 @@ export async function renderLabel(
     let logo = await loadLogo(data.logoUrl === undefined ? TENANT_LOGO_URL : data.logoUrl);
     // Čtení má přednost před logem: na malém štítku by korekce „H“ zhustila
     // matici pod čitelnou velikost modulu → vykresli QR bez loga.
-    if (logo && measureBrandedQr(data.qrValue, g.qrMax, true).modulePx < MIN_MODULE_PX_WITH_LOGO) {
+    if (
+      logo &&
+      measureBrandedQr(data.qrValue, g.qrMax, true, QR_MARGIN_MODULES).modulePx <
+        MIN_MODULE_PX_WITH_LOGO
+    ) {
       logo = null;
     }
-    const qrSize = measureBrandedQr(data.qrValue, g.qrMax, !!logo).size;
+    const qrSize = measureBrandedQr(data.qrValue, g.qrMax, !!logo, QR_MARGIN_MODULES).size;
     const qrY = Math.max(g.pad, Math.round((h - (qrSize + 2 + g.caption)) / 2));
     const qr = drawBrandedQr(ctx, data.qrValue, {
       x: g.pad,
       y: qrY,
       maxSize: g.qrMax,
+      margin: QR_MARGIN_MODULES,
       logo,
       monochrome: thermal,
     });
@@ -212,12 +230,21 @@ export async function renderLabel(
     for (const cell of cells) {
       const value = labelCellValue(cell, data).trim();
       if (!value || textW < 20) continue;
-      const px = g.font[cell.size];
+      const family = cell.kind === 'code' ? '"Courier New", monospace' : 'Arial, sans-serif';
+      const fontFor = (size: number): string => `${cell.bold ? 'bold ' : ''}${size}px ${family}`;
+      // Užší sloupec vedle většího QR: písmo se mírně zmenší, aby se nejdelší
+      // slovo vešlo celé (dělení slova po znacích je hůř čitelné).
+      const longest = value.split(/\s+/).reduce((a, b) => (b.length > a.length ? b : a), '');
+      let px = g.font[cell.size];
+      const minPx = Math.round(px * MIN_FONT_SCALE);
+      ctx.font = fontFor(px);
+      while (px > minPx && measure(longest) > textW) {
+        px -= 1;
+        ctx.font = fontFor(px);
+      }
       const lineH = Math.round(px * 1.15);
       const fits = Math.floor((bottom - y) / lineH);
       if (fits < 1) break;
-      const family = cell.kind === 'code' ? '"Courier New", monospace' : 'Arial, sans-serif';
-      ctx.font = `${cell.bold ? 'bold ' : ''}${px}px ${family}`;
       const lines = wrapText(value, textW, Math.min(cell.maxLines, fits), measure);
       for (const line of lines) {
         ctx.fillText(line, textX, y);
