@@ -114,6 +114,7 @@ export const MCP_CONTROLLER_COVERAGE: Record<string, McpDecision> = {
   ScanController: internal('skenování – web/mobil'),
   SpecCallbackController: internal('interní callback z n8n'),
   SpecsController: internal('technické specifikace – web'),
+  TiresController: internal('pneumatiky – web'),
   AccessPointsController: internal('modul Vstupy – web'),
   AnalyticsController: internal('statistiky – web'),
   DataCarriersController: internal('nosiče QR/NFC – web'),
