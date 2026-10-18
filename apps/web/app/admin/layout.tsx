@@ -6,6 +6,7 @@ import type { Attention } from '../lib/types';
 import { BrandLink } from './brand-link';
 import { AdminNav } from './nav';
 import { NAV_ITEMS } from './nav-items';
+import { hiddenNavHrefs } from '../lib/abilities';
 import { LogoutButton } from './logout-button';
 import { OrgSwitcher } from './org-switcher';
 import { MobileNav } from './mobile-nav';
@@ -76,12 +77,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const notificationAccess = await apiFetch<{ canManage: boolean }>('/notifications/access').catch(
     () => ({ canManage: false }),
   );
-  const hiddenNav = NAV_ITEMS.filter(
-    (item) =>
-      (item.moduleKey && inactiveModules.has(item.moduleKey)) ||
-      (item.permission && !permissions.has(item.permission)) ||
-      (item.href === '/admin/settings/notifications' && !notificationAccess.canManage),
-  ).map((item) => item.href);
+  const hiddenNav = hiddenNavHrefs(NAV_ITEMS, {
+    perms: permissions,
+    inactiveModules,
+    canManageNotifications: notificationAccess.canManage,
+  });
 
   // Čekající položky → čísla v kolečku v navigaci a na záložce „Menu".
   const navCounts: Record<string, number> = {};
