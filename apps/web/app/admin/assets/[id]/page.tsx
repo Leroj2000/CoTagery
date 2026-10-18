@@ -226,7 +226,7 @@ export default async function AssetDetail({
             <div className="flex flex-col gap-3">
               {/* Na detailu jen malý náhled (signalizuje, že QR existuje); ke skenování
                   slouží vytištěný štítek, kde je QR co největší. */}
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <Link
                   href="#identifikator"
                   title="QR identifikátor – správa a tisk štítku"
