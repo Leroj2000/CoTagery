@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { apiFetch, ApiError, getMe, getMyPermissions } from '../../lib/server-api';
+import { canInviteMembers } from '../../lib/abilities';
 import type { AdminUser } from '../../lib/types';
 import { roleName, type RolesOverview } from '../../lib/roles';
 import { ROLE_OPTIONS } from '../options';
@@ -74,17 +75,19 @@ export default async function UsersPage() {
         </p>
       </div>
 
-      <Section title="Pozvat uživatele">
-        <ActionForm
-          action={inviteUser}
-          submitLabel="Pozvat"
-          fields={[
-            { name: 'email', label: 'E-mail', type: 'email', required: true },
-            { name: 'name', label: 'Jméno', required: true },
-            { name: 'tenantRole', label: 'Role', required: true, options: roleOptions },
-          ]}
-        />
-      </Section>
+      {canInviteMembers(perms) && (
+        <Section title="Pozvat uživatele">
+          <ActionForm
+            action={inviteUser}
+            submitLabel="Pozvat"
+            fields={[
+              { name: 'email', label: 'E-mail', type: 'email', required: true },
+              { name: 'name', label: 'Jméno', required: true },
+              { name: 'tenantRole', label: 'Role', required: true, options: roleOptions },
+            ]}
+          />
+        </Section>
+      )}
 
       <Section title={`Uživatelé (${users.length})`}>
         {users.length === 0 ? (

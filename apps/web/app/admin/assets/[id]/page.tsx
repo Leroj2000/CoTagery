@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { Package, Home, MapPin, User, CalendarClock, Box, Clock, QrCode } from 'lucide-react';
 import { apiFetch, ApiError, getMyPermissions } from '../../../lib/server-api';
 import { locationPath } from '../../../lib/location-path';
+import { assetAbilities, NO_PERMISSION_NOTE } from '../../../lib/abilities';
 import type {
   Asset,
   Movement,
@@ -122,8 +123,8 @@ export default async function AssetDetail({
     requireReturnPhoto: false,
   }));
   const perms = await getMyPermissions();
-  const canEdit = perms.has('asset.item.update');
-  const canManagePhotos = perms.has('asset.media.manage');
+  const { canEdit, canMove, canCarrier, canIssue, canManagePhotos, canEditPurchase } =
+    assetAbilities(perms);
   const active = await getActiveModules();
   const purchase =
     active.has('purchase') && perms.has('asset.purchase.view')
@@ -143,8 +144,9 @@ export default async function AssetDetail({
   }>(`/assets/${id}/photos`).catch(() => ({ items: [], max: 5 }));
   const requireReturnPhoto = rules.requireReturnPhoto;
   const actions = asset.actions ?? [];
-  const canReturn = actions.includes('return');
-  const otherActions = actions.filter((a) => a !== 'return');
+  // Výdej/vrácení jen s asset.movement.perform (Náhled formuláře nevidí).
+  const canReturn = canMove && actions.includes('return');
+  const otherActions = canMove ? actions.filter((a) => a !== 'return') : [];
   const qrCarrier = carriers.find(
     (carrier) =>
       carrier.status === 'active' &&
@@ -265,15 +267,19 @@ export default async function AssetDetail({
               <div>
                 <p className="text-sm font-medium text-slate-700">Chybí QR identifikátor</p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Přidej ho pro rychlé skenování položky.
+                  {canCarrier
+                    ? 'Přidej ho pro rychlé skenování položky.'
+                    : 'Přidat ho může správce položek.'}
                 </p>
               </div>
-              <Link
-                href="#identifikator"
-                className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700"
-              >
-                Vytvořit QR kód
-              </Link>
+              {canCarrier && (
+                <Link
+                  href="#identifikator"
+                  className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700"
+                >
+                  Vytvořit QR kód
+                </Link>
+              )}
             </div>
           )}
         </Section>
@@ -387,7 +393,7 @@ export default async function AssetDetail({
           assetId={asset.id}
           view={purchase}
           warranties={warranties}
-          canEdit={perms.has('asset.purchase.update')}
+          canEdit={canEditPurchase}
         />
       )}
 
@@ -468,7 +474,7 @@ export default async function AssetDetail({
       <div id="identifikator" className="scroll-mt-4">
         <Section title="Identifikátory" description="Správa QR a NFC identifikátorů položky">
           <div className="flex flex-col gap-4">
-            {!qrCarrier && (
+            {!qrCarrier && canCarrier && (
               <div className="flex flex-col gap-3">
                 <p className="text-sm text-slate-600">Přidej QR identifikátor k této položce.</p>
                 <ActionForm
@@ -527,45 +533,53 @@ export default async function AssetDetail({
               </div>
             )}
 
-            {/* Adopce cizího kódu: uloží externí alias (pozná ho jen interní skener)
+            {canCarrier ? (
+              <>
+                {/* Adopce cizího kódu: uloží externí alias (pozná ho jen interní skener)
               a zároveň vytvoří náš nativní identifikátor pro veřejný resolver. */}
-            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-3">
-              <p className="mb-2 text-xs font-medium text-slate-600">Adoptovat existující kód</p>
-              <p className="mb-3 text-xs text-slate-500">
-                Cizí QR/EAN/kód uložíme jako alias rozpoznatelný interním skenerem a vytvoříme k
-                němu i náš vlastní identifikátor pro veřejný resolver.
-              </p>
-              <ActionForm
-                action={adoptCarrier}
-                hidden={{ objectId: asset.digitalObjectId, assetId: asset.id }}
-                submitLabel="Adoptovat kód"
-                fields={[
-                  {
-                    name: 'externalCode',
-                    label: 'Externí kód',
-                    required: true,
-                    placeholder: 'EAN / URL / vlastní kód',
-                  },
-                  {
-                    name: 'externalScheme',
-                    label: 'Typ kódu',
-                    options: [
-                      { value: 'custom', label: 'Vlastní' },
-                      { value: 'ean13', label: 'EAN-13' },
-                      { value: 'url', label: 'URL' },
-                    ],
-                  },
-                  {
-                    name: 'carrierType',
-                    label: 'Náš nosič',
-                    options: [
-                      { value: 'qr', label: 'QR' },
-                      { value: 'nfc', label: 'NFC' },
-                    ],
-                  },
-                ]}
-              />
-            </div>
+                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-3">
+                  <p className="mb-2 text-xs font-medium text-slate-600">
+                    Adoptovat existující kód
+                  </p>
+                  <p className="mb-3 text-xs text-slate-500">
+                    Cizí QR/EAN/kód uložíme jako alias rozpoznatelný interním skenerem a vytvoříme k
+                    němu i náš vlastní identifikátor pro veřejný resolver.
+                  </p>
+                  <ActionForm
+                    action={adoptCarrier}
+                    hidden={{ objectId: asset.digitalObjectId, assetId: asset.id }}
+                    submitLabel="Adoptovat kód"
+                    fields={[
+                      {
+                        name: 'externalCode',
+                        label: 'Externí kód',
+                        required: true,
+                        placeholder: 'EAN / URL / vlastní kód',
+                      },
+                      {
+                        name: 'externalScheme',
+                        label: 'Typ kódu',
+                        options: [
+                          { value: 'custom', label: 'Vlastní' },
+                          { value: 'ean13', label: 'EAN-13' },
+                          { value: 'url', label: 'URL' },
+                        ],
+                      },
+                      {
+                        name: 'carrierType',
+                        label: 'Náš nosič',
+                        options: [
+                          { value: 'qr', label: 'QR' },
+                          { value: 'nfc', label: 'NFC' },
+                        ],
+                      },
+                    ]}
+                  />
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-slate-500">{NO_PERMISSION_NOTE}</p>
+            )}
           </div>
         </Section>
       </div>
@@ -577,13 +591,15 @@ export default async function AssetDetail({
           <span className="font-medium text-slate-800">
             {assetName.get(asset.parentAssetId) ?? '—'}
           </span>
-          <span className="ml-auto">
-            <ActionButton
-              action={removeFromContainer}
-              hidden={{ containerId: asset.parentAssetId, childId: asset.id }}
-              label="Vyjmout"
-            />
-          </span>
+          {canEdit && (
+            <span className="ml-auto">
+              <ActionButton
+                action={removeFromContainer}
+                hidden={{ containerId: asset.parentAssetId, childId: asset.id }}
+                label="Vyjmout"
+              />
+            </span>
+          )}
         </div>
       )}
 
@@ -607,16 +623,20 @@ export default async function AssetDetail({
                     {c.name}
                   </Link>,
                   <StatusBadge key="s" status={c.status} />,
-                  <ActionButton
-                    key="r"
-                    action={removeFromContainer}
-                    hidden={{ containerId: asset.id, childId: c.id }}
-                    label="Vyjmout"
-                  />,
+                  canEdit ? (
+                    <ActionButton
+                      key="r"
+                      action={removeFromContainer}
+                      hidden={{ containerId: asset.id, childId: c.id }}
+                      label="Vyjmout"
+                    />
+                  ) : (
+                    '—'
+                  ),
                 ])}
               />
             )}
-            {nestableOptions.length > 0 && (
+            {canEdit && nestableOptions.length > 0 && (
               <ActionForm
                 action={putIntoContainer}
                 hidden={{ containerId: asset.id }}
@@ -655,7 +675,11 @@ export default async function AssetDetail({
                   {ISSUE_LABELS[i.kind] ?? i.kind}
                 </Badge>,
                 i.description,
-                i.status === 'open' ? (
+                i.status === 'open' && !canIssue ? (
+                  <Badge key="r" tone="red">
+                    otevřeno
+                  </Badge>
+                ) : i.status === 'open' ? (
                   <ActionButton
                     key="r"
                     action={resolveIssue}
@@ -670,25 +694,29 @@ export default async function AssetDetail({
               ])}
             />
           )}
-          <ActionForm
-            action={reportIssue}
-            hidden={{ assetId: asset.id }}
-            submitLabel="Nahlásit problém"
-            fields={[
-              {
-                name: 'kind',
-                label: 'Typ',
-                required: true,
-                options: [
-                  { value: 'damage', label: 'Poškození' },
-                  { value: 'malfunction', label: 'Závada' },
-                  { value: 'missing_part', label: 'Chybí díl' },
-                  { value: 'other', label: 'Jiné' },
-                ],
-              },
-              { name: 'description', label: 'Popis', required: true },
-            ]}
-          />
+          {canIssue ? (
+            <ActionForm
+              action={reportIssue}
+              hidden={{ assetId: asset.id }}
+              submitLabel="Nahlásit problém"
+              fields={[
+                {
+                  name: 'kind',
+                  label: 'Typ',
+                  required: true,
+                  options: [
+                    { value: 'damage', label: 'Poškození' },
+                    { value: 'malfunction', label: 'Závada' },
+                    { value: 'missing_part', label: 'Chybí díl' },
+                    { value: 'other', label: 'Jiné' },
+                  ],
+                },
+                { name: 'description', label: 'Popis', required: true },
+              ]}
+            />
+          ) : (
+            <p className="text-xs text-slate-500">{NO_PERMISSION_NOTE}</p>
+          )}
         </div>
       </Section>
 
@@ -730,34 +758,43 @@ export default async function AssetDetail({
                 ])}
             />
           )}
-          <ActionForm
-            action={addService}
-            hidden={{ assetId: asset.id }}
-            submitLabel="Přidat servis/revizi"
-            fields={[
-              {
-                name: 'kind',
-                label: 'Typ',
-                required: true,
-                options: [
-                  { value: 'service', label: 'Servis' },
-                  { value: 'inspection', label: 'Revize' },
-                  { value: 'calibration', label: 'Kalibrace' },
-                  { value: 'repair', label: 'Oprava' },
-                  { value: 'warranty_claim', label: 'Reklamace (záruka)' },
-                ],
-              },
-              { name: 'performedAt', label: 'Provedeno', type: 'text', placeholder: 'YYYY-MM-DD' },
-              {
-                name: 'nextDueAt',
-                label: 'Příští termín',
-                type: 'text',
-                placeholder: 'YYYY-MM-DD',
-              },
-              { name: 'provider', label: 'Kdo (servis)' },
-              { name: 'cost', label: 'Cena' },
-            ]}
-          />
+          {canEdit ? (
+            <ActionForm
+              action={addService}
+              hidden={{ assetId: asset.id }}
+              submitLabel="Přidat servis/revizi"
+              fields={[
+                {
+                  name: 'kind',
+                  label: 'Typ',
+                  required: true,
+                  options: [
+                    { value: 'service', label: 'Servis' },
+                    { value: 'inspection', label: 'Revize' },
+                    { value: 'calibration', label: 'Kalibrace' },
+                    { value: 'repair', label: 'Oprava' },
+                    { value: 'warranty_claim', label: 'Reklamace (záruka)' },
+                  ],
+                },
+                {
+                  name: 'performedAt',
+                  label: 'Provedeno',
+                  type: 'text',
+                  placeholder: 'YYYY-MM-DD',
+                },
+                {
+                  name: 'nextDueAt',
+                  label: 'Příští termín',
+                  type: 'text',
+                  placeholder: 'YYYY-MM-DD',
+                },
+                { name: 'provider', label: 'Kdo (servis)' },
+                { name: 'cost', label: 'Cena' },
+              ]}
+            />
+          ) : (
+            <p className="text-xs text-slate-500">{NO_PERMISSION_NOTE}</p>
+          )}
         </div>
       </Section>
 
@@ -774,7 +811,11 @@ export default async function AssetDetail({
             </Badge>,
             label(m.fromType, m.fromId),
             label(m.toType, m.toId),
-            m.confirmation === 'pending' ? (
+            m.confirmation === 'pending' && !canMove ? (
+              <Badge key="c" tone="amber">
+                čeká na potvrzení
+              </Badge>
+            ) : m.confirmation === 'pending' ? (
               <ActionButton
                 key="c"
                 action={confirmMovement}
