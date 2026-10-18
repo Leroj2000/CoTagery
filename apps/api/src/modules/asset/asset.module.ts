@@ -13,6 +13,7 @@ import { AssetMedia } from './entities/asset-media.entity';
 import { AssetPhoto } from './entities/asset-photo.entity';
 import { AssetManual } from './entities/asset-manual.entity';
 import { AssetSpec } from './entities/asset-spec.entity';
+import { AssetTire } from './entities/asset-tire.entity';
 import { AssetObservation } from './entities/asset-observation.entity';
 import { AssetPurchase } from './entities/asset-purchase.entity';
 import { AssetDocument } from './entities/asset-document.entity';
@@ -27,6 +28,7 @@ import { ManualsService } from './manuals.service';
 import { ManualFetchService } from './manual-fetch.service';
 import { ManualCallbackService } from './manual-callback.service';
 import { SpecsService } from './specs.service';
+import { TiresService } from './tires.service';
 import { SpecCallbackService } from './spec-callback.service';
 import { PurchaseService } from './purchase.service';
 import { AssetIoService } from './asset-io.service';
@@ -39,6 +41,7 @@ import { MediaController } from './media.controller';
 import { ManualsController } from './manuals.controller';
 import { ManualCallbackController } from './manual-callback.controller';
 import { SpecsController } from './specs.controller';
+import { TiresController } from './tires.controller';
 import { SpecCallbackController } from './spec-callback.controller';
 import { PurchaseController } from './purchase.controller';
 import { AssetIoController } from './asset-io.controller';
@@ -66,6 +69,7 @@ import { PersonalWorkflowsController } from './personal-workflows.controller';
       AssetPhoto,
       AssetManual,
       AssetSpec,
+      AssetTire,
       AssetObservation,
       AssetPurchase,
       AssetDocument,
@@ -87,6 +91,7 @@ import { PersonalWorkflowsController } from './personal-workflows.controller';
     ManualsController,
     ManualCallbackController,
     SpecsController,
+    TiresController,
     SpecCallbackController,
     PurchaseController,
   ],
@@ -100,6 +105,7 @@ import { PersonalWorkflowsController } from './personal-workflows.controller';
     ManualFetchService,
     ManualCallbackService,
     SpecsService,
+    TiresService,
     SpecCallbackService,
     PurchaseService,
     AssetIoService,
