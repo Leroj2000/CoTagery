@@ -1,13 +1,15 @@
 import { LABEL_FORMATS, findLabelFormat } from '@tagery/shared';
 import { labelCellValue, labelGeometry, labelPixelSize } from '../render-label';
 import { sheetSlot } from '../print-sheet';
+import { measureBrandedQr } from '../../qr/branded-qr';
+import { QR_MARGIN_MODULES } from '../render-label';
 
 describe('rozložení štítku', () => {
-  it('Niimbot 50 × 30 zachová dosavadní rozměry (384 × 240, QR 188)', () => {
+  it('Niimbot 50 × 30: 384 × 240, QR smí zabrat celou výšku sekce (208 px)', () => {
     const { w, h } = labelPixelSize(findLabelFormat('niimbot-50x30')!);
     expect([w, h]).toEqual([384, 240]);
     const g = labelGeometry(w, h);
-    expect(g.qrMax).toBe(188);
+    expect(g.qrMax).toBe(208);
     expect(g.font).toEqual({ S: 16, M: 22, L: 28 });
   });
 
@@ -34,6 +36,27 @@ describe('rozložení štítku', () => {
         data,
       ),
     ).toBe('Majetek XY');
+  });
+});
+
+describe('velikost QR na štítku', () => {
+  const url = 'https://app.tagery.tech/r/Oma4iL8CdF6P';
+
+  it('Niimbot 50 × 30 s logem: modul 5 px a QR 195 px (dřív 4 px / 164 px)', () => {
+    const g = labelGeometry(384, 240);
+    const now = measureBrandedQr(url, g.qrMax, true, QR_MARGIN_MODULES);
+    expect(now).toEqual({ size: 195, modulePx: 5, margin: 1 });
+    expect(measureBrandedQr(url, 188, true, 2).size).toBe(164);
+  });
+
+  it('QR s popiskem nepřesáhne výšku a nechá místo na text v každém formátu', () => {
+    for (const f of LABEL_FORMATS) {
+      const { w, h } = labelPixelSize(f);
+      const g = labelGeometry(w, h);
+      const qr = measureBrandedQr(url, g.qrMax, false, QR_MARGIN_MODULES);
+      expect(qr.size + 2 + g.caption + 2 * g.pad).toBeLessThanOrEqual(h + 1);
+      expect(w - (g.pad + qr.size + g.gap) - g.pad).toBeGreaterThanOrEqual(w * 0.3);
+    }
   });
 });
 
