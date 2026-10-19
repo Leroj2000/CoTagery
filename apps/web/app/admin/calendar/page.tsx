@@ -27,6 +27,8 @@ import { ActionForm } from '../action-form';
 import { ActionButton } from '../action-button';
 import { createCalendarEvent, deleteCalendarEvent, revokeCalendarShare } from './actions';
 import { ShareForm } from './share-form';
+import { TireSlotsSection } from './tire-slots-section';
+import type { TireSlotView } from '@tagery/shared';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,7 +59,7 @@ function shareState(s: CalendarShareDto): { label: string; tone: 'green' | 'red'
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ m?: string; src?: string }>;
+  searchParams: Promise<{ m?: string; src?: string; tab?: string }>;
 }) {
   const perms = await getMyPermissions();
   if (!perms.has('core.calendar.view')) return <NoAccess what="Kalendář" />;
@@ -70,6 +72,17 @@ export default async function CalendarPage({
   const query = new URLSearchParams({ from: range.from, to: range.to });
   if (selected.length) query.set('sources', selected.join(','));
   const canManage = perms.has('core.calendar.manage');
+  const canTires = perms.has('asset.tireslot.manage');
+  const tab = canTires && sp.tab === 'tires' ? 'tires' : 'event';
+  const tireSlots =
+    tab === 'tires'
+      ? await apiFetch<TireSlotView[]>(
+          `/tire-slots?${new URLSearchParams({
+            from: new Date(Date.now() - 86_400_000).toISOString(),
+            to: new Date(Date.now() + 120 * 86_400_000).toISOString(),
+          })}`,
+        ).catch(() => null)
+      : null;
   const [calendar, events, shares] = await Promise.all([
     apiFetch<{ sources: CalendarSource[]; items: CalendarItem[] }>(`/calendar?${query}`),
     apiFetch<CalendarEventDto[]>(
@@ -83,6 +96,7 @@ export default async function CalendarPage({
   const href = (m: string, src: CalendarSource[] = selected) => {
     const p = new URLSearchParams({ m });
     if (src.length) p.set('src', src.join(','));
+    if (tab === 'tires') p.set('tab', 'tires');
     return `/admin/calendar?${p}`;
   };
   const current = monthParam(year, month);
@@ -125,7 +139,31 @@ export default async function CalendarPage({
         />
       </Section>
 
-      {perms.has('core.calendar.create') && (
+      {canTires && (
+        <div className="flex gap-1 border-b border-slate-200 text-sm">
+          {[
+            { key: 'event', label: 'Nová událost' },
+            { key: 'tires', label: 'Termíny přezutí' },
+          ].map((t) => (
+            <Link
+              key={t.key}
+              href={`/admin/calendar?m=${current}${t.key === 'tires' ? '&tab=tires' : ''}`}
+              className={`-mb-px border-b-2 px-3 py-2 font-medium ${tab === t.key ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+            >
+              {t.label}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {tab === 'tires' &&
+        (tireSlots ? (
+          <TireSlotsSection slots={tireSlots} />
+        ) : (
+          <EmptyState>Termíny přezutí nejsou dostupné (modul Vozidla není zapnutý).</EmptyState>
+        ))}
+
+      {tab === 'event' && perms.has('core.calendar.create') && (
         <Section
           title="Nová událost"
           description="Čas je v časovém pásmu firmy (Praha). U celodenní události se bere jen datum."

@@ -32,6 +32,7 @@ import { PurchasePanel } from './purchase-panel';
 import { getActiveModules } from '../../module-access';
 import { WarrantyHint } from './warranty-hint';
 import { TiresPanel } from './tires-panel';
+import type { AssetTireBookingView } from '@tagery/shared';
 import { mountedTireSummary, showsTires } from '../../../lib/tires';
 import type { AssetTireView } from '@tagery/shared';
 import type { PurchaseView, Warranty } from '../../../lib/purchase';
@@ -133,6 +134,10 @@ export default async function AssetDetail({
     requireReturnPhoto: false,
   }));
   const perms = await getMyPermissions();
+  const tireBooking =
+    equipmentKind === 'vehicle' && perms.has('asset.tireslot.book')
+      ? await apiFetch<AssetTireBookingView>(`/assets/${id}/tire-booking`).catch(() => null)
+      : null;
   const abilities = assetAbilities(perms);
   const { canEdit, canMove, canCarrier, canIssue, canManagePhotos, canEditPurchase } = abilities;
   const active = await getActiveModules();
@@ -781,7 +786,15 @@ export default async function AssetDetail({
         <MaintenancePanel assetId={asset.id} summary={maintenance} canEdit={canEdit} />
       )}
 
-      {tires && <TiresPanel assetId={asset.id} tires={tires} canEdit={canEdit} />}
+      {tires && (
+        <TiresPanel
+          assetId={asset.id}
+          tires={tires}
+          canEdit={canEdit}
+          booking={tireBooking}
+          canManageSlots={perms.has('asset.tireslot.manage')}
+        />
+      )}
 
       <div id="servis" className="scroll-mt-4" />
       <Section

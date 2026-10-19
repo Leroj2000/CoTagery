@@ -2,8 +2,10 @@ import {
   TIRE_AXLE_LABELS,
   TIRE_SEASON_LABELS,
   formatTireSize,
+  type AssetTireBookingView,
   type AssetTireView,
 } from '@tagery/shared';
+import { TireBookingBox } from '../../tire-booking-box';
 import { Badge, Section } from '../../ui';
 import { ActionForm, type Field } from '../../action-form';
 import { ActionButton } from '../../action-button';
@@ -114,15 +116,21 @@ export function TiresPanel({
   assetId,
   tires,
   canEdit,
+  booking = null,
+  canManageSlots = false,
 }: {
   assetId: string;
   tires: AssetTireView[];
   canEdit: boolean;
+  /** Termín přezutí (jen vozidla s modulem a oprávněním k rezervaci). */
+  booking?: AssetTireBookingView | null;
+  canManageSlots?: boolean;
 }) {
   const sets = groupTireSets(tires);
   return (
     <Section title="Pneumatiky" description="Sady pneumatik – rozměry po nápravách, přezutí">
       <div className="flex flex-col gap-3">
+        {booking && <TireBookingBox view={booking} canComplete={canManageSlots} />}
         {sets.length === 0 && <p className="text-sm text-slate-400">Zatím žádné pneumatiky.</p>}
         <div className="grid gap-3 md:grid-cols-2">
           {sets.map((s) => (
