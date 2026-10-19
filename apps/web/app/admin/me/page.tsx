@@ -3,6 +3,8 @@ import { apiFetch, getMyPermissions } from '../../lib/server-api';
 import type { Asset } from '../../lib/types';
 import { EmptyState, PageHeader, Section, StatusBadge } from '../ui';
 import { MyWorkflows } from './my-workflows';
+import { TireBookingBox } from '../tire-booking-box';
+import type { AssetTireBookingView } from '@tagery/shared';
 
 interface PersonalView {
   linked: boolean;
@@ -32,6 +34,13 @@ export default async function MyPage() {
       recipientName: string;
     }[];
   }>('/personal-workflows/me').catch(() => ({ handoffs: [] }));
+  // Přezutí: vozidla, která držím nebo za ně odpovídám (modul Vozidla; jinak 403 → nic).
+  const tires = perms.has('asset.tireslot.book')
+    ? await apiFetch<{ linked: boolean; vehicles: AssetTireBookingView[] }>('/tire-slots/mine')
+        .then((r) => r.vehicles)
+        .catch(() => [] as AssetTireBookingView[])
+    : [];
+  const canCompleteTires = perms.has('asset.tireslot.manage');
   const canView = perms.has('asset.item.view');
   const name = (id: string, title: string) =>
     canView ? (
@@ -87,6 +96,18 @@ export default async function MyPage() {
               </ul>
             ) : (
               <EmptyState>Zatím nemáš svěřenou žádnou položku.</EmptyState>
+            )}
+            {tires.length > 0 && (
+              <div className="mt-4 flex flex-col gap-3">
+                {tires.map((v) => (
+                  <TireBookingBox
+                    key={v.assetId}
+                    view={v}
+                    canComplete={canCompleteTires}
+                    showTitle
+                  />
+                ))}
+              </div>
             )}
           </Section>
           <Section title="Moje požadavky">

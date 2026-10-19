@@ -38,6 +38,8 @@ export const MCP_PERMISSION_COVERAGE: Record<string, McpDecision> = {
   'asset.scan.use': internal('skenování kódů vyžaduje kameru/čtečku – web a mobil'),
   'asset.selfloan.use': later('vlastní výpůjčka'),
   'asset.handoff.use': internal('předávka s potvrzením druhou stranou – web'),
+  'asset.tireslot.book': later('rezervace termínu přezutí z chatu'),
+  'asset.tireslot.manage': internal('vypisování termínů přezutí – web'),
   'asset.dispatch.bulk': internal('hromadný výdej – web'),
   'asset.inventory.manage': internal('inventury se dělají skenováním na webu/mobilu'),
   'asset.media.manage': internal('fotky a soubory – kanály zatím nepřenášejí přílohy'),
@@ -119,6 +121,7 @@ export const MCP_CONTROLLER_COVERAGE: Record<string, McpDecision> = {
   SpecsController: internal('technické specifikace – web'),
   // GET /assets/:id/tires → tire.list (jen čtení); úpravy a přezutí zůstávají na webu.
   TiresController: { actions: ['tire.list'] },
+  TireSlotsController: later('termíny přezutí – rezervace z chatu'),
   AccessPointsController: internal('modul Vstupy – web'),
   AnalyticsController: internal('statistiky – web'),
   DataCarriersController: internal('nosiče QR/NFC – web'),

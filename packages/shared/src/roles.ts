@@ -70,6 +70,7 @@ const EXTRA_LABELS: Record<string, string> = {
   configure: 'Nastavovat',
   verify: 'Ověřovat',
   handle: 'Vyřizovat',
+  book: 'Rezervovat',
 };
 
 /** Sekce matice podle modulu (pořadí = pořadí v UI). */
@@ -106,6 +107,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   'asset.reservation': 'Požadavky a rezervace',
   'asset.handoff': 'Předání mezi lidmi',
   'asset.selfloan': 'Samoobslužná výpůjčka',
+  'asset.tireslot': 'Termíny přezutí pneumatik',
   'carrier.item': 'Identifikátory (QR/NFC)',
   'object.item': 'Digitální objekty',
   'found.report': 'Nahlášené nálezy',

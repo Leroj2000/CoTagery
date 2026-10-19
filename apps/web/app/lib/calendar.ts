@@ -33,6 +33,7 @@ export const SOURCE_STYLES: Record<CalendarSource, string> = {
   service: 'bg-violet-50 text-violet-700 ring-violet-200',
   warranty: 'bg-red-50 text-red-700 ring-red-200',
   inventory: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  tire_slot: 'bg-orange-50 text-orange-700 ring-orange-200',
 };
 
 const partsFmt = new Intl.DateTimeFormat('en-US', {

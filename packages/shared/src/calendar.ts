@@ -11,6 +11,7 @@ export const CALENDAR_SOURCES = [
   'service',
   'warranty',
   'inventory',
+  'tire_slot',
 ] as const;
 export type CalendarSource = (typeof CALENDAR_SOURCES)[number];
 
@@ -21,6 +22,7 @@ export const CALENDAR_SOURCE_LABELS: Record<CalendarSource, string> = {
   service: 'Servis a revize',
   warranty: 'Konce záruk',
   inventory: 'Inventury',
+  tire_slot: 'Přezutí pneumatik',
 };
 
 /** Oprávnění potřebné k zobrazení zdroje (v kalendáři i při sdílení). */
@@ -31,6 +33,7 @@ export const CALENDAR_SOURCE_PERMISSIONS: Record<CalendarSource, string> = {
   service: 'asset.item.view',
   warranty: 'asset.purchase.view',
   inventory: 'asset.inventory.manage',
+  tire_slot: 'asset.tireslot.book',
 };
 
 export function isCalendarSource(value: string): value is CalendarSource {
