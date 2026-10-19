@@ -29,4 +29,4 @@ Telegram větev je pouze pro čtení; její prompty a odpovědi se do stavu zapi
 
 - Každé **nové oprávnění** (migrace katalogu / `@RequirePermission`) a každý **nový API controller** vyžaduje záznam v `apps/api/src/modules/channels/actions/mcp-coverage.ts`: buď `{ actions: ["…"] }` (existující akce v `ActionRegistry`), nebo `{ excluded: "krátký český důvod" }`.
 - Kontroluje to `mcp-coverage.spec.ts` v `pnpm test`; bez doplnění manifestu CI selže. Při přidání nové routy do existujícího controlleru zvaž, zda nemá být pokrytá MCP akcí.
-- Příklad: `TiresController` (pneumatiky položky, `/assets/:id/tires`) je zatím `internal("pneumatiky – web")` – oprávnění `asset.item.view` / `asset.item.update`, žádné nové.
+- Příklad: `TiresController` (pneumatiky položky, `/assets/:id/tires`) je pokrytý akcí `tire.list` (jen čtení, `asset.item.view`; položka podle id, inventárního čísla, SPZ nebo QR kódu). Úpravy a přezutí (`asset.item.update`) zůstávají jen na webu.

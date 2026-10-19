@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { z } from 'zod';
 import { TenantContextService } from '../../../core/tenancy/tenant-context.service';
 import { AssetService } from '../../asset/asset.service';
+import { TiresService } from '../../asset/tires.service';
+import { buildTireSets } from './tire-list';
 import type { CreateAssetDto } from '../../asset/dto/asset.dto';
 import type { Asset } from '../../asset/entities/asset.entity';
 import { defineAction, type AnyChannelAction, type ActionExecutionContext } from './channel-action';
@@ -32,7 +34,29 @@ export class V1ActionsProvider {
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly context: TenantContextService,
     private readonly assets: AssetService,
+    private readonly tires: TiresService,
   ) {}
+
+  /**
+   * Položka podle id (uuid), inventárního čísla, SPZ nebo kódu QR/štítku –
+   * vše v kontextu aktivní firmy (RLS); sken se nezaznamenává.
+   */
+  private async resolveAsset(ref: string): Promise<Asset> {
+    const value = ref.trim();
+    if (uuid.safeParse(value).success) return this.assets.get(value);
+    const rows: { id: string }[] = await this.context.manager.query(
+      `SELECT id FROM assets
+        WHERE tenant_id = $1
+          AND (lower(inventory_number) = lower($2)
+               OR upper(replace(registration_plate, ' ', '')) = upper(replace($2, ' ', '')))
+        ORDER BY created_at LIMIT 1`,
+      [this.context.tenantId, value],
+    );
+    if (rows[0]) return this.assets.get(rows[0].id);
+    const scan = await this.assets.scanLookup(value, undefined, undefined, false);
+    if (scan.asset?.id) return this.assets.get(scan.asset.id);
+    throw new NotFoundException('Položka nenalezena');
+  }
 
   private async locationNames(ids: (string | null)[]): Promise<Map<string, string>> {
     const unique = [...new Set(ids.filter((id): id is string => !!id))];
@@ -125,6 +149,35 @@ export class V1ActionsProvider {
             holderType: asset.currentHolderType,
             dueAt: asset.dueAt ? asset.dueAt.toISOString() : null,
             openIssues: issues.map((i) => ({ kind: i.kind, description: i.description })),
+          };
+        },
+      }),
+      defineAction({
+        key: 'tire.list',
+        title: 'Pneumatiky položky',
+        description:
+          'List tire sets of a vehicle or machine: which set is mounted, size per axle (e.g. 205/55 R16 91V), season, tread depth, DOT, brand, quantity and where unmounted sets are stored. Read-only.',
+        input: z.object({
+          asset: z
+            .string()
+            .min(1)
+            .max(120)
+            .describe('Item id from asset.search, inventory number, registration plate or QR code'),
+        }),
+        permission: 'asset.item.view',
+        kind: 'read',
+        requiresConfirmation: false,
+        scope: 'tenant',
+        execute: async (ctx, input) => {
+          const asset = await this.resolveAsset(input.asset);
+          const [card] = await this.cards(ctx, [asset]);
+          const rows = await this.tires.list(asset.id);
+          const names = await this.locationNames(rows.map((r) => r.storedLocationId));
+          const sets = buildTireSets(rows, names);
+          return {
+            asset: card,
+            mounted: sets.find((s) => s.mounted)?.setLabel ?? null,
+            sets,
           };
         },
       }),

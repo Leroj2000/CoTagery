@@ -20,7 +20,7 @@ const internal = (why: string): McpDecision => ({ excluded: why });
 /** Oprávnění (namespace.resource.action) → rozhodnutí. */
 export const MCP_PERMISSION_COVERAGE: Record<string, McpDecision> = {
   // --- pokryté akcemi v1 ---
-  'asset.item.view': { actions: ['asset.search', 'asset.get', 'attention.list'] },
+  'asset.item.view': { actions: ['asset.search', 'asset.get', 'attention.list', 'tire.list'] },
   'asset.item.create': { actions: ['asset.create'] },
   'asset.movement.perform': { actions: ['asset.move'] },
   'asset.issue.manage': { actions: ['issue.report'] },
@@ -114,7 +114,8 @@ export const MCP_CONTROLLER_COVERAGE: Record<string, McpDecision> = {
   ScanController: internal('skenování – web/mobil'),
   SpecCallbackController: internal('interní callback z n8n'),
   SpecsController: internal('technické specifikace – web'),
-  TiresController: internal('pneumatiky – web'),
+  // GET /assets/:id/tires → tire.list (jen čtení); úpravy a přezutí zůstávají na webu.
+  TiresController: { actions: ['tire.list'] },
   AccessPointsController: internal('modul Vstupy – web'),
   AnalyticsController: internal('statistiky – web'),
   DataCarriersController: internal('nosiče QR/NFC – web'),
