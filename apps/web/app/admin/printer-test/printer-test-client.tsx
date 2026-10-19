@@ -9,6 +9,7 @@ import { useNiimbotPrinter } from '../../lib/printing/use-niimbot-printer';
 import { setDebug, getLibraryVersion } from '../../lib/printing/niimbot-client';
 import { clampCopies } from '../../lib/printing/copies';
 import type { LabelData } from '../../lib/printing/types';
+import { bluefyOpenUrl } from '../../lib/printing/bluefy';
 
 /**
  * Diagnostická obrazovka: zadej QR/název/kód, zobraz náhled 384 × 240 px, stáhni
@@ -100,9 +101,21 @@ export function PrinterTestClient() {
 
             {!printer.supported ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
-                {printer.unsupportedKind === 'ios-no-bluetooth'
-                  ? 'Na iPhonu otevřete stránku v aplikaci Bluefy.'
-                  : 'Tento prohlížeč nepodporuje Web Bluetooth. Použijte Chrome/Edge.'}
+                {printer.unsupportedKind === 'ios-no-bluetooth' ? (
+                  <>
+                    Na iPhonu otevřete stránku v aplikaci Bluefy.{' '}
+                    <a
+                      className="font-semibold underline"
+                      href={
+                        typeof window === 'undefined' ? '#' : bluefyOpenUrl(window.location.href)
+                      }
+                    >
+                      Otevřít v Bluefy
+                    </a>
+                  </>
+                ) : (
+                  'Tento prohlížeč nepodporuje Web Bluetooth. Použijte Chrome/Edge.'
+                )}
               </p>
             ) : (
               <>

@@ -362,6 +362,7 @@ export default async function AssetDetail({
             ))}
             {qrCarrier && (
               <PrintLabelButton
+                autoOpenFromUrl
                 carrierId={qrCarrier.id}
                 data={{
                   qrValue: qrCarrier.resolverUrl ?? qrCarrier.publicCode,

@@ -6,7 +6,8 @@ import { PrinterError, type PrinterErrorKind } from './types';
  */
 export const PRINTER_MESSAGES: Record<PrinterErrorKind, string> = {
   unsupported: 'Tento prohlížeč nepodporuje přímý tisk přes Bluetooth.',
-  'ios-no-bluetooth': 'Pro tisk na iPhonu otevřete tuto stránku v aplikaci Bluefy.',
+  'ios-no-bluetooth':
+    'Safari ani Chrome na iPhonu neumí Bluetooth tiskárnu. Otevřete tuto stránku v aplikaci Bluefy – tisk se v ní otevře sám.',
   cancelled: 'Výběr tiskárny byl zrušen.',
   'connection-failed':
     'K tiskárně se nepodařilo připojit. Zkontrolujte, že je zapnutá a není připojená k jinému zařízení.',
@@ -24,7 +25,10 @@ export const PRINT_SUCCESS_MESSAGE = 'Štítek byl odeslán do tiskárny.';
  * `PrinterError` s českou hláškou. Syrový stack/pakety se do UI nedostanou –
  * pro diagnostiku je zabalíme do `cause` a zalogujeme jinde.
  */
-export function toPrinterError(err: unknown, fallback: PrinterErrorKind = 'print-failed'): PrinterError {
+export function toPrinterError(
+  err: unknown,
+  fallback: PrinterErrorKind = 'print-failed',
+): PrinterError {
   if (err instanceof PrinterError) return err;
 
   const name = (err as { name?: string })?.name ?? '';
@@ -32,7 +36,11 @@ export function toPrinterError(err: unknown, fallback: PrinterErrorKind = 'print
   const lower = message.toLowerCase();
 
   // Uživatel zavřel systémový výběr zařízení.
-  if (name === 'NotFoundError' || lower.includes('user cancelled') || lower.includes('user canceled')) {
+  if (
+    name === 'NotFoundError' ||
+    lower.includes('user cancelled') ||
+    lower.includes('user canceled')
+  ) {
     return new PrinterError('cancelled', PRINTER_MESSAGES.cancelled, err);
   }
   // Web Bluetooth není k dispozici.
