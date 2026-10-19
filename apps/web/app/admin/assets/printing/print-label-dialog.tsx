@@ -15,10 +15,13 @@ import {
   type LabelTemplatesView,
 } from '../../../lib/printing/label-templates';
 import { printSheet } from '../../../lib/printing/print-sheet';
+import {
+  BLUEFY_APP_STORE_URL,
+  bluefyOpenUrl,
+  printHandoffPageUrl,
+} from '../../../lib/printing/bluefy';
 import { LabelPreview } from './label-preview';
 import { PrinterStatus } from './printer-status';
-
-const BLUEFY_URL = 'https://apps.apple.com/us/app/bluefy-web-ble-browser/id1492822055';
 
 /**
  * Modální dialog pro tisk štítku: volba formátu (předvybraný výchozí formát
@@ -204,7 +207,7 @@ export function PrintLabelDialog({
               </button>
             </div>
           ) : !printer.supported ? (
-            <UnsupportedNotice kind={printer.unsupportedKind} />
+            <UnsupportedNotice kind={printer.unsupportedKind} carrierId={carrierId} />
           ) : (
             <>
               <PrinterStatus
@@ -294,22 +297,49 @@ export function PrintLabelDialog({
   );
 }
 
-function UnsupportedNotice({ kind }: { kind: 'ios-no-bluetooth' | 'unsupported' | null }) {
+function UnsupportedNotice({
+  kind,
+  carrierId,
+}: {
+  kind: 'ios-no-bluetooth' | 'unsupported' | null;
+  carrierId: string;
+}) {
+  const [notOpened, setNotOpened] = useState(false);
   if (kind === 'ios-no-bluetooth') {
+    // Hlavní akce: předat tuto stránku (s automatickým otevřením tisku) do Bluefy.
+    // Když se Bluefy neotevře (není nainstalované), stránka zůstane viditelná →
+    // po chvíli zvýrazníme odkaz na stažení.
+    const href =
+      typeof window === 'undefined'
+        ? '#'
+        : bluefyOpenUrl(printHandoffPageUrl(window.location.href, carrierId));
     return (
-      <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
-        <Info size={16} className="mt-0.5 shrink-0" />
-        <div>
+      <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+        <div className="flex items-start gap-2">
+          <Info size={16} className="mt-0.5 shrink-0" />
           <p>{PRINTER_MESSAGES['ios-no-bluetooth']}</p>
-          <a
-            href={BLUEFY_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-1 inline-block font-medium underline"
-          >
-            Stáhnout Bluefy
-          </a>
         </div>
+        <a
+          href={href}
+          data-testid="open-in-bluefy"
+          onClick={() => {
+            window.setTimeout(() => {
+              if (!document.hidden) setNotOpened(true);
+            }, 1500);
+          }}
+          className="inline-flex items-center justify-center rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+        >
+          Otevřít v Bluefy
+        </a>
+        {notOpened && <p className="text-xs">Bluefy se neotevřelo? Nejspíš není nainstalované.</p>}
+        <a
+          href={BLUEFY_APP_STORE_URL}
+          target="_blank"
+          rel="noreferrer"
+          className={notOpened ? 'font-semibold underline' : 'text-xs underline'}
+        >
+          Stáhnout Bluefy
+        </a>
       </div>
     );
   }

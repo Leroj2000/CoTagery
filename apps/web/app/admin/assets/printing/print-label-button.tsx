@@ -1,7 +1,8 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { shouldAutoOpenPrint } from '../../../lib/printing/bluefy';
 import { Printer } from 'lucide-react';
 import type { LabelData } from '../../../lib/printing/types';
 
@@ -18,8 +19,20 @@ const PrintLabelDialog = dynamic(
   { ssr: false },
 );
 
-export function PrintLabelButton({ data, carrierId }: { data: LabelData; carrierId: string }) {
+export function PrintLabelButton({
+  data,
+  carrierId,
+  autoOpenFromUrl = false,
+}: {
+  data: LabelData;
+  carrierId: string;
+  /** Otevřít dialog sám, když adresa nese `?print=<carrierId>` (předání z Chrome do Bluefy). */
+  autoOpenFromUrl?: boolean;
+}) {
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (autoOpenFromUrl && shouldAutoOpenPrint(window.location.search, carrierId)) setOpen(true);
+  }, [autoOpenFromUrl, carrierId]);
   return (
     <>
       <button
