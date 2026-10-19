@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager } from 'typeorm';
 
@@ -14,6 +14,8 @@ interface TenantStore {
   manager: EntityManager;
   scope?: EffectiveScope;
   userId?: string;
+  /** Akce po úspěšném COMMIT transakce (např. e-maily); jen v runInTenant. */
+  afterCommit?: (() => Promise<void> | void)[];
 }
 
 /**
@@ -24,6 +26,7 @@ interface TenantStore {
 @Injectable()
 export class TenantContextService {
   private readonly als = new AsyncLocalStorage<TenantStore>();
+  private readonly logger = new Logger(TenantContextService.name);
 
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
@@ -40,15 +43,41 @@ export class TenantContextService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
     await queryRunner.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantId]);
+    const afterCommit: (() => Promise<void> | void)[] = [];
     try {
-      const result = await this.als.run({ tenantId, manager: queryRunner.manager }, fn);
+      const result = await this.als.run(
+        { tenantId, manager: queryRunner.manager, afterCommit },
+        fn,
+      );
       await queryRunner.commitTransaction();
+      this.flushAfterCommit(afterCommit);
       return result;
     } catch (err) {
       await queryRunner.rollbackTransaction().catch(() => undefined);
       throw err;
     } finally {
       await queryRunner.release();
+    }
+  }
+
+  /**
+   * Naplánuje akci až po úspěšném COMMIT aktuální tenant transakce (při rollbacku
+   * se zahodí). Běží mimo kontext transakce, na pozadí; chyba akce se jen zaloguje
+   * a nikdy neovlivní výsledek requestu. Mimo transakci se spustí hned (na pozadí).
+   */
+  afterCommit(fn: () => Promise<void> | void): void {
+    const hooks = this.als.getStore()?.afterCommit;
+    if (hooks) hooks.push(fn);
+    else this.flushAfterCommit([fn]);
+  }
+
+  private flushAfterCommit(hooks: (() => Promise<void> | void)[]): void {
+    for (const hook of hooks) {
+      this.als.exit(() => {
+        void Promise.resolve()
+          .then(hook)
+          .catch((e: unknown) => this.logger.warn(`Akce po commitu selhala: ${String(e)}`));
+      });
     }
   }
 

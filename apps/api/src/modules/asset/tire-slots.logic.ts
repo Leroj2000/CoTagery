@@ -121,3 +121,16 @@ export function pickSeasonSet(
   );
   return sorted[0][0];
 }
+
+/**
+ * Dostane osoba rezervace e-mail o zrušení? Jen když má e-mail a nezrušil ji
+ * sám (rušící = osoba účtu, který akci provedl).
+ */
+export function cancelRecipient(
+  bookingPersonId: string | null,
+  email: string | null,
+  actorPersonId: string | null,
+): boolean {
+  if (!bookingPersonId || !email?.trim()) return false;
+  return bookingPersonId !== actorPersonId;
+}

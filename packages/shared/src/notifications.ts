@@ -221,6 +221,38 @@ export const NOTIFICATIONS: NotificationDef[] = [
       '{{firma}}',
   },
   {
+    key: 'tire_booking_cancelled',
+    group: 'requests',
+    label: 'Zrušený termín přezutí',
+    description:
+      'Když správce zruší termín přezutí nebo konkrétní rezervaci. Kdo ruší vlastní rezervaci, e-mail nedostane.',
+    recipients: 'Osoba, pro kterou byla rezervace (pokud má e-mail)',
+    system: false,
+    scope: 'tenant',
+    defaultEnabled: false,
+    variables: [
+      NAME,
+      FIRM,
+      v('polozka', 'Vozidlo', 'Škoda Octavia Combi'),
+      v('spz', 'SPZ', '8AR 3517'),
+      v('termin', 'Termín přezutí', 'čt 22. 10. 2026 8:00–8:30'),
+      v('misto', 'Místo', 'Dílna APRIS'),
+      v('zrusil', 'Kdo zrušil', 'Petr Dvořák'),
+      v('duvod', 'Co se stalo', 'Celý termín byl zrušen.'),
+      v('odkaz', 'Odkaz na detail vozidla', 'https://app.tagery.tech/admin/assets/…'),
+      v('odkaz_moje', 'Odkaz na Moje vybavení', 'https://app.tagery.tech/admin/me'),
+    ],
+    requiredVariables: [],
+    defaultSubject: 'Zrušený termín přezutí: {{polozka}} {{spz}}',
+    defaultBody:
+      'Ahoj {{jmeno}},\n\n' +
+      'termín přezutí pro {{polozka}} ({{spz}}) – {{termin}}, {{misto}} – byl zrušen.\n\n' +
+      '{{duvod}} Zrušil: {{zrusil}}.\n\n' +
+      'Vyber si prosím nový termín.\n\n' +
+      '[Otevřít vozidlo]({{odkaz}})\n\n' +
+      '[Moje vybavení]({{odkaz_moje}})',
+  },
+  {
     key: 'attention_digest',
     group: 'attention',
     label: 'Denní souhrn',

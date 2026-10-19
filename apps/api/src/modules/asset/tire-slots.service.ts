@@ -19,11 +19,13 @@ import { TenantContextService } from '../../core/tenancy/tenant-context.service'
 import { AssetService } from './asset.service';
 import type { Asset } from './entities/asset.entity';
 import { TiresService } from './tires.service';
+import { AssetNotificationsService, type TireCancelNotice } from './asset-notifications.service';
 import {
   CUTOFF_MS,
   bookingDenial,
   bookingPerson,
   cancelDenial,
+  cancelRecipient,
   generateSlotTimes,
   pickSeasonSet,
   slotDenial,
@@ -106,6 +108,7 @@ export class TireSlotsService {
     private readonly tires: TiresService,
     private readonly authz: AuthzService,
     private readonly audit: AuditService,
+    private readonly notifier: AssetNotificationsService,
   ) {}
 
   private get tenantId(): string {
@@ -325,6 +328,49 @@ export class TireSlotsService {
     return { linked: true, vehicles };
   }
 
+  /**
+   * E-maily o zrušení „někým jiným“: příjemce = osoba rezervace s e-mailem, kromě
+   * rušícího samotného. Podklady se načtou v transakci, odeslání až po COMMIT.
+   */
+  private async notifyCancelled(
+    user: RequestUser,
+    bookingIds: string[],
+    wholeSlot: boolean,
+  ): Promise<void> {
+    if (!bookingIds.length) return;
+    const me = await this.personId(user.userId);
+    const rows = await this.q<BookingRow & { email: string | null }>(
+      `SELECT x.*, p2.email FROM (${BOOKING_SELECT} WHERE b.tenant_id = $1 AND b.id = ANY($2::uuid[])) x
+         LEFT JOIN people p2 ON p2.id = x.person_id`,
+      [this.tenantId, bookingIds],
+    );
+    const recipients = rows.filter((r) => cancelRecipient(r.person_id, r.email, me));
+    if (!recipients.length) return;
+    const actor = await this.q<{ name: string | null }>(
+      `SELECT COALESCE(
+          (SELECT p.name FROM people p WHERE p.id = $2),
+          (SELECT u.name FROM users u WHERE u.id = $1),
+          'správce') AS name`,
+      [user.userId, me],
+    );
+    const cancelledBy = actor[0]?.name || 'správce';
+    const notices: TireCancelNotice[] = recipients.map((r) => ({
+      bookingId: r.id,
+      assetId: r.asset_id,
+      assetName: r.asset_name,
+      plate: r.plate,
+      personName: r.person_name ?? '',
+      email: r.email,
+      startsAt: new Date(r.starts_at),
+      endsAt: new Date(r.ends_at),
+      location: r.location,
+      cancelledBy,
+      wholeSlot,
+    }));
+    const tenantId = this.tenantId;
+    this.context.afterCommit(() => this.notifier.tireBookingCancelled(tenantId, notices));
+  }
+
   // --- Správa termínů ---
 
   async create(user: RequestUser, dto: CreateTireSlotsInput): Promise<{ created: number }> {
@@ -375,6 +421,11 @@ export class TireSlotsService {
       `UPDATE tire_change_bookings SET status = 'cancelled', cancelled_at = clock_timestamp(), cancelled_by = $3
         WHERE tenant_id = $1 AND slot_id = $2 AND status = 'booked' RETURNING id`,
       [this.tenantId, id, user.userId],
+    );
+    await this.notifyCancelled(
+      user,
+      cancelled.map((c) => c.id),
+      true,
     );
     await this.audit.record({
       action: 'asset.tireslot_cancelled',
@@ -494,6 +545,7 @@ export class TireSlotsService {
         WHERE id = $1`,
       [id, user.userId],
     );
+    await this.notifyCancelled(user, [id], false);
     await this.audit.record({
       action: 'asset.tirebooking_cancelled',
       targetType: 'asset',

@@ -6,6 +6,7 @@ import {
   bookingDenial,
   bookingPerson,
   cancelDenial,
+  cancelRecipient,
   generateSlotTimes,
   pickSeasonSet,
   slotDenial,
@@ -13,6 +14,7 @@ import {
 } from './tire-slots.logic';
 import { TireSlotsService } from './tire-slots.service';
 import { CreateTireSlotsDto } from './tire-slots.controller';
+import { AssetNotificationsService, type TireCancelNotice } from './asset-notifications.service';
 
 const H = 3_600_000;
 const NOW = new Date('2026-10-20T08:00:00Z');
@@ -152,6 +154,10 @@ interface Fake {
   active?: boolean;
   slot?: { starts_at: Date; capacity: number; booked: number; season?: string | null };
   booking?: { status: string; starts_at: Date; season: string | null };
+  /** Osoba přihlášeného účtu (default p1 = držitel). */
+  me?: string;
+  cancelledIds?: string[];
+  notifyRows?: { id: string; person_id: string | null; email: string | null }[];
 }
 
 function setup(f: Fake = {}) {
@@ -187,7 +193,14 @@ function setup(f: Fake = {}) {
     const s = sql.replace(/\s+/g, ' ');
     calls.push(s);
     if (/FROM assets WHERE id = \$1 FOR UPDATE/.test(s)) return [];
-    if (/FROM people p JOIN users/.test(s)) return [{ id: 'p1' }];
+    if (/p2.email/.test(s))
+      return (f.notifyRows ?? [{ id: 'b1', person_id: 'p1', email: 'jan@firma.example' }]).map(
+        (r) => ({ ...booking, ...r }),
+      );
+    if (/COALESCE\(/.test(s) && /FROM users u/.test(s)) return [{ name: 'Petr Správce' }];
+    if (/RETURNING id/.test(s) && /UPDATE tire_change_bookings/.test(s))
+      return (f.cancelledIds ?? []).map((id) => ({ id }));
+    if (/FROM people p JOIN users/.test(s)) return [{ id: f.me ?? 'p1' }];
     if (/asset_categories/.test(s)) return [{ equipment_kind: 'vehicle' }];
     if (/b.asset_id = \$2 AND b.status = 'booked' LIMIT 1/.test(s))
       return f.active ? [booking] : [];
@@ -200,7 +213,14 @@ function setup(f: Fake = {}) {
     if (/WHERE b.tenant_id = \$1 AND b.id = \$2/.test(s)) return [booking];
     return [];
   });
-  const context = { tenantId: 't1', scope: { type: 'ORGANIZATION' }, manager: { query } };
+  const hooks: (() => Promise<void> | void)[] = [];
+  const context = {
+    tenantId: 't1',
+    scope: { type: 'ORGANIZATION' },
+    manager: { query },
+    afterCommit: jest.fn((fn: () => Promise<void> | void) => hooks.push(fn)),
+  };
+  const notifier = { tireBookingCancelled: jest.fn(async () => undefined) };
   const asset = {
     id: 'a1',
     name: 'Octavia',
@@ -229,9 +249,10 @@ function setup(f: Fake = {}) {
     tires as never,
     authz as never,
     audit as never,
+    notifier as never,
   );
   const user = { userId: 'u1', tenantId: 't1', tenantRole: 'viewer' };
-  return { svc, calls, assets, tires, audit, user };
+  return { svc, calls, assets, tires, audit, user, hooks, notifier, context };
 }
 
 describe('TireSlotsService', () => {
@@ -293,5 +314,147 @@ describe('TireSlotsService', () => {
     const res = await svc.complete(user, 'b1');
     expect(res.mountedSet).toBeNull();
     expect(tires.mount).not.toHaveBeenCalled();
+  });
+});
+
+describe('e-mail o zrušení přezutí', () => {
+  beforeAll(() => jest.useFakeTimers({ now: NOW, doNotFake: ['nextTick', 'setImmediate'] }));
+  afterAll(() => jest.useRealTimers());
+
+  it('cancelRecipient: jen osoba s e-mailem a ne ten, kdo ruší', () => {
+    expect(cancelRecipient('p1', 'a@b.example', 'mgr')).toBe(true);
+    expect(cancelRecipient('p1', 'a@b.example', 'p1')).toBe(false);
+    expect(cancelRecipient('p1', null, 'mgr')).toBe(false);
+    expect(cancelRecipient(null, 'a@b.example', 'mgr')).toBe(false);
+    expect(cancelRecipient('p1', 'a@b.example', null)).toBe(true);
+  });
+
+  it('správce zruší konkrétní rezervaci → e-mail osobě rezervace až po commitu', async () => {
+    const { svc, user, hooks, notifier } = setup({ manager: true, me: 'pm' });
+    await svc.cancel(user, 'b1');
+    expect(notifier.tireBookingCancelled).not.toHaveBeenCalled();
+    expect(hooks).toHaveLength(1);
+    await hooks[0]();
+    const [tenant, notices] = notifier.tireBookingCancelled.mock.calls[0] as unknown as [
+      string,
+      TireCancelNotice[],
+    ];
+    expect(tenant).toBe('t1');
+    expect(notices).toEqual([
+      expect.objectContaining({
+        bookingId: 'b1',
+        email: 'jan@firma.example',
+        plate: '8AR 3517',
+        cancelledBy: 'Petr Správce',
+        wholeSlot: false,
+      }),
+    ]);
+  });
+
+  it('kdo ruší vlastní rezervaci, e-mail nedostane', async () => {
+    const { svc, user, hooks } = setup({ me: 'p1' });
+    await svc.cancel(user, 'b1');
+    expect(hooks).toHaveLength(0);
+  });
+
+  it('zrušení termínu → e-mail všem rezervovaným kromě rušícího a lidí bez e-mailu', async () => {
+    const { svc, user, hooks, notifier } = setup({
+      manager: true,
+      me: 'pm',
+      cancelledIds: ['b1', 'b2', 'b3'],
+      notifyRows: [
+        { id: 'b1', person_id: 'p1', email: 'jan@firma.example' },
+        { id: 'b2', person_id: 'pm', email: 'spravce@firma.example' },
+        { id: 'b3', person_id: 'p3', email: null },
+      ],
+    });
+    expect(await svc.cancelSlot(user, 's1')).toEqual({ cancelledBookings: 3 });
+    await hooks[0]();
+    const notices = (
+      notifier.tireBookingCancelled.mock.calls[0] as unknown as [string, TireCancelNotice[]]
+    )[1];
+    expect(notices.map((n) => n.bookingId)).toEqual(['b1']);
+    expect(notices[0].wholeSlot).toBe(true);
+  });
+
+  it('zrušení termínu bez rezervací nic neplánuje', async () => {
+    const { svc, user, hooks } = setup({ manager: true, me: 'pm', cancelledIds: [] });
+    await svc.cancelSlot(user, 's1');
+    expect(hooks).toHaveLength(0);
+  });
+
+  describe('AssetNotificationsService.tireBookingCancelled', () => {
+    const notice = (id: string, email: string | null): TireCancelNotice => ({
+      bookingId: id,
+      assetId: 'a1',
+      assetName: 'Octavia',
+      plate: '8AR 3517',
+      personName: 'Jan',
+      email,
+      startsAt: new Date('2026-10-22T06:00:00Z'),
+      endsAt: new Date('2026-10-22T06:30:00Z'),
+      location: 'Dílna',
+      cancelledBy: 'Petr',
+      wholeSlot: true,
+    });
+    function make(enabled: boolean, send: jest.Mock) {
+      const notifications = {
+        isEnabled: jest.fn(async () => enabled),
+        send,
+        appUrl: (p: string) => `https://app.example${p}`,
+      };
+      const svc = new AssetNotificationsService(
+        {} as never,
+        {} as never,
+        notifications as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+      );
+      return { svc, notifications };
+    }
+
+    it('vypnutá notifikace (nastavení firmy) nic neposílá', async () => {
+      const send = jest.fn();
+      const { svc } = make(false, send);
+      await svc.tireBookingCancelled('t1', [notice('b1', 'a@b.example')]);
+      expect(send).not.toHaveBeenCalled();
+    });
+
+    it('pošle česky s vozidlem, SPZ, časem v Praze a odkazy; chyba jednoho nezastaví další', async () => {
+      const send = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('smtp down'))
+        .mockResolvedValue('sent');
+      const { svc } = make(true, send);
+      await expect(
+        svc.tireBookingCancelled('t1', [
+          notice('b1', 'a@b.example'),
+          notice('b2', null),
+          notice('b3', 'c@d.example'),
+        ]),
+      ).resolves.toBeUndefined();
+      expect(send).toHaveBeenCalledTimes(2);
+      const [key, opts] = send.mock.calls[1];
+      expect(key).toBe('tire_booking_cancelled');
+      expect(opts).toEqual(
+        expect.objectContaining({
+          tenantId: 't1',
+          to: 'c@d.example',
+          ref: 'b3',
+          vars: expect.objectContaining({
+            polozka: 'Octavia',
+            spz: '8AR 3517',
+            termin: 'čt 22. 10. 2026 8:00–8:30',
+            misto: 'Dílna',
+            zrusil: 'Petr',
+            duvod: 'Celý termín byl zrušen.',
+            odkaz: 'https://app.example/admin/assets/a1',
+            odkaz_moje: 'https://app.example/admin/me',
+          }),
+        }),
+      );
+    });
   });
 });
