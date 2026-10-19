@@ -30,6 +30,38 @@ function fmtDateTime(d: Date | null): string {
   }).format(d);
 }
 
+/** „čt 22. 10. 2026 8:00–8:30“ (pražský čas). */
+export function fmtSlotRange(start: Date, end: Date): string {
+  const day = new Intl.DateTimeFormat('cs-CZ', {
+    timeZone: TZ,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'numeric',
+    year: 'numeric',
+  }).format(start);
+  const time = new Intl.DateTimeFormat('cs-CZ', {
+    timeZone: TZ,
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  return `${day} ${time.format(start)}–${time.format(end)}`;
+}
+
+/** Podklad e-mailu o zrušené rezervaci přezutí (sestaví se uvnitř transakce). */
+export interface TireCancelNotice {
+  bookingId: string;
+  assetId: string;
+  assetName: string;
+  plate: string | null;
+  personName: string;
+  email: string | null;
+  startsAt: Date;
+  endsAt: Date;
+  location: string | null;
+  cancelledBy: string;
+  wholeSlot: boolean;
+}
+
 function pragueParts(now = new Date()): { day: string; hour: number } {
   const day = new Intl.DateTimeFormat('sv-SE', { timeZone: TZ }).format(now);
   const hour = Number(
@@ -159,6 +191,44 @@ export class AssetNotificationsService implements OnModuleInit, OnModuleDestroy,
       });
     } catch (err) {
       this.logger.warn(`Notifikace vyřízení požadavku selhala: ${String(err)}`);
+    }
+  }
+
+  /**
+   * Rezervace přezutí zrušená někým jiným (správce zrušil termín nebo rezervaci)
+   * → osoba rezervace. Volá se po COMMIT (mimo transakci), každému příjemci
+   * zvlášť; chyba jednoho e-mailu nezastaví ostatní ani zrušení.
+   */
+  async tireBookingCancelled(tenantId: string, notices: TireCancelNotice[]): Promise<void> {
+    try {
+      if (!notices.length) return;
+      if (!(await this.notifications.isEnabled('tire_booking_cancelled', tenantId))) return;
+    } catch (err) {
+      this.logger.warn(`Notifikace zrušeného přezutí selhala: ${String(err)}`);
+      return;
+    }
+    for (const n of notices) {
+      try {
+        if (!n.email) continue;
+        await this.notifications.send('tire_booking_cancelled', {
+          tenantId,
+          to: n.email,
+          ref: n.bookingId,
+          vars: {
+            jmeno: n.personName,
+            polozka: n.assetName,
+            spz: n.plate ?? 'bez SPZ',
+            termin: fmtSlotRange(n.startsAt, n.endsAt),
+            misto: n.location ?? 'místo neuvedeno',
+            zrusil: n.cancelledBy,
+            duvod: n.wholeSlot ? 'Celý termín byl zrušen.' : 'Tvoje rezervace byla zrušena.',
+            odkaz: this.notifications.appUrl(`/admin/assets/${n.assetId}`),
+            odkaz_moje: this.notifications.appUrl('/admin/me'),
+          },
+        });
+      } catch (err) {
+        this.logger.warn(`Notifikace zrušeného přezutí pro ${n.bookingId} selhala: ${String(err)}`);
+      }
     }
   }
 
