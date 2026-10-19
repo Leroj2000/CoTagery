@@ -46,3 +46,4 @@ export * from './location-types';
 export * from './notifications';
 export * from './calendar';
 export * from './tires';
+export * from './tire-slots';

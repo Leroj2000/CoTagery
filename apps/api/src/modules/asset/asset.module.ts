@@ -42,6 +42,8 @@ import { ManualsController } from './manuals.controller';
 import { ManualCallbackController } from './manual-callback.controller';
 import { SpecsController } from './specs.controller';
 import { TiresController } from './tires.controller';
+import { TireSlotsController } from './tire-slots.controller';
+import { TireSlotsService } from './tire-slots.service';
 import { SpecCallbackController } from './spec-callback.controller';
 import { PurchaseController } from './purchase.controller';
 import { AssetIoController } from './asset-io.controller';
@@ -92,6 +94,7 @@ import { PersonalWorkflowsController } from './personal-workflows.controller';
     ManualCallbackController,
     SpecsController,
     TiresController,
+    TireSlotsController,
     SpecCallbackController,
     PurchaseController,
   ],
@@ -106,6 +109,7 @@ import { PersonalWorkflowsController } from './personal-workflows.controller';
     ManualCallbackService,
     SpecsService,
     TiresService,
+    TireSlotsService,
     SpecCallbackService,
     PurchaseService,
     AssetIoService,

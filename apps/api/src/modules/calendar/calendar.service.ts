@@ -54,6 +54,7 @@ const ASSET_SOURCES: ReadonlySet<CalendarSource> = new Set([
   'service',
   'warranty',
   'inventory',
+  'tire_slot',
 ]);
 
 interface CollectOptions {
@@ -97,6 +98,9 @@ export class CalendarService {
     for (const source of CALENDAR_SOURCES) {
       if (ASSET_SOURCES.has(source) && !fullScope) continue;
       if (source === 'inventory' && !(await this.authz.isModuleActive(user, 'inventory'))) {
+        continue;
+      }
+      if (source === 'tire_slot' && !(await this.authz.isModuleActive(user, 'vehicles'))) {
         continue;
       }
       const decision = await this.authz.can(user, CALENDAR_SOURCE_PERMISSIONS[source]);
@@ -313,6 +317,51 @@ export class CalendarService {
           end,
           allDay: true,
           href: opts.public ? null : `/admin/inventory/${r.id}`,
+        });
+      }
+    }
+
+    if (want.has('tire_slot')) {
+      // Termíny přezutí i se SPZ rezervovaných vozidel (schváleno i pro veřejné
+      // sdílení); jména lidí jen v přihlášeném kalendáři.
+      const rows: {
+        id: string;
+        starts_at: Date;
+        ends_at: Date;
+        location: string | null;
+        capacity: number;
+        plates: string[] | null;
+        people: string[] | null;
+      }[] = await q.query(
+        `SELECT s.id, s.starts_at, s.ends_at, s.location, s.capacity,
+                array_remove(array_agg(COALESCE(a.registration_plate, a.name) ORDER BY b.created_at), NULL) AS plates,
+                array_remove(array_agg(p.name ORDER BY b.created_at), NULL) AS people
+           FROM tire_change_slots s
+           LEFT JOIN tire_change_bookings b
+             ON b.slot_id = s.id AND b.tenant_id = s.tenant_id AND b.status IN ('booked', 'done')
+           LEFT JOIN assets a ON a.id = b.asset_id AND a.tenant_id = s.tenant_id
+           LEFT JOIN people p ON p.id = b.person_id AND p.tenant_id = s.tenant_id
+          WHERE s.tenant_id = $1 AND s.cancelled_at IS NULL AND s.starts_at < $3 AND s.ends_at >= $2
+          GROUP BY s.id
+          ORDER BY s.starts_at LIMIT 2000`,
+        [tenantId, from, to],
+      );
+      for (const r of rows) {
+        const plates = r.plates ?? [];
+        const free = r.capacity - plates.length;
+        const title = plates.length
+          ? `Přezutí: ${plates.join(', ')}${free > 0 ? ` (volno ${free})` : ''}`
+          : 'Přezutí – volný termín';
+        items.push({
+          id: `tire_slot:${r.id}`,
+          source: 'tire_slot',
+          title,
+          start: new Date(r.starts_at).toISOString(),
+          end: new Date(r.ends_at).toISOString(),
+          allDay: false,
+          location: r.location,
+          description: opts.public || !r.people?.length ? null : r.people.join(', '),
+          href: opts.public ? null : '/admin/calendar?tab=tires',
         });
       }
     }
