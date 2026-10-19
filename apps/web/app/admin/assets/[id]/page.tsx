@@ -5,6 +5,7 @@ import { Package, Home, MapPin, User, CalendarClock, Box, Clock, QrCode } from '
 import { apiFetch, ApiError, getMyPermissions } from '../../../lib/server-api';
 import { locationPath } from '../../../lib/location-path';
 import { assetAbilities, NO_PERMISSION_NOTE } from '../../../lib/abilities';
+import { detailActions } from './action-bar';
 import type {
   Asset,
   Movement,
@@ -132,8 +133,8 @@ export default async function AssetDetail({
     requireReturnPhoto: false,
   }));
   const perms = await getMyPermissions();
-  const { canEdit, canMove, canCarrier, canIssue, canManagePhotos, canEditPurchase } =
-    assetAbilities(perms);
+  const abilities = assetAbilities(perms);
+  const { canEdit, canMove, canCarrier, canIssue, canManagePhotos, canEditPurchase } = abilities;
   const active = await getActiveModules();
   const purchase =
     active.has('purchase') && perms.has('asset.purchase.view')
@@ -336,6 +337,44 @@ export default async function AssetDetail({
           value={fmtDate(asset.dueAt)}
         />
       </div>
+
+      {/* Co lze s položkou udělat – hned pod stavem; tlačítka posunou na existující formuláře. */}
+      {(() => {
+        const bar = detailActions(abilities, {
+          canReturn,
+          otherActionCount: otherActions.length,
+        });
+        if (bar.length === 0 && !qrCarrier) return null;
+        return (
+          <nav aria-label="Akce s položkou" className="flex flex-wrap items-center gap-2">
+            {bar.map((a) => (
+              <a
+                key={a.key}
+                href={a.href}
+                className={
+                  a.primary
+                    ? 'inline-flex items-center rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700'
+                    : 'inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50'
+                }
+              >
+                {a.label}
+              </a>
+            ))}
+            {qrCarrier && (
+              <PrintLabelButton
+                carrierId={qrCarrier.id}
+                data={{
+                  qrValue: qrCarrier.resolverUrl ?? qrCarrier.publicCode,
+                  itemName: asset.name,
+                  assetCode: asset.inventoryNumber ?? qrCarrier.publicCode,
+                  category: asset.category ?? undefined,
+                  location: asset.homeLocationId ? locName.get(asset.homeLocationId) : undefined,
+                }}
+              />
+            )}
+          </nav>
+        );
+      })()}
 
       {canEdit && (
         <details id="edit-asset" open={!asset.homeLocationId}>
@@ -671,6 +710,7 @@ export default async function AssetDetail({
         </Section>
       )}
 
+      <div id="problemy" className="scroll-mt-4" />
       <Section
         title="Problémy / poškození"
         description="Nahlášení závady – condition je oddělený od půjčení"
@@ -742,6 +782,7 @@ export default async function AssetDetail({
 
       {tires && <TiresPanel assetId={asset.id} tires={tires} canEdit={canEdit} />}
 
+      <div id="servis" className="scroll-mt-4" />
       <Section
         title="Servis a revize"
         description="Servis, revize, kalibrace – s termínem příští kontroly (§17)"
