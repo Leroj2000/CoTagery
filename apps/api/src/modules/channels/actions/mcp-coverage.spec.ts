@@ -86,7 +86,12 @@ function discoverControllers(): ControllerInfo[] {
 }
 
 const registry = new ActionRegistry(
-  new V1ActionsProvider(undefined as never, undefined as never, undefined as never),
+  new V1ActionsProvider(
+    undefined as never,
+    undefined as never,
+    undefined as never,
+    undefined as never,
+  ),
 );
 const actionKeys = new Set(registry.list().map((a) => a.key));
 
