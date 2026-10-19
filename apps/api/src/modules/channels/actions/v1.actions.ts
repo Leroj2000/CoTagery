@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
+import { Asset as AssetEntity } from '../../asset/entities/asset.entity';
+import { buildCustody, type CustodyInfo } from './custody';
 import { z } from 'zod';
 import { TenantContextService } from '../../../core/tenancy/tenant-context.service';
 import { AssetService } from '../../asset/asset.service';
@@ -13,7 +15,7 @@ import { defineAction, type AnyChannelAction, type ActionExecutionContext } from
 const uuid = z.string().uuid();
 
 /** Bezpečný výřez položky pro kanály – jen pole potřebná v odpovědi. */
-export interface AssetCard {
+export interface AssetCard extends CustodyInfo {
   id: string;
   name: string;
   status: string;
@@ -68,8 +70,40 @@ export class V1ActionsProvider {
     return new Map(rows.map((r) => [r.id, r.name]));
   }
 
+  private async namesOf(table: 'people' | 'assets', ids: (string | null)[]) {
+    const unique = [...new Set(ids.filter((id): id is string => !!id))];
+    if (unique.length === 0) return new Map<string, string>();
+    const rows: { id: string; name: string }[] = await this.context.manager.query(
+      `SELECT id, name FROM ${table} WHERE tenant_id = $1 AND id = ANY($2::uuid[])`,
+      [this.context.tenantId, unique],
+    );
+    return new Map(rows.map((r) => [r.id, r.name]));
+  }
+
+  /** Poslední pohyb každé položky (typ + čas) – „od kdy a jak ji kdo má“. */
+  private async lastMoves(ids: string[]) {
+    if (ids.length === 0) return new Map<string, { type: string; createdAt: Date }>();
+    const rows: { asset_id: string; type: string; created_at: Date }[] =
+      await this.context.manager.query(
+        `SELECT DISTINCT ON (asset_id) asset_id, type, created_at FROM asset_movements
+          WHERE tenant_id = $1 AND asset_id = ANY($2::uuid[])
+          ORDER BY asset_id, created_at DESC`,
+        [this.context.tenantId, ids],
+      );
+    return new Map(
+      rows.map((r) => [r.asset_id, { type: r.type, createdAt: new Date(r.created_at) }]),
+    );
+  }
+
   private async cards(ctx: ActionExecutionContext, list: Asset[]): Promise<AssetCard[]> {
-    const names = await this.locationNames(list.map((a) => a.homeLocationId));
+    const holderIds = (type: string) =>
+      list.filter((a) => a.currentHolderType === type).map((a) => a.currentHolderId);
+    const [location, person, assetNames, moves] = await Promise.all([
+      this.locationNames([...list.map((a) => a.homeLocationId), ...holderIds('location')]),
+      this.namesOf('people', holderIds('person')),
+      this.namesOf('assets', holderIds('asset')),
+      this.lastMoves(list.map((a) => a.id)),
+    ]);
     return list.map((a) => ({
       id: a.id,
       name: a.name,
@@ -77,7 +111,17 @@ export class V1ActionsProvider {
       category: a.category ?? null,
       inventoryNumber: a.inventoryNumber ?? null,
       registrationPlate: a.registrationPlate ?? null,
-      location: a.homeLocationId ? (names.get(a.homeLocationId) ?? null) : null,
+      location: a.homeLocationId ? (location.get(a.homeLocationId) ?? null) : null,
+      ...buildCustody(
+        {
+          currentHolderType: a.currentHolderType ?? null,
+          currentHolderId: a.currentHolderId ?? null,
+          homeLocationId: a.homeLocationId ?? null,
+          dueAt: a.dueAt ?? null,
+        },
+        moves.get(a.id) ?? null,
+        { person, location, asset: assetNames },
+      ),
       url: ctx.webUrl(`/admin/assets/${a.id}`),
     }));
   }
@@ -111,7 +155,7 @@ export class V1ActionsProvider {
         key: 'asset.search',
         title: 'Hledat položky',
         description:
-          'Search items (assets) of the active organization by name, inventory number, serial number or licence plate.',
+          'Search items (assets) of the active organization by name, inventory number, serial number or licence plate. Each item includes who holds it (holder), loan/assignment, since, due date, overdue and belongsTo.',
         input: z.object({
           query: z.string().min(1).max(200).describe('Search text'),
           limit: z.number().int().min(1).max(20).optional(),
@@ -126,10 +170,42 @@ export class V1ActionsProvider {
         },
       }),
       defineAction({
+        key: 'asset.held_by',
+        title: 'Co má osoba',
+        description:
+          'List items currently held by a person (e.g. "what does Jan Novák have"): loans and assignments with due dates and overdue flag. Read-only.',
+        input: z.object({
+          person: z.string().min(2).max(120).describe('Person name or part of it'),
+          limit: z.number().int().min(1).max(50).optional(),
+        }),
+        permission: 'asset.item.view',
+        kind: 'read',
+        requiresConfirmation: false,
+        scope: 'tenant',
+        execute: async (ctx, input) => {
+          const people: { id: string; name: string }[] = await this.context.manager.query(
+            `SELECT id, name FROM people
+              WHERE tenant_id = $1 AND name ILIKE '%' || $2 || '%'
+              ORDER BY name LIMIT 10`,
+            [this.context.tenantId, input.person.trim()],
+          );
+          if (people.length === 0) return { people: [], total: 0, items: [] };
+          const held = await this.context.manager.getRepository(AssetEntity).find({
+            where: { currentHolderType: 'person', currentHolderId: In(people.map((p) => p.id)) },
+            order: { name: 'ASC' },
+          });
+          return {
+            people: people.map((p) => p.name),
+            total: held.length,
+            items: await this.cards(ctx, held.slice(0, input.limit ?? 20)),
+          };
+        },
+      }),
+      defineAction({
         key: 'asset.get',
         title: 'Detail položky',
         description:
-          'Get item detail: where it is, who holds it, status, due date of return and open issues.',
+          'Get item detail: who holds it (person name), loan or assignment, since when, return-by date, overdue, home location (belongsTo), status and open issues.',
         input: z.object({ assetId: uuid.describe('Item id from asset.search') }),
         permission: 'asset.item.view',
         kind: 'read',
@@ -147,7 +223,6 @@ export class V1ActionsProvider {
             model: asset.model ?? null,
             serialNumber: asset.serialNumber ?? null,
             holderType: asset.currentHolderType,
-            dueAt: asset.dueAt ? asset.dueAt.toISOString() : null,
             openIssues: issues.map((i) => ({ kind: i.kind, description: i.description })),
           };
         },

@@ -20,7 +20,9 @@ const internal = (why: string): McpDecision => ({ excluded: why });
 /** Oprávnění (namespace.resource.action) → rozhodnutí. */
 export const MCP_PERMISSION_COVERAGE: Record<string, McpDecision> = {
   // --- pokryté akcemi v1 ---
-  'asset.item.view': { actions: ['asset.search', 'asset.get', 'attention.list', 'tire.list'] },
+  'asset.item.view': {
+    actions: ['asset.search', 'asset.get', 'asset.held_by', 'attention.list', 'tire.list'],
+  },
   'asset.item.create': { actions: ['asset.create'] },
   'asset.movement.perform': { actions: ['asset.move'] },
   'asset.issue.manage': { actions: ['issue.report'] },
@@ -92,6 +94,7 @@ export const MCP_CONTROLLER_COVERAGE: Record<string, McpDecision> = {
     actions: [
       'asset.search',
       'asset.get',
+      'asset.held_by',
       'asset.create',
       'asset.move',
       'issue.report',
