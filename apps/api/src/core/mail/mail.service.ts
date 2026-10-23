@@ -19,6 +19,16 @@ export interface OutgoingMail {
   html: string;
   /** Data pro webhook transport (n8n) – zachovává dřívější tvar `{type, …}`. */
   webhookPayload?: Record<string, unknown>;
+  /** Přílohy (např. iCalendar .ics); přes SMTP i webhook (text v `content`). */
+  attachments?: MailAttachment[];
+}
+
+export interface MailAttachment {
+  filename: string;
+  /** Textový obsah přílohy (UTF-8). */
+  content: string;
+  /** Např. `text/calendar; charset=utf-8; method=PUBLISH`. */
+  contentType: string;
 }
 
 export interface SendResult {
@@ -74,6 +84,15 @@ export class MailService {
           subject: mail.subject,
           text: mail.text,
           html: mail.html,
+          ...(mail.attachments?.length
+            ? {
+                attachments: mail.attachments.map((a) => ({
+                  filename: a.filename,
+                  content: a.content,
+                  contentType: a.contentType,
+                })),
+              }
+            : {}),
         });
         return { status: 'sent' };
       } catch (err) {
@@ -94,6 +113,7 @@ export class MailService {
             subject: mail.subject,
             text: mail.text,
             html: mail.html,
+            ...(mail.attachments?.length ? { attachments: mail.attachments } : {}),
           }),
         });
         return res.ok ? { status: 'sent' } : { status: 'failed', error: `webhook ${res.status}` };

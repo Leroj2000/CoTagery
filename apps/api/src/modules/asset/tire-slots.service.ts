@@ -19,7 +19,11 @@ import { TenantContextService } from '../../core/tenancy/tenant-context.service'
 import { AssetService } from './asset.service';
 import type { Asset } from './entities/asset.entity';
 import { TiresService } from './tires.service';
-import { AssetNotificationsService, type TireCancelNotice } from './asset-notifications.service';
+import {
+  AssetNotificationsService,
+  type TireBookedNotice,
+  type TireCancelNotice,
+} from './asset-notifications.service';
 import {
   CUTOFF_MS,
   bookingDenial,
@@ -371,6 +375,55 @@ export class TireSlotsService {
     this.context.afterCommit(() => this.notifier.tireBookingCancelled(tenantId, notices));
   }
 
+  /**
+   * E-mail (s .ics) o nové rezervaci: kdo termín vypsal, kdo rezervoval a osoba
+   * rezervace. Podklady v transakci, odeslání až po COMMIT.
+   */
+  private async notifyBooked(user: RequestUser, bookingId: string): Promise<void> {
+    const rows = await this.q<
+      BookingRow & {
+        person_email: string | null;
+        booker_name: string | null;
+        booker_email: string | null;
+        creator_name: string | null;
+        creator_email: string | null;
+      }
+    >(
+      `SELECT x.*, p2.email AS person_email,
+              COALESCE(bp.name, bu.name) AS booker_name, bu.email AS booker_email,
+              COALESCE(cp.name, cu.name) AS creator_name, cu.email AS creator_email
+         FROM (${BOOKING_SELECT} WHERE b.tenant_id = $1 AND b.id = $2) x
+         JOIN tire_change_slots s2 ON s2.id = x.slot_id
+         LEFT JOIN people p2 ON p2.id = x.person_id
+         LEFT JOIN users bu ON bu.id = $3
+         LEFT JOIN people bp ON bp.user_id = bu.id AND bp.tenant_id = $1
+         LEFT JOIN users cu ON cu.id = s2.created_by
+         LEFT JOIN people cp ON cp.user_id = cu.id AND cp.tenant_id = $1`,
+      [this.tenantId, bookingId, user.userId],
+    );
+    const r = rows[0];
+    if (!r) return;
+    const bookedBy = r.booker_name || r.booker_email || 'neznámý uživatel';
+    const notice: TireBookedNotice = {
+      bookingId: r.id,
+      assetId: r.asset_id,
+      assetName: r.asset_name,
+      plate: r.plate,
+      startsAt: new Date(r.starts_at),
+      endsAt: new Date(r.ends_at),
+      location: r.location,
+      bookedBy,
+      bookedFor: r.person_name,
+      recipients: [
+        { name: r.creator_name, email: r.creator_email },
+        { name: r.booker_name, email: r.booker_email },
+        { name: r.person_name, email: r.person_email },
+      ],
+    };
+    const tenantId = this.tenantId;
+    this.context.afterCommit(() => this.notifier.tireBookingCreated(tenantId, notice));
+  }
+
   // --- Správa termínů ---
 
   async create(user: RequestUser, dto: CreateTireSlotsInput): Promise<{ created: number }> {
@@ -501,6 +554,7 @@ export class TireSlotsService {
        VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [this.tenantId, slotId, asset.id, personId, user.userId],
     );
+    await this.notifyBooked(user, rows[0].id);
     await this.audit.record({
       action: 'asset.tirebooking_created',
       targetType: 'asset',
