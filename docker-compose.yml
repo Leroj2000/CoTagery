@@ -97,7 +97,8 @@ services:
     restart: unless-stopped
     environment: *api-env
     ports:
-      - '3001:3001'
+      # Jen loopback – veřejně jde API přes Caddy (https://app.tagery.tech/api/v1). Web volá api:3001 v docker síti.
+      - '127.0.0.1:3001:3001'
     volumes:
       # Perzistentní lokální úložiště médií (fotky věcí) – přežije rebuild/recreate.
       - storage:/app/.storage
