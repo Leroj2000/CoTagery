@@ -14,8 +14,15 @@ export function parseCorsOrigins(value: string | undefined): string[] {
 async function bootstrap(): Promise<void> {
   // rawBody: potřebné pro ověření podpisu PSP webhooků (EPIC-17).
   const app = await NestFactory.create(AppModule, { rawBody: true });
-  const httpAdapter = app.getHttpAdapter().getInstance() as { disable?: (name: string) => void };
+  const httpAdapter = app.getHttpAdapter().getInstance() as {
+    disable?: (name: string) => void;
+    set?: (name: string, value: unknown) => void;
+  };
   httpAdapter.disable?.('x-powered-by');
+  // API běží za reverzní proxy (Caddy, docker sítě). Důvěřuj X-Forwarded-For jen od
+  // loopback/privátních hopů, aby req.ip byla skutečná IP klienta – jinak rate limity
+  // (login, resolver) sdílí jeden bucket s IP proxy pro všechny klienty.
+  httpAdapter.set?.('trust proxy', 'loopback, linklocal, uniquelocal');
   // Resolver hot path běží na /r/{code} mimo /api/v1 (krátká veřejná URL – ADR-0002).
   app.setGlobalPrefix('api/v1', {
     exclude: [
