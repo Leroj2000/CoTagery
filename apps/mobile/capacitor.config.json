@@ -1,0 +1,18 @@
+{
+  "appId": "tech.tagery.app",
+  "appName": "Tagery",
+  "webDir": "www",
+  "server": {
+    "url": "https://app.tagery.tech/admin",
+    "cleartext": false,
+    "allowNavigation": ["app.tagery.tech"],
+    "errorPath": "offline.html"
+  },
+  "appendUserAgent": "TageryApp",
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "automatic"
+  }
+}
