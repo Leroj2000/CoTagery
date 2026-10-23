@@ -10,6 +10,7 @@ import type { Reservation } from './entities/reservation.entity';
 import { AssetService, type AssetNotifier } from './asset.service';
 import { MaintenanceService } from './maintenance.service';
 import { PurchaseService } from './purchase.service';
+import { tireBookingAttachment } from './tire-booking-ics';
 
 const TZ = 'Europe/Prague';
 const HOUR_MS = 60 * 60 * 1000;
@@ -60,6 +61,38 @@ export interface TireCancelNotice {
   location: string | null;
   cancelledBy: string;
   wholeSlot: boolean;
+}
+
+/** Podklad e-mailu o nové rezervaci přezutí (sestaví se uvnitř transakce). */
+export interface TireBookedNotice {
+  bookingId: string;
+  assetId: string;
+  assetName: string;
+  plate: string | null;
+  startsAt: Date;
+  endsAt: Date;
+  location: string | null;
+  bookedBy: string;
+  bookedFor: string | null;
+  /** Kandidáti: vypsal termín, rezervoval, osoba rezervace (pořadí = priorita jména). */
+  recipients: { name: string | null; email: string | null }[];
+}
+
+/** Příjemci bez e-mailu vypadnou, duplicitní e-maily (bez ohledu na velikost) jednou. */
+export function tireBookedRecipients(
+  list: { name: string | null; email: string | null }[],
+): { name: string; email: string }[] {
+  const seen = new Set<string>();
+  const out: { name: string; email: string }[] = [];
+  for (const r of list) {
+    const email = r.email?.trim();
+    if (!email) continue;
+    const key = email.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ name: r.name?.trim() || email, email });
+  }
+  return out;
 }
 
 function pragueParts(now = new Date()): { day: string; hour: number } {
@@ -225,9 +258,77 @@ export class AssetNotificationsService implements OnModuleInit, OnModuleDestroy,
             odkaz: this.notifications.appUrl(`/admin/assets/${n.assetId}`),
             odkaz_moje: this.notifications.appUrl('/admin/me'),
           },
+          attachments: [
+            tireBookingAttachment(
+              {
+                bookingId: n.bookingId,
+                assetName: n.assetName,
+                plate: n.plate,
+                startsAt: n.startsAt,
+                endsAt: n.endsAt,
+                location: n.location,
+                url: this.notifications.appUrl(`/admin/assets/${n.assetId}`),
+              },
+              'CANCEL',
+            ),
+          ],
         });
       } catch (err) {
         this.logger.warn(`Notifikace zrušeného přezutí pro ${n.bookingId} selhala: ${String(err)}`);
+      }
+    }
+  }
+
+  /**
+   * Nová rezervace přezutí → kdo termín vypsal, kdo rezervoval a osoba rezervace
+   * (deduplikace podle e-mailu, bez e-mailu se přeskočí). Rezervujícímu se posílá
+   * i při rezervaci pro sebe – e-mail nese událost do kalendáře (.ics PUBLISH).
+   * Volá se po COMMIT; chyba jednoho e-mailu nezastaví ostatní.
+   */
+  async tireBookingCreated(tenantId: string, n: TireBookedNotice): Promise<void> {
+    try {
+      if (!(await this.notifications.isEnabled('tire_booking_created', tenantId))) return;
+    } catch (err) {
+      this.logger.warn(`Notifikace rezervace přezutí selhala: ${String(err)}`);
+      return;
+    }
+    const odkaz = this.notifications.appUrl(`/admin/assets/${n.assetId}`);
+    const termin = fmtSlotRange(n.startsAt, n.endsAt);
+    for (const r of tireBookedRecipients(n.recipients)) {
+      try {
+        await this.notifications.send('tire_booking_created', {
+          tenantId,
+          to: r.email,
+          ref: n.bookingId,
+          vars: {
+            jmeno: r.name,
+            polozka: n.assetName,
+            spz: n.plate ?? 'bez SPZ',
+            termin,
+            misto: n.location ?? 'místo neuvedeno',
+            rezervoval: n.bookedBy,
+            pro: n.bookedFor ?? n.bookedBy,
+            odkaz,
+            odkaz_moje: this.notifications.appUrl('/admin/me'),
+          },
+          attachments: [
+            tireBookingAttachment(
+              {
+                bookingId: n.bookingId,
+                assetName: n.assetName,
+                plate: n.plate,
+                startsAt: n.startsAt,
+                endsAt: n.endsAt,
+                location: n.location,
+                url: odkaz,
+                description: `Rezervoval: ${n.bookedBy}${n.bookedFor && n.bookedFor !== n.bookedBy ? `, pro: ${n.bookedFor}` : ''}`,
+              },
+              'PUBLISH',
+            ),
+          ],
+        });
+      } catch (err) {
+        this.logger.warn(`Notifikace rezervace přezutí pro ${n.bookingId} selhala: ${String(err)}`);
       }
     }
   }

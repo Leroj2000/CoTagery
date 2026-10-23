@@ -221,6 +221,39 @@ export const NOTIFICATIONS: NotificationDef[] = [
       '{{firma}}',
   },
   {
+    key: 'tire_booking_created',
+    group: 'requests',
+    label: 'Rezervace termínu přezutí',
+    description:
+      'Když si někdo zarezervuje termín přezutí pneumatik. E-mail obsahuje událost do kalendáře (.ics).',
+    recipients:
+      'Kdo termín vypsal, kdo rezervoval a osoba, pro kterou je rezervace (každý jednou, pokud má e-mail)',
+    system: false,
+    scope: 'tenant',
+    defaultEnabled: false,
+    variables: [
+      NAME,
+      FIRM,
+      v('polozka', 'Vozidlo', 'Škoda Octavia Combi'),
+      v('spz', 'SPZ', '8AR 3517'),
+      v('termin', 'Termín přezutí', 'čt 22. 10. 2026 8:00–8:30'),
+      v('misto', 'Místo', 'Dílna APRIS'),
+      v('rezervoval', 'Kdo rezervoval', 'Jan Novák'),
+      v('pro', 'Pro koho je rezervace', 'Jan Novák'),
+      v('odkaz', 'Odkaz na detail vozidla', 'https://app.tagery.tech/admin/assets/…'),
+      v('odkaz_moje', 'Odkaz na Moje vybavení', 'https://app.tagery.tech/admin/me'),
+    ],
+    requiredVariables: [],
+    defaultSubject: 'Termín přezutí: {{polozka}} {{spz}} – {{termin}}',
+    defaultBody:
+      'Ahoj {{jmeno}},\n\n' +
+      '{{rezervoval}} zarezervoval(a) termín přezutí pro {{polozka}} ({{spz}}).\n\n' +
+      'Kdy: {{termin}}\nKde: {{misto}}\nPro: {{pro}}\n\n' +
+      'Událost do kalendáře je v příloze (prezuti.ics).\n\n' +
+      '[Otevřít vozidlo]({{odkaz}})\n\n' +
+      '[Moje vybavení]({{odkaz_moje}})',
+  },
+  {
     key: 'tire_booking_cancelled',
     group: 'requests',
     label: 'Zrušený termín přezutí',

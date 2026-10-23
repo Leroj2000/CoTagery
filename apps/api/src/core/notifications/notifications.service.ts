@@ -17,7 +17,7 @@ import {
   type NotificationDef,
 } from '@tagery/shared';
 import { TenantContextService } from '../tenancy/tenant-context.service';
-import { MailService } from '../mail/mail.service';
+import { MailService, type MailAttachment } from '../mail/mail.service';
 import { AuthzService } from '../rbac/authz.service';
 import { AuditService } from '../rbac/audit.service';
 import type { RequestUser } from '../auth/jwt-auth.guard';
@@ -54,6 +54,8 @@ export interface SendOptions {
   vars: Record<string, string>;
   /** Reference pro idempotenci (např. id položky u denní upomínky). */
   ref?: string;
+  /** Přílohy e-mailu (např. .ics s termínem). */
+  attachments?: MailAttachment[];
 }
 
 interface SettingRow {
@@ -176,6 +178,7 @@ export class NotificationsService {
       const result = await this.mail.sendRaw({
         to: opts.to,
         ...email,
+        ...(opts.attachments?.length ? { attachments: opts.attachments } : {}),
         webhookPayload: {
           type: LEGACY_WEBHOOK_TYPE[key] ?? key,
           key,

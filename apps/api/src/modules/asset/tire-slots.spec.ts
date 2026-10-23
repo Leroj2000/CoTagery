@@ -14,7 +14,13 @@ import {
 } from './tire-slots.logic';
 import { TireSlotsService } from './tire-slots.service';
 import { CreateTireSlotsDto } from './tire-slots.controller';
-import { AssetNotificationsService, type TireCancelNotice } from './asset-notifications.service';
+import {
+  AssetNotificationsService,
+  tireBookedRecipients,
+  type TireBookedNotice,
+  type TireCancelNotice,
+} from './asset-notifications.service';
+import { buildTireBookingIcs, tireBookingAttachment } from './tire-booking-ics';
 
 const H = 3_600_000;
 const NOW = new Date('2026-10-20T08:00:00Z');
@@ -220,7 +226,10 @@ function setup(f: Fake = {}) {
     manager: { query },
     afterCommit: jest.fn((fn: () => Promise<void> | void) => hooks.push(fn)),
   };
-  const notifier = { tireBookingCancelled: jest.fn(async () => undefined) };
+  const notifier = {
+    tireBookingCancelled: jest.fn(async () => undefined),
+    tireBookingCreated: jest.fn(async () => undefined),
+  };
   const asset = {
     id: 'a1',
     name: 'Octavia',
@@ -455,6 +464,215 @@ describe('e-mail o zrušení přezutí', () => {
           }),
         }),
       );
+    });
+  });
+});
+
+describe('e-mail o rezervaci přezutí (.ics)', () => {
+  beforeAll(() => jest.useFakeTimers({ now: NOW, doNotFake: ['nextTick', 'setImmediate'] }));
+  afterAll(() => jest.useRealTimers());
+
+  it('rezervace naplánuje e-mail až po commitu: vypsal, rezervoval, osoba rezervace', async () => {
+    const { svc, user, hooks, notifier, context } = setup({
+      notifyRows: [
+        {
+          id: 'b1',
+          person_email: 'jan@firma.example',
+          booker_name: 'Jan',
+          booker_email: 'JAN@firma.example',
+          creator_name: 'Petr Správce',
+          creator_email: 'petr@firma.example',
+        } as never,
+      ],
+    });
+    await svc.book(user, 's1', 'a1');
+    expect(context.afterCommit).toHaveBeenCalledTimes(1);
+    expect(notifier.tireBookingCreated).not.toHaveBeenCalled();
+    await hooks[0]();
+    const [tenant, n] = notifier.tireBookingCreated.mock.calls[0] as unknown as [
+      string,
+      TireBookedNotice,
+    ];
+    expect(tenant).toBe('t1');
+    expect(n).toEqual(
+      expect.objectContaining({
+        bookingId: 'b1',
+        assetId: 'a1',
+        assetName: 'Octavia',
+        plate: '8AR 3517',
+        location: 'Dílna',
+        bookedBy: 'Jan',
+        bookedFor: 'Jan',
+      }),
+    );
+    expect(tireBookedRecipients(n.recipients)).toEqual([
+      { name: 'Petr Správce', email: 'petr@firma.example' },
+      { name: 'Jan', email: 'JAN@firma.example' },
+    ]);
+  });
+
+  it('tireBookedRecipients: deduplikace bez ohledu na velikost, bez e-mailu vypadne', () => {
+    expect(
+      tireBookedRecipients([
+        { name: 'A', email: 'a@x.example' },
+        { name: null, email: ' ' },
+        { name: 'B', email: null },
+        { name: 'A2', email: 'A@X.example' },
+        { name: null, email: 'c@x.example' },
+      ]),
+    ).toEqual([
+      { name: 'A', email: 'a@x.example' },
+      { name: 'c@x.example', email: 'c@x.example' },
+    ]);
+  });
+
+  const event = {
+    bookingId: 'b1',
+    assetName: 'Octavia; Combi, nová',
+    plate: '8AR 3517',
+    startsAt: new Date('2026-10-22T06:00:00Z'),
+    endsAt: new Date('2026-10-22T06:30:00Z'),
+    location: 'Dílna, Praha; dvůr\\B',
+    url: 'https://app.example/admin/assets/a1',
+    description: 'Rezervoval: Jan',
+  };
+
+  it('PUBLISH .ics: CRLF, UID, UTC časy, escapování, bez RSVP', () => {
+    const ics = buildTireBookingIcs(event, 'PUBLISH', new Date('2026-10-20T10:00:00Z'));
+    expect(ics.endsWith('\r\n')).toBe(true);
+    expect(ics.replace(/\r\n/g, '')).not.toMatch(/\n/);
+    const lines = ics.split('\r\n');
+    expect(lines).toEqual(
+      expect.arrayContaining([
+        'METHOD:PUBLISH',
+        'UID:tire-booking-b1@tagery.tech',
+        'DTSTAMP:20261020T100000Z',
+        'DTSTART:20261022T060000Z',
+        'DTEND:20261022T063000Z',
+        'SEQUENCE:0',
+        'STATUS:CONFIRMED',
+        'LOCATION:Dílna\\, Praha\\; dvůr\\\\B',
+      ]),
+    );
+    const unfolded = ics.replace(/\r\n /g, '');
+    expect(unfolded).toContain('SUMMARY:Přezutí pneumatik – Octavia\\; Combi\\, nová 8AR 3517\r\n');
+    expect(unfolded).toContain(
+      'DESCRIPTION:Rezervoval: Jan\\nhttps://app.example/admin/assets/a1\r\n',
+    );
+    expect(ics).not.toMatch(/ORGANIZER|ATTENDEE|RSVP/);
+    for (const l of lines) expect(Buffer.byteLength(l, 'utf8')).toBeLessThanOrEqual(75);
+  });
+
+  it('CANCEL .ics: stejné UID, vyšší SEQUENCE, STATUS:CANCELLED', () => {
+    const a = tireBookingAttachment(event, 'CANCEL');
+    expect(a.contentType).toBe('text/calendar; charset=utf-8; method=CANCEL');
+    expect(a.filename).toBe('prezuti-zruseno.ics');
+    expect(a.content).toContain('METHOD:CANCEL\r\n');
+    expect(a.content).toContain('UID:tire-booking-b1@tagery.tech\r\n');
+    expect(a.content).toContain('SEQUENCE:1\r\n');
+    expect(a.content).toContain('STATUS:CANCELLED\r\n');
+  });
+
+  describe('AssetNotificationsService.tireBookingCreated', () => {
+    const notice: TireBookedNotice = {
+      bookingId: 'b1',
+      assetId: 'a1',
+      assetName: 'Octavia',
+      plate: null,
+      startsAt: new Date('2026-10-22T06:00:00Z'),
+      endsAt: new Date('2026-10-22T06:30:00Z'),
+      location: null,
+      bookedBy: 'Petr Správce',
+      bookedFor: 'Jan',
+      recipients: [
+        { name: 'Petr Správce', email: 'petr@x.example' },
+        { name: 'Petr Správce', email: 'PETR@x.example' },
+        { name: 'Jan', email: 'jan@x.example' },
+        { name: 'Bez mailu', email: null },
+      ],
+    };
+    function make(enabled: boolean | Error, send: jest.Mock) {
+      const notifications = {
+        isEnabled: jest.fn(async () => {
+          if (enabled instanceof Error) throw enabled;
+          return enabled;
+        }),
+        send,
+        appUrl: (p: string) => `https://app.example${p}`,
+      };
+      const svc = new AssetNotificationsService(
+        {} as never,
+        {} as never,
+        notifications as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+      );
+      return svc;
+    }
+
+    it('vypnutá notifikace nic neposílá; chyba nastavení nevyhazuje', async () => {
+      const send = jest.fn();
+      await make(false, send).tireBookingCreated('t1', notice);
+      await expect(
+        make(new Error('db'), send).tireBookingCreated('t1', notice),
+      ).resolves.toBeUndefined();
+      expect(send).not.toHaveBeenCalled();
+    });
+
+    it('pošle každému jednou, česky s .ics PUBLISH; chyba jednoho nezastaví další', async () => {
+      const send = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('smtp down'))
+        .mockResolvedValue('sent');
+      await expect(make(true, send).tireBookingCreated('t1', notice)).resolves.toBeUndefined();
+      expect(send).toHaveBeenCalledTimes(2);
+      const [key, opts] = send.mock.calls[1];
+      expect(key).toBe('tire_booking_created');
+      expect(opts).toEqual(
+        expect.objectContaining({
+          tenantId: 't1',
+          to: 'jan@x.example',
+          ref: 'b1',
+          vars: expect.objectContaining({
+            jmeno: 'Jan',
+            polozka: 'Octavia',
+            spz: 'bez SPZ',
+            termin: 'čt 22. 10. 2026 8:00–8:30',
+            misto: 'místo neuvedeno',
+            rezervoval: 'Petr Správce',
+            pro: 'Jan',
+            odkaz: 'https://app.example/admin/assets/a1',
+            odkaz_moje: 'https://app.example/admin/me',
+          }),
+        }),
+      );
+      expect(opts.attachments).toHaveLength(1);
+      expect(opts.attachments[0].contentType).toBe('text/calendar; charset=utf-8; method=PUBLISH');
+      expect(opts.attachments[0].content).toContain('UID:tire-booking-b1@tagery.tech\r\n');
+    });
+
+    it('e-mail o zrušení nese .ics METHOD:CANCEL se stejným UID', async () => {
+      const send = jest.fn().mockResolvedValue('sent');
+      await make(true, send).tireBookingCancelled('t1', [
+        {
+          bookingId: 'b1',
+          assetId: 'a1',
+          assetName: 'Octavia',
+          plate: '8AR 3517',
+          personName: 'Jan',
+          email: 'jan@x.example',
+          startsAt: new Date('2026-10-22T06:00:00Z'),
+          endsAt: new Date('2026-10-22T06:30:00Z'),
+          location: 'Dílna',
+          cancelledBy: 'Petr',
+          wholeSlot: false,
+        },
+      ]);
+      const opts = send.mock.calls[0][1];
+      expect(opts.attachments[0].content).toContain('METHOD:CANCEL\r\n');
+      expect(opts.attachments[0].content).toContain('UID:tire-booking-b1@tagery.tech\r\n');
     });
   });
 });

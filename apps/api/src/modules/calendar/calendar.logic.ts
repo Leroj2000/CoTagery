@@ -60,7 +60,7 @@ export function sortItems(items: CalendarItem[]): CalendarItem[] {
 
 // --- iCalendar (RFC 5545) ---
 
-function icsEscape(value: string): string {
+export function icsEscape(value: string): string {
   return value
     .replace(/\\/g, '\\\\')
     .replace(/;/g, '\\;')
