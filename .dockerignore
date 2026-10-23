@@ -17,3 +17,6 @@ coverage
 !.env.example
 docs/inputs
 docs/inspiration
+# Nativní projekty mobilní aplikace (Capacitor) se v Docker obrazech nepoužívají
+apps/mobile/android
+apps/mobile/ios

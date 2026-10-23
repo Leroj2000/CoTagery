@@ -10,6 +10,9 @@ export default tseslint.config(
       '**/coverage/**',
       '**/.turbo/**',
       '**/next-env.d.ts',
+      // Nativní projekty Capacitoru (generovaný kód a kopie webDir)
+      'apps/mobile/android/**',
+      'apps/mobile/ios/**',
     ],
   },
   js.configs.recommended,

@@ -4,3 +4,5 @@ dist
 coverage
 pnpm-lock.yaml
 *.md
+apps/mobile/android
+apps/mobile/ios
