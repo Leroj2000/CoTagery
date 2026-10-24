@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { apiForwardHeaders } from '../../lib/forward-client-ip';
 import { apiBase, getAccessToken, setSessionCookies, type TokenPair } from '../../lib/session';
 
 /**
@@ -17,7 +18,11 @@ export async function POST(req: Request): Promise<NextResponse> {
 
   const res = await fetch(`${apiBase()}/api/v1/auth/switch-org`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    headers: {
+      ...apiForwardHeaders(req.headers),
+      'content-type': 'application/json',
+      authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify({ organizationId: body.organizationId }),
   });
   if (!res.ok) {

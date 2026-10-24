@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { apiForwardHeaders } from '../../../lib/forward-client-ip';
 import { apiBase } from '../../../lib/session';
 
 /** BFF: nastavení nového hesla dle tokenu (veřejné). */
@@ -6,7 +7,7 @@ export async function POST(req: Request): Promise<NextResponse> {
   const body = (await req.json().catch(() => ({}))) as { token?: string; newPassword?: string };
   const res = await fetch(`${apiBase()}/api/v1/auth/password-reset/confirm`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { ...apiForwardHeaders(req.headers), 'content-type': 'application/json' },
     body: JSON.stringify({ token: body.token ?? '', newPassword: body.newPassword ?? '' }),
   });
   if (!res.ok) {

@@ -1,3 +1,5 @@
+import { headers } from 'next/headers';
+import { apiForwardHeaders } from './forward-client-ip';
 import { apiBase, getAccessToken } from './session';
 
 export class ApiError extends Error {
@@ -16,9 +18,11 @@ export class ApiError extends Error {
  */
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = await getAccessToken();
+  const forward = apiForwardHeaders(await headers());
   const res = await fetch(`${apiBase()}/api/v1${path}`, {
     ...init,
     headers: {
+      ...forward,
       ...(init.headers ?? {}),
       ...(token ? { authorization: `Bearer ${token}` } : {}),
       ...(init.body ? { 'content-type': 'application/json' } : {}),
