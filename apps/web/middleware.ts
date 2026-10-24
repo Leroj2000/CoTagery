@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { apiForwardHeaders } from './app/lib/forward-client-ip';
 import { jwtMaxAge } from './app/lib/jwt';
 
 const ACCESS_COOKIE = 'tg_at';
@@ -95,7 +96,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   try {
     const res = await fetch(`${apiBase()}/api/v1/auth/refresh`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { ...apiForwardHeaders(req.headers), 'content-type': 'application/json' },
       body: JSON.stringify({ refreshToken: refresh }),
     });
     if (!res.ok) {

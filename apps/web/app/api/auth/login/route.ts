@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { apiForwardHeaders } from '../../../lib/forward-client-ip';
 import { apiBase, setSessionCookies, type TokenPair } from '../../../lib/session';
 
 /**
@@ -13,7 +14,7 @@ export async function POST(req: Request): Promise<NextResponse> {
 
   const res = await fetch(`${apiBase()}/api/v1/auth/login`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { ...apiForwardHeaders(req.headers), 'content-type': 'application/json' },
     body: JSON.stringify({ email: body.email, password: body.password }),
   });
 

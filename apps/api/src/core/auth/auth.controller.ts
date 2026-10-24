@@ -102,13 +102,17 @@ export class AuthController {
   }
 
   @Post('refresh')
-  refresh(@Body() dto: RefreshDto): Promise<TokenPair> {
+  async refresh(@Body() dto: RefreshDto, @Req() request: RequestAddress): Promise<TokenPair> {
+    // 60/15min per IP — looser than login (30/15min) so multi-tab + middleware refresh stay fine.
+    await this.assertRateLimit(`refresh:ip:${this.clientIp(request)}`, 60, 15 * 60);
     return this.auth.refresh(dto.refreshToken);
   }
 
   @Post('logout')
   @HttpCode(204)
-  async logout(@Body() dto: RefreshDto): Promise<void> {
+  async logout(@Body() dto: RefreshDto, @Req() request: RequestAddress): Promise<void> {
+    // Same order of magnitude as login; logout is infrequent.
+    await this.assertRateLimit(`logout:ip:${this.clientIp(request)}`, 30, 15 * 60);
     await this.auth.logout(dto.refreshToken);
   }
 
