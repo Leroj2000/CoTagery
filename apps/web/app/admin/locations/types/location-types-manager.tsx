@@ -7,7 +7,7 @@ import { Badge, Section } from '../../ui';
 import { LOCATION_CATEGORIES, type LocationTypeView } from '../location-types';
 
 const inputCls =
-  'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
+  'rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
 const iconBtn =
   'inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-40';
 

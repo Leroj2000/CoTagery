@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 import type { PlatformSettings } from '../../lib/platform';
 
 const inputCls =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (

@@ -42,7 +42,7 @@ const SAMPLE: LabelData = {
 const SIZE_LABELS: Record<LabelCellSize, string> = { S: 'Malé', M: 'Střední', L: 'Velké' };
 
 const inputCls =
-  'rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
+  'rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-base text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
 
 function newCell(kind: LabelCellKind): LabelCell {
   return {

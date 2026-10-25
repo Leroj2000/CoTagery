@@ -39,7 +39,7 @@ function AcceptInviteContent() {
                 type="password"
                 minLength={10}
                 required
-                className="mt-1 w-full rounded-lg border px-3 py-2"
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-base"
               />
             </label>
             {error && <p className="text-sm text-red-600">{error}</p>}

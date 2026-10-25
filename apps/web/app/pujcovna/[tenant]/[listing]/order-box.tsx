@@ -122,7 +122,7 @@ export function OrderBox({
 
   const today = new Date().toISOString().slice(0, 10);
   const inputCls =
-    'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
+    'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base shadow-sm focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
 
   return (
     <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">

@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Undo2, Loader2, Camera, AlertCircle } from 'lucide-react';
 
 const inputCls =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
 
 /**
  * Vrácení věci s fotkou stavu. Když je foto povinné (politika tenanta), bez něj

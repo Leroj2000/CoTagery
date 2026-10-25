@@ -77,7 +77,7 @@ export function MediaTimeline({ assetId, media }: { assetId: string; media: Asse
           <select
             value={phase}
             onChange={(e) => setPhase(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-base"
           >
             <option value="general">Obecné</option>
             <option value="at_loan">Při půjčení</option>
@@ -91,7 +91,7 @@ export function MediaTimeline({ assetId, media }: { assetId: string; media: Asse
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
             placeholder="např. škrábanec na krytu"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-base"
           />
         </div>
         <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">

@@ -88,7 +88,7 @@ export function DataTable({ head, rows }: { head: string[]; rows: ReactNode[][] 
                 resetPage();
               }}
               placeholder="Hledat v seznamu…"
-              className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm"
+              className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-base"
             />
           </label>
           <label>
@@ -99,7 +99,7 @@ export function DataTable({ head, rows }: { head: string[]; rows: ReactNode[][] 
                 setSortColumn(Number(event.target.value));
                 resetPage();
               }}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-base"
             >
               {head.map((label, index) => (
                 <option key={`${label}-${index}`} value={index}>
@@ -127,7 +127,7 @@ export function DataTable({ head, rows }: { head: string[]; rows: ReactNode[][] 
                 setPageSize(Number(event.target.value));
                 resetPage();
               }}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-base"
             >
               {PAGE_SIZES.map((size) => (
                 <option key={size} value={size}>

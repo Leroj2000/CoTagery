@@ -10,7 +10,7 @@ import { captureScanPosition } from '../../lib/scan-position';
 import { ManualPosition, type ManualCapture } from './manual-position';
 
 const inputCls =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
 
 /**
  * Identifikace kódu (kamera / ruční zadání / HW čtečka). Když kód vede na

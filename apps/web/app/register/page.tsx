@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Logo } from '../ui/logo';
 
 const cls =
-  'w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
+  'w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
 
 export default function RegisterPage() {
   const [sent, setSent] = useState(false);

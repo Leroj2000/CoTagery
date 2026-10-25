@@ -120,7 +120,7 @@ export function PrintLabelDialog({
                 setFormatKey(e.target.value);
                 setSheetStart(1);
               }}
-              className="rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              className="rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-base focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
             >
               <optgroup label="Tiskárna Niimbot">
                 {LABEL_FORMATS.filter((f) => f.kind === 'niimbot').map((f) => (
@@ -170,7 +170,7 @@ export function PrintLabelDialog({
                     value={copies}
                     disabled={sheetBusy}
                     onChange={(e) => setCopies(clampCopies(e.target.value))}
-                    className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-right text-base focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   />
                 </label>
                 <label className="flex flex-col gap-1 text-sm text-slate-700">
@@ -184,7 +184,7 @@ export function PrintLabelDialog({
                     onChange={(e) =>
                       setSheetStart(Math.min(perSheet, Math.max(1, Number(e.target.value) || 1)))
                     }
-                    className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-right text-base focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   />
                 </label>
               </div>
@@ -272,7 +272,7 @@ export function PrintLabelDialog({
                       value={copies}
                       disabled={busy}
                       onChange={(e) => setCopies(clampCopies(e.target.value))}
-                      className="w-20 rounded-lg border border-slate-300 px-2.5 py-1.5 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-slate-50"
+                      className="w-20 rounded-lg border border-slate-300 px-2.5 py-1.5 text-right text-base focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-slate-50"
                     />
                   </label>
 
