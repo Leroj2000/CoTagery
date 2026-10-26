@@ -66,5 +66,9 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Tagery potřebuje kameru ke skenování QR a čárových kódů.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Poloha se ukládá k záznamu skenu.</string>
 </dict>
 </plist>
