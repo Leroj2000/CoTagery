@@ -7,7 +7,10 @@ import { z } from 'zod';
 import { TenantContextService } from '../../../core/tenancy/tenant-context.service';
 import { AssetService } from '../../asset/asset.service';
 import { TiresService } from '../../asset/tires.service';
+import { TireSlotsService } from '../../asset/tire-slots.service';
+import type { RequestUser } from '../../../core/auth/jwt-auth.guard';
 import { buildTireSets } from './tire-list';
+import type { TireBookingView, TireSlotView } from '@tagery/shared';
 import type { CreateAssetDto } from '../../asset/dto/asset.dto';
 import type { Asset } from '../../asset/entities/asset.entity';
 import { defineAction, type AnyChannelAction, type ActionExecutionContext } from './channel-action';
@@ -37,6 +40,7 @@ export class V1ActionsProvider {
     private readonly context: TenantContextService,
     private readonly assets: AssetService,
     private readonly tires: TiresService,
+    private readonly tireSlots: TireSlotsService,
   ) {}
 
   /**
@@ -124,6 +128,13 @@ export class V1ActionsProvider {
       ),
       url: ctx.webUrl(`/admin/assets/${a.id}`),
     }));
+  }
+
+
+  /** RequestUser pro TireSlotsService (role bere AuthzService z členství). */
+  private requestUser(ctx: ActionExecutionContext): RequestUser {
+    if (!ctx.tenantId) throw new NotFoundException('Chybí kontext firmy');
+    return { userId: ctx.userId, tenantId: ctx.tenantId, tenantRole: '' };
   }
 
   actions(): AnyChannelAction[] {
@@ -400,7 +411,192 @@ export class V1ActionsProvider {
             kind: input.kind,
             description: input.description,
           });
+
           return { id: issue.id, url: ctx.webUrl(`/admin/assets/${input.assetId}`) };
+        },
+      }),
+      defineAction({
+        key: 'tireslot.list',
+        title: 'Termíny přezutí',
+        description:
+          'List tire-change (přezutí) slots in a date range. Returns free/bookable and occupied slots with time, place, capacity, booked count, season, bookable flag, and who holds each reservation (vehicle, plate, person). Read-only. Use tireslot.book to reserve.',
+        input: z.object({
+          from: z
+            .string()
+            .min(1)
+            .max(40)
+            .optional()
+            .describe('Range start ISO-8601 (default: 7 days ago)'),
+          to: z
+            .string()
+            .min(1)
+            .max(40)
+            .optional()
+            .describe('Range end ISO-8601 (default: 60 days ahead)'),
+        }),
+        permission: 'asset.tireslot.book',
+        kind: 'read',
+        requiresConfirmation: false,
+        scope: 'tenant',
+        execute: async (ctx, input) => {
+          const slots = await this.tireSlots.list(this.requestUser(ctx), input.from, input.to);
+          const free = slots.filter((s) => s.bookable);
+          return {
+            freeCount: free.length,
+            slotCount: slots.length,
+            free: free.map((s) => ({
+              id: s.id,
+              startsAt: s.startsAt,
+              endsAt: s.endsAt,
+              location: s.location,
+              note: s.note,
+              capacity: s.capacity,
+              booked: s.booked,
+              season: s.season,
+              bookable: s.bookable,
+            })),
+            slots: slots.map((s) => ({
+              id: s.id,
+              startsAt: s.startsAt,
+              endsAt: s.endsAt,
+              location: s.location,
+              note: s.note,
+              capacity: s.capacity,
+              booked: s.booked,
+              season: s.season,
+              bookable: s.bookable,
+              bookings: s.bookings.map((b: TireBookingView) => ({
+                id: b.id,
+                assetName: b.assetName,
+                plate: b.plate,
+                personName: b.personName,
+                status: b.status,
+              })),
+            })),
+          };
+        },
+      }),
+      defineAction({
+        key: 'tireslot.mine',
+        title: 'Moje přezutí',
+        description:
+          'My vehicles (held or responsible) and their tire-change slot reservations: current booking, whether I can book, denial reason, and nearest free slot suggestions. Read-only.',
+        input: z.object({}),
+        permission: 'asset.tireslot.book',
+        kind: 'read',
+        requiresConfirmation: false,
+        scope: 'tenant',
+        execute: async (ctx) => {
+          const mine = await this.tireSlots.mine(this.requestUser(ctx));
+          return {
+            linked: mine.linked,
+            vehicles: mine.vehicles.map((v) => ({
+              assetId: v.assetId,
+              assetName: v.assetName,
+              plate: v.plate,
+              canBook: v.canBook,
+              reason: v.reason,
+              booking: v.booking
+                ? {
+                    id: v.booking.id,
+                    slotId: v.booking.slotId,
+                    startsAt: v.booking.startsAt,
+                    endsAt: v.booking.endsAt,
+                    location: v.booking.location,
+                    season: v.booking.season,
+                    status: v.booking.status,
+                    changeable: v.booking.changeable,
+                    personName: v.booking.personName,
+                  }
+                : null,
+              suggestions: v.suggestions.map((s: TireSlotView) => ({
+                id: s.id,
+                startsAt: s.startsAt,
+                endsAt: s.endsAt,
+                location: s.location,
+                capacity: s.capacity,
+                booked: s.booked,
+                season: s.season,
+                bookable: s.bookable,
+              })),
+            })),
+          };
+        },
+      }),
+      defineAction({
+        key: 'tireslot.book',
+        title: 'Rezervovat přezutí',
+        description:
+          'Book a tire-change slot for a vehicle. Same rules as web: current holder or responsible person (no-holder vehicles: manager only), cutoff 24h before start, capacity default 1. Requires confirmation. Vehicle by id, inventory number, plate or QR.',
+        input: z.object({
+          slotId: uuid.describe('Slot id from tireslot.list or tireslot.mine suggestions'),
+          asset: z
+            .string()
+            .min(1)
+            .max(120)
+            .describe('Vehicle id, inventory number, registration plate or QR code'),
+        }),
+        permission: 'asset.tireslot.book',
+        kind: 'write',
+        requiresConfirmation: true,
+        scope: 'tenant',
+        summarize: (i) => `Rezervovat termín přezutí (${i.slotId.slice(0, 8)}…) pro vozidlo ${i.asset}`,
+        execute: async (ctx, input) => {
+          const asset = await this.resolveAsset(input.asset);
+          const booking = await this.tireSlots.book(
+            this.requestUser(ctx),
+            input.slotId,
+            asset.id,
+          );
+          return {
+            ...booking,
+            url: ctx.webUrl(`/admin/assets/${booking.assetId}`),
+          };
+        },
+      }),
+      defineAction({
+        key: 'tireslot.cancel',
+        title: 'Zrušit rezervaci přezutí',
+        description:
+          'Cancel own tire-change reservation (booking id from tireslot.mine). Cutoff 24h before start applies (managers later). Requires confirmation. Completing/Hotovo stays web-only.',
+        input: z.object({
+          bookingId: uuid.describe('Booking id from tireslot.mine'),
+        }),
+        permission: 'asset.tireslot.book',
+        kind: 'write',
+        requiresConfirmation: true,
+        scope: 'tenant',
+        summarize: (i) => `Zrušit rezervaci přezutí ${i.bookingId.slice(0, 8)}…`,
+        execute: async (ctx, input) => {
+          await this.tireSlots.cancel(this.requestUser(ctx), input.bookingId);
+          return { cancelled: true as const, bookingId: input.bookingId };
+        },
+      }),
+      defineAction({
+        key: 'tireslot.move',
+        title: 'Přesunout rezervaci přezutí',
+        description:
+          'Move a tire-change reservation to another free slot. Same cutoff and eligibility as cancel/book. Requires confirmation.',
+        input: z.object({
+          bookingId: uuid.describe('Booking id from tireslot.mine'),
+          slotId: uuid.describe('Target slot id from tireslot.list (bookable)'),
+        }),
+        permission: 'asset.tireslot.book',
+        kind: 'write',
+        requiresConfirmation: true,
+        scope: 'tenant',
+        summarize: (i) =>
+          `Přesunout rezervaci ${i.bookingId.slice(0, 8)}… na termín ${i.slotId.slice(0, 8)}…`,
+        execute: async (ctx, input) => {
+          const booking = await this.tireSlots.move(
+            this.requestUser(ctx),
+            input.bookingId,
+            input.slotId,
+          );
+          return {
+            ...booking,
+            url: ctx.webUrl(`/admin/assets/${booking.assetId}`),
+          };
         },
       }),
     ];

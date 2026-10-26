@@ -91,6 +91,7 @@ const registry = new ActionRegistry(
     undefined as never,
     undefined as never,
     undefined as never,
+    undefined as never,
   ),
 );
 const actionKeys = new Set(registry.list().map((a) => a.key));

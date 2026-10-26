@@ -92,6 +92,7 @@ describe('akce tire.list', () => {
       context as never,
       assets as never,
       tires as never,
+      undefined as never,
     );
     const action = provider.actions().find((a) => a.key === 'tire.list')!;
     const ctx = { webUrl: (p: string) => `https://app.tagery.tech${p}` } as ActionExecutionContext;

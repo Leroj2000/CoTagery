@@ -109,6 +109,7 @@ describe('MCP akce s držitelem', () => {
       context as never,
       assets as never,
       undefined as never,
+      undefined as never,
     );
     const ctx = { webUrl: (p: string) => `https://app.tagery.tech${p}` } as ActionExecutionContext;
     const action = (key: string) => provider.actions().find((a) => a.key === key)!;
