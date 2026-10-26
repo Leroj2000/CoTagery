@@ -70,5 +70,7 @@
 	<string>Tagery potřebuje kameru ke skenování QR a čárových kódů.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Poloha se ukládá k záznamu skenu.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Tagery potřebuje přístup k fotkám pro nahrání snímků k položce.</string>
 </dict>
 </plist>
