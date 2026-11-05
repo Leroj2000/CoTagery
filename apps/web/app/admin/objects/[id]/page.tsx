@@ -7,6 +7,8 @@ import { Section, Table, Badge, Mono } from '../../ui';
 import { ActionForm } from '../../action-form';
 import { ActionButton } from '../../action-button';
 import { NfcPairForm } from '../nfc-pair-form';
+import { CopyUrlButton } from '../../copy-url-button';
+import { resolverPublicUrl } from '../../../lib/resolver-url';
 import { addCarrierToObject, archiveObject } from '../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -67,22 +69,29 @@ export default async function ObjectDetail({ params }: { params: Promise<{ id: s
 
       <Section title={`Identifikátory (${carriers.length})`}>
         <Table
-          head={['QR', 'Kód', 'Typ', 'Stav', 'NFC']}
-          rows={carriers.map((c) => [
-            <Image
-              key="qr"
-              src={`/api/qr/${c.id}`}
-              alt={c.publicCode}
-              width={56}
-              height={56}
-              unoptimized
-              className="rounded border border-neutral-200 bg-white"
-            />,
-            <Mono key="code">{c.publicCode}</Mono>,
-            c.carrierType,
-            <Badge key="st">{c.status}</Badge>,
-            <NfcPairForm key="nfc" carrierId={c.id} objectId={object.id} />,
-          ])}
+          head={['QR', 'Kód', 'Veřejná URL', 'Typ', 'Stav', 'NFC']}
+          rows={carriers.map((c) => {
+            const url = resolverPublicUrl(c);
+            return [
+              <Image
+                key="qr"
+                src={`/api/qr/${c.id}`}
+                alt={c.publicCode}
+                width={56}
+                height={56}
+                unoptimized
+                className="rounded border border-neutral-200 bg-white"
+              />,
+              <Mono key="code">{c.publicCode}</Mono>,
+              <div key="url" className="flex max-w-xs flex-col gap-1">
+                <span className="break-all font-mono text-[11px] text-slate-600">{url}</span>
+                <CopyUrlButton value={url} />
+              </div>,
+              c.carrierType,
+              <Badge key="st">{c.status}</Badge>,
+              <NfcPairForm key="nfc" carrierId={c.id} objectId={object.id} />,
+            ];
+          })}
         />
       </Section>
     </div>
