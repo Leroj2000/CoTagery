@@ -69,7 +69,7 @@ export default async function ObjectDetail({ params }: { params: Promise<{ id: s
 
       <Section title={`Identifikátory (${carriers.length})`}>
         <Table
-          head={['QR', 'Kód', 'Veřejná URL', 'Typ', 'Stav', 'NFC']}
+          head={['QR', 'Kód', 'URL', 'Typ', 'Stav', 'NFC']}
           rows={carriers.map((c) => {
             const url = resolverPublicUrl(c);
             return [
@@ -83,10 +83,7 @@ export default async function ObjectDetail({ params }: { params: Promise<{ id: s
                 className="rounded border border-neutral-200 bg-white"
               />,
               <Mono key="code">{c.publicCode}</Mono>,
-              <div key="url" className="flex max-w-xs flex-col gap-1">
-                <span className="break-all font-mono text-[11px] text-slate-600">{url}</span>
-                <CopyUrlButton value={url} />
-              </div>,
+              <CopyUrlButton key="url" value={url} />,
               c.carrierType,
               <Badge key="st">{c.status}</Badge>,
               <NfcPairForm key="nfc" carrierId={c.id} objectId={object.id} />,

@@ -26,7 +26,7 @@ export function CopyUrlButton({
       className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 shadow-sm hover:bg-slate-50"
     >
       {copied ? <Check size={12} /> : <Copy size={12} />}
-      {copied ? 'Zkopírováno' : 'Kopírovat'}
+      {copied ? 'Zkopírováno' : label}
     </button>
   );
 }

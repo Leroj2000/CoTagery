@@ -264,13 +264,7 @@ export default async function AssetDetail({
                     Kód štítku
                   </p>
                   <Mono>{qrCarrier.publicCode}</Mono>
-                  <p className="mt-2 text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                    Veřejná URL
-                  </p>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                    <span className="break-all font-mono text-[11px] text-slate-600">
-                      {resolverPublicUrl(qrCarrier)}
-                    </span>
+                  <div className="mt-2">
                     <CopyUrlButton value={resolverPublicUrl(qrCarrier)} />
                   </div>
                 </div>
@@ -575,13 +569,7 @@ export default async function AssetDetail({
                     <div className="min-w-0">
                       <Mono>{c.publicCode}</Mono>
                       <p className="text-xs text-slate-400">{c.carrierType}</p>
-                      <p className="mt-2 text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                        Veřejná URL
-                      </p>
-                      <div className="mt-0.5 flex max-w-sm flex-wrap items-center gap-1.5">
-                        <span className="break-all font-mono text-[11px] text-slate-600">
-                          {resolverPublicUrl(c)}
-                        </span>
+                      <div className="mt-2">
                         <CopyUrlButton value={resolverPublicUrl(c)} />
                       </div>
                       {c.externalCode && (
