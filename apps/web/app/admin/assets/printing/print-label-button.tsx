@@ -23,29 +23,40 @@ export function PrintLabelButton({
   data,
   carrierId,
   autoOpenFromUrl = false,
+  variant = 'toolbar',
 }: {
   data: LabelData;
   carrierId: string;
   /** Otevřít dialog sám, když adresa nese `?print=<carrierId>` (předání z Chrome do Bluefy). */
   autoOpenFromUrl?: boolean;
+  /** `card` = primární plná šířka v řadě se „Kopírovat URL“. `toolbar` = kompaktní (akční lišta, průvodce). */
+  variant?: 'toolbar' | 'card';
 }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (autoOpenFromUrl && shouldAutoOpenPrint(window.location.search, carrierId)) setOpen(true);
   }, [autoOpenFromUrl, carrierId]);
+  const card = variant === 'card';
   return (
-    <>
+    <div className={card ? 'w-full' : 'inline-flex'}>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+        className={
+          card
+            ? 'inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-transparent bg-brand-600 text-sm font-medium text-white hover:bg-brand-700 sm:h-10'
+            : 'inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50'
+        }
       >
-        <Printer size={14} className="text-brand-600" />
-        Vytisknout štítek
+        <Printer
+          size={card ? 16 : 14}
+          className={`shrink-0 ${card ? 'text-white' : 'text-brand-600'}`}
+        />
+        <span className={card ? 'truncate' : undefined}>Vytisknout štítek</span>
       </button>
       {open && (
         <PrintLabelDialog data={data} carrierId={carrierId} onClose={() => setOpen(false)} />
       )}
-    </>
+    </div>
   );
 }

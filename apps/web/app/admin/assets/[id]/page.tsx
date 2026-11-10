@@ -27,6 +27,7 @@ import { MediaTimeline } from '../media-timeline';
 import { ReturnForm } from '../return-form';
 import { PrintLabelButton } from '../printing/print-label-button';
 import { CopyUrlButton } from '../../copy-url-button';
+import { CarrierLabelActions } from '../../carrier-label-actions';
 import { resolverPublicUrl } from '../../../lib/resolver-url';
 import { MaintenancePanel } from './maintenance-panel';
 import { LastObservationCard } from './last-observation-card';
@@ -264,11 +265,11 @@ export default async function AssetDetail({
                     Kód štítku
                   </p>
                   <Mono>{qrCarrier.publicCode}</Mono>
-                  <div className="mt-2">
-                    <CopyUrlButton value={resolverPublicUrl(qrCarrier)} />
-                  </div>
                 </div>
+              </div>
+              <CarrierLabelActions>
                 <PrintLabelButton
+                  variant="card"
                   carrierId={qrCarrier.id}
                   data={{
                     qrValue: qrCarrier.resolverUrl ?? qrCarrier.publicCode,
@@ -278,7 +279,8 @@ export default async function AssetDetail({
                     location: asset.homeLocationId ? locName.get(asset.homeLocationId) : undefined,
                   }}
                 />
-              </div>
+                <CopyUrlButton variant="card" value={resolverPublicUrl(qrCarrier)} />
+              </CarrierLabelActions>
               <Link
                 href="#identifikator"
                 className="text-center text-xs font-medium text-brand-700 hover:underline"
@@ -552,51 +554,52 @@ export default async function AssetDetail({
               </div>
             )}
             {carriers.length > 0 && (
-              <div className="flex flex-wrap gap-4">
+              <div className="flex flex-col gap-4">
                 {carriers.map((c) => (
                   <div
                     key={c.id}
-                    className="flex items-center gap-3 rounded-xl border border-slate-200 p-3"
+                    className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3"
                   >
-                    <Image
-                      src={`/api/qr/${c.id}`}
-                      alt={c.publicCode}
-                      width={72}
-                      height={72}
-                      unoptimized
-                      className="rounded border border-slate-200 bg-white"
-                    />
-                    <div className="min-w-0">
-                      <Mono>{c.publicCode}</Mono>
-                      <p className="text-xs text-slate-400">{c.carrierType}</p>
-                      <div className="mt-2">
-                        <CopyUrlButton value={resolverPublicUrl(c)} />
+                    <div className="flex items-center gap-3">
+                      <Image
+                        src={`/api/qr/${c.id}`}
+                        alt={c.publicCode}
+                        width={72}
+                        height={72}
+                        unoptimized
+                        className="shrink-0 rounded border border-slate-200 bg-white"
+                      />
+                      <div className="min-w-0">
+                        <Mono>{c.publicCode}</Mono>
+                        <p className="text-xs text-slate-400">{c.carrierType}</p>
+                        {c.externalCode && (
+                          <p className="mt-1">
+                            <Badge tone="brand">
+                              alias{c.externalScheme ? ` (${c.externalScheme})` : ''}:{' '}
+                              {c.externalCode}
+                            </Badge>
+                          </p>
+                        )}
                       </div>
-                      {c.externalCode && (
-                        <p className="mt-1">
-                          <Badge tone="brand">
-                            alias{c.externalScheme ? ` (${c.externalScheme})` : ''}:{' '}
-                            {c.externalCode}
-                          </Badge>
-                        </p>
-                      )}
-                      {c.carrierType === 'qr' && (
-                        <div className="mt-2">
-                          <PrintLabelButton
-                            carrierId={c.id}
-                            data={{
-                              qrValue: c.resolverUrl ?? c.publicCode,
-                              itemName: asset.name,
-                              assetCode: asset.inventoryNumber ?? c.publicCode,
-                              category: asset.category ?? undefined,
-                              location: asset.homeLocationId
-                                ? locName.get(asset.homeLocationId)
-                                : undefined,
-                            }}
-                          />
-                        </div>
-                      )}
                     </div>
+                    <CarrierLabelActions columns={c.carrierType === 'qr' ? 2 : 1}>
+                      {c.carrierType === 'qr' && (
+                        <PrintLabelButton
+                          variant="card"
+                          carrierId={c.id}
+                          data={{
+                            qrValue: c.resolverUrl ?? c.publicCode,
+                            itemName: asset.name,
+                            assetCode: asset.inventoryNumber ?? c.publicCode,
+                            category: asset.category ?? undefined,
+                            location: asset.homeLocationId
+                              ? locName.get(asset.homeLocationId)
+                              : undefined,
+                          }}
+                        />
+                      )}
+                      <CopyUrlButton variant="card" value={resolverPublicUrl(c)} />
+                    </CarrierLabelActions>
                   </div>
                 ))}
               </div>
