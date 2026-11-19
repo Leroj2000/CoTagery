@@ -6,7 +6,39 @@ const base = {
   JWT_SECRET: 'a-secure-test-secret',
 };
 
+const prodSecrets = {
+  ...base,
+  JWT_SECRET: 'x'.repeat(40),
+  BILLING_WEBHOOK_SECRET: 'whsec_' + 'y'.repeat(32),
+};
+
 describe('production environment validation', () => {
+  it('rejects the default billing webhook secret in production (SEC-03)', () => {
+    expect(() =>
+      validateEnv({
+        ...prodSecrets,
+        BILLING_WEBHOOK_SECRET: undefined,
+        NODE_ENV: 'production',
+        APP_DATABASE_URL: 'postgres://app:secret@localhost:5432/tagery',
+      }),
+    ).toThrow('BILLING_WEBHOOK_SECRET');
+  });
+
+  it('rejects a short JWT secret in production (SEC-03)', () => {
+    expect(() =>
+      validateEnv({
+        ...prodSecrets,
+        JWT_SECRET: 'a-secure-test-secret',
+        NODE_ENV: 'production',
+        APP_DATABASE_URL: 'postgres://app:secret@localhost:5432/tagery',
+      }),
+    ).toThrow('JWT_SECRET');
+  });
+
+  it('keeps defaults usable outside production', () => {
+    expect(validateEnv({ ...base }).BILLING_WEBHOOK_SECRET).toBe('whsec_stub');
+  });
+
   it('requires the RLS application connection', () => {
     expect(() => validateEnv({ ...base, NODE_ENV: 'production' })).toThrow('APP_DATABASE_URL');
   });
@@ -25,7 +57,7 @@ describe('production environment validation', () => {
   it('accepts an explicit origin and RLS connection', () => {
     expect(
       validateEnv({
-        ...base,
+        ...prodSecrets,
         NODE_ENV: 'production',
         APP_DATABASE_URL: 'postgres://app:secret@localhost:5432/tagery',
         CORS_ORIGINS: 'https://app.tagery.example',

@@ -1,8 +1,13 @@
 import dataSource from '../core/database/data-source';
 import { AuthService } from '../core/auth/auth.service';
+import { shouldSkipDemoSeed } from './seed-guard';
 
 /** Seed: demo tenant + demo OWNER uživatel (EPIC-00 + EPIC-01). */
 async function seed(): Promise<void> {
+  if (shouldSkipDemoSeed()) {
+    console.log('Seed přeskočen: NODE_ENV=production (povolit jen SEED_DEMO=1).');
+    return;
+  }
   await dataSource.initialize();
   try {
     // Demo tenant

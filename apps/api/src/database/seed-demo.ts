@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { shouldSkipDemoSeed } from './seed-guard';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../app.module';
 import { TenantContextService } from '../core/tenancy/tenant-context.service';
@@ -24,6 +25,10 @@ import { ScanEvent } from '../core/domain/entities/scan-event.entity';
  * Předpoklad: `pnpm --filter @tagery/api seed` (demo tenant + owner) proběhl.
  */
 async function seedDemo(): Promise<void> {
+  if (shouldSkipDemoSeed()) {
+    console.log('Demo seed přeskočen: NODE_ENV=production (povolit jen SEED_DEMO=1).');
+    return;
+  }
   const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error'] });
   const ds = app.get(DataSource);
   const ctx = app.get(TenantContextService);
