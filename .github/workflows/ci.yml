@@ -45,8 +45,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build API + migrate images
-        run: docker compose -p tagery build api migrate
+      - name: Build API + migrate + web images
+        run: docker compose -p tagery build api migrate web
 
-      - name: Smoke (isolated stack)
+      - name: Smoke + browser E2E (isolated stack)
         run: tools/smoke/run.sh

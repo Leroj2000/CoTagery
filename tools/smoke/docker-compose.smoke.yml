@@ -60,3 +60,35 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  # BACKLOG QA-02: web + Playwright pro browser E2E (spouští run.sh, SMOKE_BROWSER=0 vypne).
+  web:
+    image: ${SMOKE_WEB_IMAGE:-tagery-web:latest}
+    environment:
+      NODE_ENV: production
+      API_URL: http://api:3001
+      PUBLIC_WEB_URL: http://web:3000
+      COOKIE_SECURE: 'false'
+    ports:
+      - '127.0.0.1:${SMOKE_WEB_PORT:-3902}:3000'
+    depends_on:
+      - api
+
+  e2e:
+    image: mcr.microsoft.com/playwright:v1.49.1-noble
+    profiles: ['e2e']
+    working_dir: /tmp/pw
+    environment:
+      E2E_BASE_URL: http://web:3000
+      SMOKE_OUT: /e2e/.out/smoke.json
+    volumes:
+      - ./:/e2e:ro
+    command:
+      - bash
+      - -c
+      - >-
+        mkdir -p /tmp/pw && cd /tmp/pw && npm init -y >/dev/null &&
+        npm i --silent --no-audit --no-fund playwright@1.49.1 >/dev/null &&
+        cp /e2e/browser-flow.mjs . && node browser-flow.mjs
+    depends_on:
+      - web

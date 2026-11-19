@@ -46,3 +46,4 @@ tmp/
 *.tsbuildinfo
 .claude/scheduled_tasks.lock
 .handoff/
+tools/smoke/.out/

@@ -3,6 +3,7 @@
 # Použití (na serveru, z kořene repa):  tools/smoke/run.sh
 #   SMOKE_API_IMAGE / SMOKE_MIGRATE_IMAGE – jiné image (výchozí :latest)
 #   SMOKE_PORT – lokální port API (výchozí 3901), SMOKE_KEEP=1 – stack nechat běžet
+#   SMOKE_WEB_IMAGE, SMOKE_WEB_PORT (3902), SMOKE_BROWSER=0 – bez browser E2E (QA-02)
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -38,4 +39,25 @@ curl -sf "http://127.0.0.1:$SMOKE_PORT/api/v1/health" >/dev/null || {
   exit 1
 }
 
-SMOKE_BASE_URL="http://127.0.0.1:$SMOKE_PORT/api/v1" node main-flow.mjs
+mkdir -p .out
+SMOKE_OUT="$PWD/.out/smoke.json" SMOKE_BASE_URL="http://127.0.0.1:$SMOKE_PORT/api/v1" node main-flow.mjs
+
+# BACKLOG QA-02: browser E2E (Playwright) nad stejným stackem.
+if [ "${SMOKE_BROWSER:-1}" != "0" ]; then
+  export SMOKE_WEB_PORT="${SMOKE_WEB_PORT:-3902}"
+  echo "▶ web na 127.0.0.1:$SMOKE_WEB_PORT"
+  "${COMPOSE[@]}" up -d web >/dev/null
+  for _ in $(seq 1 60); do
+    if curl -sf -o /dev/null "http://127.0.0.1:$SMOKE_WEB_PORT/login"; then break; fi
+    sleep 2
+  done
+  curl -sf -o /dev/null "http://127.0.0.1:$SMOKE_WEB_PORT/login" || {
+    "${COMPOSE[@]}" logs --tail 40 web
+    exit 1
+  }
+  echo "▶ browser E2E (Playwright)"
+  "${COMPOSE[@]}" --profile e2e run --rm e2e || {
+    "${COMPOSE[@]}" logs --tail 30 web api
+    exit 1
+  }
+fi

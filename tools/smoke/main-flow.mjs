@@ -124,6 +124,10 @@ async function main() {
   await api('POST', '/webhooks', { url: 'http://169.254.169.254/latest' }, { expect: [400] });
   check('webhook na vnitřní adresu je odmítnut (SSRF)', true);
 
+  if (process.env.SMOKE_OUT) {
+    const { writeFileSync } = await import('node:fs');
+    writeFileSync(process.env.SMOKE_OUT, JSON.stringify({ assetId: asset.id, assetName: asset.name, locationName: location.name }));
+  }
   console.log(`Smoke OK (${step} kroků)`);
 }
 
