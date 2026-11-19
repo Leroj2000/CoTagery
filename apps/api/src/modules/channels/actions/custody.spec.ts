@@ -116,7 +116,14 @@ describe('MCP akce s držitelem', () => {
     return { action, ctx, query, find };
   }
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('asset.get APR-M-001 ukazuje Jana Nováka a termín 23. 10. 2026', async () => {
+    // Pevný „teď“ – jinak test po 23. 10. 2026 selže (overdue: true).
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+    jest.setSystemTime(NOW);
     const { action, ctx } = setup();
     const out = await action('asset.get').execute(ctx, { assetId: LEICA } as never);
     expect(out).toMatchObject({
