@@ -32,7 +32,7 @@
 | SEC-09 | Retence a výmaz osobních údajů, médií a auditu (GDPR) | M | – | vývoj | ⬜ |
 | QA-01 | E2E smoke hlavního průchodu (přihlášení → místo → osoba → položka → výpůjčka → vrácení) na izolovaném stacku | M | – | vývoj | ✅ b6c9cd5 |
 | QA-02 | Browser E2E (Playwright) hlavního průchodu z MVP kap. 3 | M | QA-01 | vývoj | ⬜ |
-| QA-03 | CI: migrace nad čistým PostgreSQL + testy (GitHub Actions) | S | QA-01 | vývoj | 🟡 8a64446 (čeká na 1. běh CI) |
+| QA-03 | CI: migrace nad čistým PostgreSQL + testy (GitHub Actions) | S | QA-01 | vývoj | ✅ 8a64446 (CI zelené) |
 | QA-04 | OpenAPI dokumentace MVP API | S–M | – | vývoj | ⬜ |
 | INF-01 | Denní zálohy PostgreSQL + úložiště, mimo server, s otestovanou obnovou | M | – | Infra | ⬜ zadání pro Infra |
 | INF-02 | R2/S3 `StoragePort` (média mimo disk VPS) | M | INF-01 | vývoj + Infra | ⬜ zadání pro Infra |

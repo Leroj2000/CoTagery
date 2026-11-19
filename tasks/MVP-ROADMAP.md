@@ -165,7 +165,7 @@ pozvánka kolegy, nastavení hesla a přihlášení. Databázová migrace `19220
 
 **Cíl:** MVP je připravené pro 3–5 pilotních zákazníků.
 
-- [ ] V CI spouštět migrace nad čistým PostgreSQL a Redisem.
+- [x] V CI spouštět migrace nad čistým PostgreSQL a Redisem. _(job smoke, 2026-11-19)_
 - [ ] Přidat databázové integrační testy RLS a kritických transakcí.
 - [ ] Přidat browser E2E test hlavního průchodu z kapitoly 3.
 - [ ] Ověřit upgrade databáze z poslední nasazené verze.
