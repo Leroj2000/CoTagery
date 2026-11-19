@@ -7,6 +7,7 @@ import { WebhookService } from '../../core/webhooks/webhook.service';
 import { Tenant } from '../../core/domain/entities/tenant.entity';
 import { Asset } from './entities/asset.entity';
 import { AssetMedia } from './entities/asset-media.entity';
+import { assertFileContentMatches } from '../../core/storage/file-signature';
 
 const DEFAULT_MAX_MEDIA_PER_EVENT = 5;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -68,6 +69,8 @@ export class MediaService {
       : input.mime.startsWith('image/')
         ? 'photo'
         : 'document';
+    // SEC-05: obrázek/video musí opravdu být obrázek/video (ne HTML/SVG se skriptem).
+    if (kind !== 'document') assertFileContentMatches(input.buffer, input.mime);
     const key = `asset-media/${this.context.tenantId}/${assetId}/${randomUUID()}`;
     await this.storage.put(key, input.buffer, input.mime);
     const sha256 = createHash('sha256').update(input.buffer).digest('hex');

@@ -14,6 +14,7 @@ import { AssetManual } from './entities/asset-manual.entity';
 import { ManualFetchService } from './manual-fetch.service';
 import { normalizeSource, validateManualFile } from './manuals.logic';
 import { EntitlementsService } from '../../core/plans/entitlements.service';
+import { assertFileContentMatches } from '../../core/storage/file-signature';
 
 export interface AddManualInput {
   buffer: Buffer;
@@ -101,6 +102,7 @@ export class ManualsService {
     const size = input.buffer.length;
     const err = validateManualFile(input.mime, size);
     if (err) throw new BadRequestException(err);
+    assertFileContentMatches(input.buffer, input.mime);
 
     const source = normalizeSource(input.source);
     const key = this.storageKey(assetId);
@@ -225,6 +227,7 @@ export class ManualsService {
 
     const err = validateManualFile(input.mime, input.buffer.length);
     if (err) throw new BadRequestException(err);
+    assertFileContentMatches(input.buffer, input.mime);
 
     const key = this.storageKey(manual.assetId);
     await this.storage.put(key, input.buffer, input.mime);

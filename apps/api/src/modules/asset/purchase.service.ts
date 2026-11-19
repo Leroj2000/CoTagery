@@ -29,6 +29,7 @@ import {
   type WarrantyStatus,
 } from './purchase.logic';
 import type { UpsertPurchaseDto, WarrantyDto } from './dto/purchase.dto';
+import { assertFileContentMatches } from '../../core/storage/file-signature';
 
 /** Nastavení DPH firmy pro formulář. */
 export interface VatSettings {
@@ -190,6 +191,7 @@ export class PurchaseService {
     userId?: string,
   ): Promise<AssetDocument> {
     await this.assertAsset(assetId);
+    assertFileContentMatches(file.buffer, file.mimetype);
     const key = `asset-documents/${this.context.tenantId}/${assetId}/${randomUUID()}`;
     await this.storage.put(key, file.buffer, file.mimetype);
     const repo = this.repo(AssetDocument);
