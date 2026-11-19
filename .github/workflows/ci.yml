@@ -34,3 +34,19 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  # BACKLOG QA-01/QA-03: migrace + seed nad čistým PostgreSQL a smoke hlavního průchodu.
+  smoke:
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      JWT_SECRET: ci-only-jwt-secret-not-used-in-smoke-000
+      BILLING_WEBHOOK_SECRET: ci-only-billing-secret
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API + migrate images
+        run: docker compose -p tagery build api migrate
+
+      - name: Smoke (isolated stack)
+        run: tools/smoke/run.sh
