@@ -70,6 +70,9 @@ export const envSchema = z
     // Nominatim-kompatibilní endpoint pro GPS → adresa; musí jít změnit bez releasu.
     GEOCODING_REVERSE_URL: z.string().url().default('https://nominatim.openstreetmap.org/reverse'),
     GEOCODING_USER_AGENT: z.string().min(3).default('Tagery/0.1'),
+    // SSRF výjimky pro doménové webhooky: čárkou oddělené hostname vědomě interních
+    // cílů (např. n8n v Docker síti). Prázdné = žádné výjimky (BACKLOG SEC-01).
+    WEBHOOK_ALLOWED_HOSTS: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && !env.APP_DATABASE_URL) {
@@ -77,6 +80,21 @@ export const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ['APP_DATABASE_URL'],
         message: 'V produkci je povinné runtime DB spojení pod rolí podléhající RLS',
+      });
+    }
+    // BACKLOG SEC-03: produkce nesmí běžet s výchozím/slabým tajemstvím.
+    if (env.NODE_ENV === 'production' && env.BILLING_WEBHOOK_SECRET === 'whsec_stub') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['BILLING_WEBHOOK_SECRET'],
+        message: 'V produkci nastav vlastní BILLING_WEBHOOK_SECRET (ne výchozí whsec_stub)',
+      });
+    }
+    if (env.NODE_ENV === 'production' && env.JWT_SECRET.length < 32) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['JWT_SECRET'],
+        message: 'V produkci musí mít JWT_SECRET alespoň 32 znaků',
       });
     }
     if (

@@ -1,10 +1,17 @@
 import { randomBytes } from 'node:crypto';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { TenantContextService } from '../tenancy/tenant-context.service';
 import { signWebhook } from '../../modules/billing/billing.logic';
 import { WebhookEndpoint } from './entities/webhook-endpoint.entity';
 import { WebhookDelivery } from './entities/webhook-delivery.entity';
+import {
+  assertSafeWebhookUrl,
+  parseAllowedHosts,
+  UnsafeUrlError,
+  type UrlGuardOptions,
+} from './url-guard';
 
 export interface CreateEndpointInput {
   url: string;
@@ -20,7 +27,18 @@ export interface CreateEndpointInput {
 export class WebhookService {
   private readonly logger = new Logger(WebhookService.name);
 
-  constructor(private readonly context: TenantContextService) {}
+  constructor(
+    private readonly context: TenantContextService,
+    private readonly config: ConfigService,
+  ) {}
+
+  /** SSRF pravidla (BACKLOG SEC-01): produkce jen https, žádné vnitřní adresy. */
+  private guardOptions(): UrlGuardOptions {
+    return {
+      production: this.config.get<string>('NODE_ENV') === 'production',
+      allowedHosts: parseAllowedHosts(this.config.get<string>('WEBHOOK_ALLOWED_HOSTS')),
+    };
+  }
 
   private endpoints(): Repository<WebhookEndpoint> {
     return this.context.manager.getRepository(WebhookEndpoint);
@@ -36,8 +54,13 @@ export class WebhookService {
       .find({ order: { createdAt: 'DESC' }, take: 100 });
   }
 
-  create(input: CreateEndpointInput): Promise<WebhookEndpoint> {
-    if (!/^https?:\/\//.test(input.url)) throw new BadRequestException('Neplatná URL');
+  async create(input: CreateEndpointInput): Promise<WebhookEndpoint> {
+    try {
+      await assertSafeWebhookUrl(input.url, this.guardOptions());
+    } catch (e) {
+      if (e instanceof UnsafeUrlError) throw new BadRequestException(e.message);
+      throw e;
+    }
     return this.endpoints().save(
       this.endpoints().create({
         tenantId: this.context.tenantId,
@@ -86,9 +109,12 @@ export class WebhookService {
     let ok = false;
     let error: string | null = null;
     try {
+      // Znovu ověřit těsně před odesláním (DNS se mohlo změnit, starší endpointy).
+      await assertSafeWebhookUrl(ep.url, this.guardOptions());
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
       const res = await fetch(ep.url, {
+        redirect: 'manual',
         method: 'POST',
         headers: {
           'content-type': 'application/json',
