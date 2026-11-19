@@ -1,0 +1,62 @@
+# Izolovaný smoke stack Tagery (BACKLOG QA-01).
+# Vlastní Postgres + Redis bez publikovaných portů, API jen na 127.0.0.1.
+# Spouští se výhradně přes tools/smoke/run.sh (projekt `tagery-smoke`), který stack
+# po testu zase odstraní i s jeho vlastními svazky. Produkční stack `tagery` se nedotkne.
+x-smoke-env: &smoke-env
+  NODE_ENV: production
+  API_PORT: 3001
+  DATABASE_URL: postgres://tagery:tagery@postgres:5432/tagery
+  APP_DATABASE_URL: postgres://tagery_app:tagery_app@postgres:5432/tagery
+  CORS_ORIGINS: http://localhost:3000
+  REDIS_URL: redis://redis:6379
+  STORAGE_DRIVER: local
+  STORAGE_LOCAL_PATH: /app/.storage
+  JWT_SECRET: ${SMOKE_JWT_SECRET:?spouštěj přes tools/smoke/run.sh}
+  BILLING_WEBHOOK_SECRET: ${SMOKE_BILLING_SECRET:?spouštěj přes tools/smoke/run.sh}
+  PUBLIC_BASE_URL: http://localhost:3001
+  PUBLIC_WEB_URL: http://localhost:3000
+  SEED_DEMO: '1'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tagery
+      POSTGRES_PASSWORD: tagery
+      POSTGRES_DB: tagery
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tagery']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    image: ${SMOKE_MIGRATE_IMAGE:-tagery-migrate:latest}
+    environment: *smoke-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: 'no'
+
+  api:
+    image: ${SMOKE_API_IMAGE:-tagery-api:latest}
+    environment: *smoke-env
+    ports:
+      - '127.0.0.1:${SMOKE_PORT:-3901}:3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
