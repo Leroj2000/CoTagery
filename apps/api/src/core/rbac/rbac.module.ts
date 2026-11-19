@@ -18,7 +18,6 @@ import { AuthzController } from './authz.controller';
 import { ModulesController } from './modules.controller';
 import { AuditController } from './audit.controller';
 import { PolicyController } from './policy.controller';
-import { RolesGuard } from './roles.guard';
 import { RolesService } from './roles.service';
 import { RolesController } from './roles.controller';
 import { PermissionsGuard } from './permissions.guard';
@@ -47,7 +46,6 @@ import { PermissionsGuard } from './permissions.guard';
     AuditService,
     PolicyService,
     RolesService,
-    RolesGuard,
     PermissionsGuard,
   ],
   exports: [
@@ -57,7 +55,6 @@ import { PermissionsGuard } from './permissions.guard';
     AuditService,
     PolicyService,
     RolesService,
-    RolesGuard,
     PermissionsGuard,
   ],
 })

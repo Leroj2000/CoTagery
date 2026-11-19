@@ -3,6 +3,8 @@ import { IsString, MaxLength } from 'class-validator';
 import { JwtAuthGuard, type RequestUser } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators';
 import { AuthzService, type AuthzDecision } from './authz.service';
+import { PermissionsGuard } from './permissions.guard';
+import { AllowAuthenticatedOnly } from './require-permission.decorator';
 
 class CheckPermissionDto {
   @IsString()
@@ -12,7 +14,8 @@ class CheckPermissionDto {
 
 /** Introspekce autorizace (EPIC-18 1.3): moje permissions + test rozhodnutí. */
 @Controller('authz')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@AllowAuthenticatedOnly()
 export class AuthzController {
   constructor(private readonly authz: AuthzService) {}
 

@@ -27,7 +27,7 @@
 | SEC-04 | Změnit heslo / deaktivovat demo účty v produkčním Demo Tenantu | S | – | Štěpán | 🧭 |
 | SEC-05 | Ověření obsahu nahrávaných souborů podle magických bajtů (nejen MIME z klienta) | S | – | vývoj | ✅ e12943e |
 | SEC-06 | Prověřit CSRF u BFF/cookie operací webu | S | – | vývoj | ✅ prověřeno |
-| SEC-07 | Sjednotit permission enforcement, odstranit dočasné allow chování scope/policy | M | – | vývoj | ⬜ |
+| SEC-07 | Sjednotit permission enforcement, odstranit dočasné allow chování scope/policy | M | – | vývoj | ✅ guard-coverage test + analytics/fabrication pod PermissionsGuard |
 | SEC-08 | Rotace výchozích hesel DB rolí (`tagery`, `tagery_app`) + runbook rotace tajemství | S | INF-01 | Infra | ⬜ zadání pro Infra |
 | SEC-09 | Retence a výmaz osobních údajů, médií a auditu (GDPR) | M | – | vývoj | ⬜ |
 | QA-01 | E2E smoke hlavního průchodu (přihlášení → místo → osoba → položka → výpůjčka → vrácení) na izolovaném stacku | M | – | vývoj | ✅ b6c9cd5 |

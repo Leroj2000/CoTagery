@@ -1,9 +1,12 @@
 import { Controller, Get, Param, ParseUUIDPipe, Query, StreamableFile, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { PermissionsGuard } from '../rbac/permissions.guard';
+import { RequirePermission } from '../rbac/require-permission.decorator';
 import { FabricationService } from './fabrication.service';
 
 @Controller('carriers')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequirePermission('carrier.item.manage')
 export class FabricationController {
   constructor(private readonly fabrication: FabricationService) {}
 
