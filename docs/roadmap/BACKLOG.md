@@ -21,29 +21,29 @@
 
 | ID | Úkol | Vel. | Závisí na | Vlastník | Stav |
 |---|---|---|---|---|---|
-| SEC-01 | SSRF ochrana doménových webhooků (jen veřejné adresy, bez přesměrování, https v produkci) | S | – | vývoj | ⬜ |
-| SEC-02 | Lokální úložiště: klíč nesmí opustit kořenový adresář (path traversal) | S | – | vývoj | ⬜ |
-| SEC-03 | Demo seedy (známé heslo) neběží v produkci; produkce odmítne výchozí tajemství | S | – | vývoj | ⬜ |
+| SEC-01 | SSRF ochrana doménových webhooků (jen veřejné adresy, bez přesměrování, https v produkci) | S | – | vývoj | ✅ d28d450 |
+| SEC-02 | Lokální úložiště: klíč nesmí opustit kořenový adresář (path traversal) | S | – | vývoj | ✅ 3544795 |
+| SEC-03 | Demo seedy (známé heslo) neběží v produkci; produkce odmítne výchozí tajemství | S | – | vývoj | ✅ 429de21 |
 | SEC-04 | Změnit heslo / deaktivovat demo účty v produkčním Demo Tenantu | S | – | Štěpán | 🧭 |
-| SEC-05 | Ověření obsahu nahrávaných souborů podle magických bajtů (nejen MIME z klienta) | S | – | vývoj | ⬜ |
-| SEC-06 | Prověřit CSRF u BFF/cookie operací webu | S | – | vývoj | ⬜ |
+| SEC-05 | Ověření obsahu nahrávaných souborů podle magických bajtů (nejen MIME z klienta) | S | – | vývoj | ✅ e12943e |
+| SEC-06 | Prověřit CSRF u BFF/cookie operací webu | S | – | vývoj | ✅ prověřeno |
 | SEC-07 | Sjednotit permission enforcement, odstranit dočasné allow chování scope/policy | M | – | vývoj | ⬜ |
-| SEC-08 | Rotace výchozích hesel DB rolí (`tagery`, `tagery_app`) + runbook rotace tajemství | S | INF-01 | Infra | ⬜ |
+| SEC-08 | Rotace výchozích hesel DB rolí (`tagery`, `tagery_app`) + runbook rotace tajemství | S | INF-01 | Infra | ⬜ zadání pro Infra |
 | SEC-09 | Retence a výmaz osobních údajů, médií a auditu (GDPR) | M | – | vývoj | ⬜ |
-| QA-01 | E2E smoke hlavního průchodu (přihlášení → místo → osoba → položka → výpůjčka → vrácení) na izolovaném stacku | M | – | vývoj | ⬜ |
+| QA-01 | E2E smoke hlavního průchodu (přihlášení → místo → osoba → položka → výpůjčka → vrácení) na izolovaném stacku | M | – | vývoj | ✅ b6c9cd5 |
 | QA-02 | Browser E2E (Playwright) hlavního průchodu z MVP kap. 3 | M | QA-01 | vývoj | ⬜ |
-| QA-03 | CI: migrace nad čistým PostgreSQL + testy (GitHub Actions) | S | QA-01 | vývoj | ⬜ |
+| QA-03 | CI: migrace nad čistým PostgreSQL + testy (GitHub Actions) | S | QA-01 | vývoj | 🟡 8a64446 (čeká na 1. běh CI) |
 | QA-04 | OpenAPI dokumentace MVP API | S–M | – | vývoj | ⬜ |
-| INF-01 | Denní zálohy PostgreSQL + úložiště, mimo server, s otestovanou obnovou | M | – | Infra | ⬜ |
-| INF-02 | R2/S3 `StoragePort` (média mimo disk VPS) | M | INF-01 | vývoj + Infra | ⬜ |
+| INF-01 | Denní zálohy PostgreSQL + úložiště, mimo server, s otestovanou obnovou | M | – | Infra | ⬜ zadání pro Infra |
+| INF-02 | R2/S3 `StoragePort` (média mimo disk VPS) | M | INF-01 | vývoj + Infra | ⬜ zadání pro Infra |
 | INF-03 | Monitoring: health/readiness, error tracking, alerty | S–M | – | Infra | ⬜ |
 | INF-04 | Runbook deploy / rollback / migrace / incident | S | INF-01 | vývoj + Infra | ⬜ |
 | PRC-01 | Ceník: neomezení „skenovací“ uživatelé, limity podle položek a správců | S | DEC-02 | vývoj | 🧭 |
-| REV-01 | Revize a BOZP: šablony lhůt dle CZ legislativy, stav způsobilosti | M | DEC-01, plán `plan-revize-bozp.md` | vývoj | ⏸ |
+| REV-01 | Revize a BOZP: šablony lhůt dle CZ legislativy, stav způsobilosti | M | DEC-01, plán `plan-revize-bozp.md` | vývoj | ⏸ plán ke schválení |
 | REV-02 | Blokace výdeje (varovat / zakázat) u vadného, neprověřeného nebo bez průkazu | M | REV-01 | vývoj | ⏸ |
 | REV-03 | PDF složka položky pro inspektorát | S–M | REV-01 | vývoj | ⏸ |
-| REV-04 | Předávací protokol v PDF s podpisem prstem | S–M | plán `plan-revize-bozp.md` | vývoj | ⏸ |
-| NOT-01 | Ranní e-mail „co dnes hoří“ + e-mailové připomínky termínů | S | – | vývoj | ⬜ |
+| REV-04 | Předávací protokol v PDF s podpisem prstem | S–M | plán `plan-revize-bozp.md` | vývoj | ⏸ plán ke schválení |
+| NOT-01 | Ranní e-mail „co dnes hoří“ + e-mailové připomínky termínů | S | – | vývoj | ⬜ posílá e-maily zákazníkům – spustit po souhlasu |
 | AUTH-01 | Přihlášení Google / Microsoft (OAuth/OIDC) | S–M | – | vývoj | ⬜ |
 | GTM-01 | Oborové šablony (kategorie, revize, dashboard) + asistovaný import | M | DEC-01 | vývoj | 🧭 |
 
@@ -51,7 +51,7 @@
 
 | ID | Úkol | Vel. | Závisí na | Vlastník | Stav |
 |---|---|---|---|---|---|
-| ZAK-01 | Zakázky / stavby (entita nebo typ místa) | M | DEC-03, plán | vývoj | 🧭 |
+| ZAK-01 | Zakázky / stavby (entita nebo typ místa) | M | DEC-03, plán | vývoj | 🧭 plán ke schválení |
 | ZAK-02 | Vnitropodnikové sazby (den/týden/měsíc, strop) a report nákladů po zakázkách | M | ZAK-01 | vývoj | ⏸ |
 | ZAK-03 | Report vytíženosti (dokoupit / prodat ležáky) | S–M | – | vývoj | ⬜ |
 | INT-01 | Veřejné API s klíči (scopes) + dokumentace | S–M | QA-04 | vývoj | ⬜ |
@@ -79,4 +79,12 @@
 
 ## Záznam o hotových úkolech
 
-_(doplňuje se s každým commitem)_
+- **SEC-01** (`d28d450`) – `apps/api/src/core/webhooks/url-guard.ts`: jen http(s) bez přihlašovacích údajů, v produkci jen https; DNS se přeloží a odmítnou se privátní, loopback, link-local (vč. cloud metadata), CGNAT, multicast a rezervované rozsahy IPv4/IPv6. Kontrola při registraci i před každým doručením, přesměrování se nesleduje. Výjimky přes `WEBHOOK_ALLOWED_HOSTS`. Zbytkové riziko: DNS rebinding v krátkém okně mezi kontrolou a fetch.
+- **SEC-02** (`3544795`) – `LocalStorageAdapter` odmítne klíč s `..`, absolutní cestou, nulovým bajtem nebo mimo `STORAGE_LOCAL_PATH`.
+- **SEC-03** (`429de21`, `434decf`) – `seed`/`seed:demo` se v `NODE_ENV=production` přeskočí (jen `SEED_DEMO=1`); migrační kontejner je dřív spouštěl při každém nasazení. Produkce odmítne `BILLING_WEBHOOK_SECRET=whsec_stub` a `JWT_SECRET` < 32 znaků. Seed na čisté DB padal na `tenants.slug` – opraveno.
+- **SEC-04** – v produkci existuje `owner@demo.tagery` (role OWNER, Demo Tenant, 54 položek) se **známým heslem ze seedu**. Nové nasazení ho už nevytvoří, ale existující účet je potřeba zajistit (změna hesla / deaktivace) – čeká na Štěpána.
+- **SEC-05** (`e12943e`) – média, manuály a dokumenty nákupu se ověřují podle magických bajtů (obrázek / video / PDF); SVG a HTML vydávané za obrázek se odmítnou. Fotky položek už dřív převáděl sharp na JPEG.
+- **SEC-06** – prověřeno bez změny kódu: BFF `/api/*` v `middleware.ts` vyžaduje stejný origin (`Sec-Fetch-Site` / `Origin`) pro mutace, cookies `httpOnly` + `SameSite=Lax`; NestJS API cookies nečte (jen Bearer). Ověřeno na produkci: cross-site POST i POST bez Origin → 403.
+- **QA-01** (`b6c9cd5`) – `pnpm smoke` / `tools/smoke/run.sh`: izolovaný projekt `tagery-smoke` (Postgres na tmpfs, Redis, API jen na 127.0.0.1:3901), migrace + seed, 12 kroků (401 bez přihlášení, login, místo, osoba, položka, výpůjčka, držitel a historie, vrácení, Pozornost, SSRF regrese). Stack se po běhu odstraní. Výsledek 19. 11. 2026: **12/12 OK**.
+- **QA-03** (`8a64446`) – CI job `smoke` (build image + `tools/smoke/run.sh`) – migrace nad čistým PostgreSQL v každém pushi.
+- Opraven test `custody.spec.ts` (`877d9e3`), který po 23. 10. 2026 padal kvůli reálnému času – celá sada API je zelená (57 sad / 434 testů).

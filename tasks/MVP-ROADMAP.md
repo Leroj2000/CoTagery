@@ -135,9 +135,9 @@ pozvánka kolegy, nastavení hesla a přihlášení. Databázová migrace `19220
 - [ ] Dokončit a sjednotit permission enforcement; odstranit dočasné allow chování scope/policy.
 - [x] Nastavit explicitní CORS allowlist a bezpečnostní HTTP hlavičky.
 - [x] Přidat rate limiting na login, reset hesla, registraci a veřejné mutace.
-- [ ] Prověřit CSRF ochranu BFF/cookie operací.
-- [ ] Zavést limity velikosti, MIME kontrolu a bezpečné názvy nahrávaných souborů.
-- [ ] Provést kontrolu SSRF u webhooků a AI-fetch integrací.
+- [x] Prověřit CSRF ochranu BFF/cookie operací.
+- [x] Zavést limity velikosti, MIME kontrolu a bezpečné názvy nahrávaných souborů.
+- [x] Provést kontrolu SSRF u webhooků a AI-fetch integrací. _(2026-11-19: webhooky tenantů chráněné `url-guard.ts`; AI-fetch cíle zadává jen provozovatel přes env – viz `docs/roadmap/BACKLOG.md`.)_
 - [ ] Odstranit produkční výchozí secrets a sepsat rotaci tajemství.
 - [ ] Definovat retenci a výmaz osobních údajů, médií a auditních dat.
 
