@@ -29,7 +29,7 @@
 | SEC-06 | Prověřit CSRF u BFF/cookie operací webu | S | – | vývoj | ✅ prověřeno |
 | SEC-07 | Sjednotit permission enforcement, odstranit dočasné allow chování scope/policy | M | – | vývoj | ✅ guard-coverage test + analytics/fabrication pod PermissionsGuard |
 | SEC-08 | Rotace výchozích hesel DB rolí (`tagery`, `tagery_app`) + runbook rotace tajemství | S | INF-01 | Infra | ⬜ zadání pro Infra |
-| SEC-09 | Retence a výmaz osobních údajů, médií a auditu (GDPR) | M | – | vývoj | ⬜ |
+| SEC-09 | Retence a výmaz osobních údajů, médií a auditu (GDPR) | M | – | vývoj | 📝 plán plan-gdpr-retence.md – čeká na Štěpána (mazání dat) |
 | QA-01 | E2E smoke hlavního průchodu (přihlášení → místo → osoba → položka → výpůjčka → vrácení) na izolovaném stacku | M | – | vývoj | ✅ b6c9cd5 |
 | QA-02 | Browser E2E (Playwright) hlavního průchodu z MVP kap. 3 | M | QA-01 | vývoj | ✅ Playwright E2E v tools/smoke (7 kroků), v CI |
 | QA-03 | CI: migrace nad čistým PostgreSQL + testy (GitHub Actions) | S | QA-01 | vývoj | ✅ 8a64446 (CI zelené) |
@@ -44,7 +44,7 @@
 | REV-03 | PDF složka položky pro inspektorát | S–M | REV-01 | vývoj | ⏸ |
 | REV-04 | Předávací protokol v PDF s podpisem prstem | S–M | plán `plan-revize-bozp.md` | vývoj | ⏸ plán ke schválení |
 | NOT-01 | Ranní e-mail „co dnes hoří“ + e-mailové připomínky termínů | S | – | vývoj | ⬜ posílá e-maily zákazníkům – spustit po souhlasu |
-| AUTH-01 | Přihlášení Google / Microsoft (OAuth/OIDC) | S–M | – | vývoj | ⬜ |
+| AUTH-01 | Přihlášení Google / Microsoft (OAuth/OIDC) | S–M | – | vývoj | 📝 plán plan-sso-google-microsoft.md – Štěpán založí OAuth klienty |
 | GTM-01 | Oborové šablony (kategorie, revize, dashboard) + asistovaný import | M | DEC-01 | vývoj | 🧭 |
 
 ## Další
@@ -88,3 +88,9 @@
 - **QA-01** (`b6c9cd5`) – `pnpm smoke` / `tools/smoke/run.sh`: izolovaný projekt `tagery-smoke` (Postgres na tmpfs, Redis, API jen na 127.0.0.1:3901), migrace + seed, 12 kroků (401 bez přihlášení, login, místo, osoba, položka, výpůjčka, držitel a historie, vrácení, Pozornost, SSRF regrese). Stack se po běhu odstraní. Výsledek 19. 11. 2026: **12/12 OK**.
 - **QA-03** (`8a64446`) – CI job `smoke` (build image + `tools/smoke/run.sh`) – migrace nad čistým PostgreSQL v každém pushi.
 - Opraven test `custody.spec.ts` (`877d9e3`), který po 23. 10. 2026 padal kvůli reálnému času – celá sada API je zelená (57 sad / 434 testů).
+- **SEC-07** (`26f830b`) – `core/rbac/guard-coverage.spec.ts`: každý route musí mít `PermissionsGuard` + `@RequirePermission`/`@AllowAuthenticatedOnly`, výjimky (veřejné, nájemci, platforma, webhooky) jsou vyjmenované s důvodem. Doplněno: `/analytics/*` → `asset.item.view`, štítek nosiče `/carriers/:id/fabrication` → `carrier.item.manage` (Náhled/Jen sken už štítek nestáhnou), smazán nepoužívaný `RolesGuard`. Scope se řeší v dotazech (RLS), policy v interceptoru – žádné dočasné „allow“ nezůstalo.
+- **QA-02** (`25c7e46`) – `tools/smoke/browser-flow.mjs` (Playwright/Chromium v kontejneru) nad stejným izolovaným stackem: přesměrování na login, špatné heslo, přihlášení, detail položky, Pozornost, Vytíženost, založení místa formulářem, konec session. Běží v `tools/smoke/run.sh` i v CI (`SMOKE_BROWSER=0` vypne).
+- **QA-04** (`878bfbe`) – `docs/api/openapi.json` (OpenAPI 3.1) + `docs/api/README.md` generované z metadat Nestu a class-validator DTO (oprávnění, modul, těla). Test hlídá aktuálnost: `UPDATE_API_DOCS=1 npx jest src/core/api-docs`.
+- **WAR-01** (`65a7653`) – Pozornost: „Placené opravy v záruce“ (oprava s cenou v době platné záruky bez následné reklamace, 180 dní) + tisknutelný reklamační protokol `/admin/assets/:id/reklamace/:serviceId`. Jen v aplikaci, žádné e-maily. Končící záruky už v Pozornosti byly.
+- **ZAK-03** (`ed0ba88`) – `/admin/vytizenost` + `GET /reports/utilization?days=30|90|180|365`: % času v použití (u osoby / mimo domovské místo) z knihy pohybů, přetížené (≥ 80 %) a ležáky (< 5 % a 60+ dní bez pohybu), souhrn po kategoriích. Nezávisí na DEC-03.
+- **SEC-09**, **AUTH-01** – jen plány (`plan-gdpr-retence.md`, `plan-sso-google-microsoft.md`), čekají na rozhodnutí / OAuth klienty od Štěpána.
