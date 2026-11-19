@@ -118,6 +118,7 @@ export const MCP_CONTROLLER_COVERAGE: Record<string, McpDecision> = {
   MediaController: internal('fotky a soubory – kanály zatím bez příloh'),
   PersonalWorkflowsController: internal('předávky a výpůjčky s potvrzením – web/mobil'),
   PurchaseController: internal('nákupní údaje – web'),
+  UtilizationController: later('report vytíženosti'),
   RegistrationController: internal('veřejná registrace položky přes QR – web'),
   ReservationsController: later('rezervace'),
   ScanController: internal('skenování – web/mobil'),

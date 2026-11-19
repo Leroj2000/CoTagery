@@ -54,6 +54,10 @@ async function main() {
     await page.getByText('Vyžaduje pozornost').first().waitFor({ timeout: T });
     ok('stránka Pozornost');
 
+    await page.goto(`${base}/admin/vytizenost`);
+    await page.getByText('Podle kategorií').first().waitFor({ timeout: T });
+    ok('stránka Vytíženost');
+
     const name = `E2E sklad ${Date.now().toString(36)}`;
     await page.goto(`${base}/admin/locations`);
     await page.fill('input[name="name"]', name);

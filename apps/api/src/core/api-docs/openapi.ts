@@ -1,11 +1,7 @@
 import 'reflect-metadata';
 import { readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import {
-  METHOD_METADATA,
-  PATH_METADATA,
-  ROUTE_ARGS_METADATA,
-} from '@nestjs/common/constants';
+import { METHOD_METADATA, PATH_METADATA, ROUTE_ARGS_METADATA } from '@nestjs/common/constants';
 import { getMetadataStorage } from 'class-validator';
 import {
   ALLOW_AUTHENTICATED_ONLY_KEY,
@@ -98,7 +94,9 @@ export function dtoSchema(cls: unknown): Schema | undefined {
     if (name === 'min') s.minimum = c[0];
     if (name === 'arrayMaxSize') s.maxItems = c[0];
   }
-  const required = Object.keys(props).filter((p) => !optional.has(p)).sort();
+  const required = Object.keys(props)
+    .filter((p) => !optional.has(p))
+    .sort();
   return {
     type: 'object',
     title: (cls as { name: string }).name,
@@ -126,15 +124,18 @@ export function buildOpenApi(srcDir: string): OpenApiDoc {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require(file) as Record<string, unknown>;
     for (const value of Object.values(mod)) {
-      if (typeof value !== 'function' || !Reflect.getMetadata(CONTROLLER_WATERMARK, value)) continue;
+      if (typeof value !== 'function' || !Reflect.getMetadata(CONTROLLER_WATERMARK, value))
+        continue;
       const cls = value as new (...args: never[]) => unknown;
       const rel = relative(srcDir, file);
       const tag = tagOf(rel);
       tags.add(tag);
       const bases = [Reflect.getMetadata(PATH_METADATA, cls) ?? ''].flat() as string[];
       const classPerm = Reflect.getMetadata(REQUIRE_PERMISSION_KEY, cls) as string | undefined;
-      const classAllow = Reflect.getMetadata(ALLOW_AUTHENTICATED_ONLY_KEY, cls) as boolean | undefined;
-      const classModule = Reflect.getMetadata(REQUIRE_MODULE_KEY, cls) as string | string[] | undefined;
+      const classAllow = Reflect.getMetadata(ALLOW_AUTHENTICATED_ONLY_KEY, cls) as
+        boolean | undefined;
+      const classModule = Reflect.getMetadata(REQUIRE_MODULE_KEY, cls) as
+        string | string[] | undefined;
       const proto = cls.prototype as Record<string, unknown>;
       for (const key of Object.getOwnPropertyNames(proto)) {
         if (key === 'constructor') continue;
@@ -143,24 +144,37 @@ export function buildOpenApi(srcDir: string): OpenApiDoc {
         const method = Reflect.getMetadata(METHOD_METADATA, handler) as number | undefined;
         const rpaths = Reflect.getMetadata(PATH_METADATA, handler) as string | string[] | undefined;
         if (method === undefined || rpaths === undefined) continue;
-        const perm = (Reflect.getMetadata(REQUIRE_PERMISSION_KEY, handler) as string | undefined) ?? classPerm;
-        const allow = (Reflect.getMetadata(ALLOW_AUTHENTICATED_ONLY_KEY, handler) as boolean | undefined) ?? classAllow;
-        const moduleKey = (Reflect.getMetadata(REQUIRE_MODULE_KEY, handler) as string | string[] | undefined) ?? classModule;
+        const perm =
+          (Reflect.getMetadata(REQUIRE_PERMISSION_KEY, handler) as string | undefined) ?? classPerm;
+        const allow =
+          (Reflect.getMetadata(ALLOW_AUTHENTICATED_ONLY_KEY, handler) as boolean | undefined) ??
+          classAllow;
+        const moduleKey =
+          (Reflect.getMetadata(REQUIRE_MODULE_KEY, handler) as string | string[] | undefined) ??
+          classModule;
         const args = (Reflect.getMetadata(ROUTE_ARGS_METADATA, cls, key) ?? {}) as Record<
           string,
           { index: number; data?: unknown }
         >;
-        const paramTypes = (Reflect.getMetadata('design:paramtypes', proto, key) ?? []) as unknown[];
+        const paramTypes = (Reflect.getMetadata('design:paramtypes', proto, key) ??
+          []) as unknown[];
         const parameters: Schema[] = [];
         let body: Schema | undefined;
         for (const [k, a] of Object.entries(args)) {
           const type = Number(k.split(':')[0]);
           if (type === QUERY) {
             if (typeof a.data === 'string')
-              parameters.push({ name: a.data, in: 'query', required: false, schema: { type: 'string' } });
+              parameters.push({
+                name: a.data,
+                in: 'query',
+                required: false,
+                schema: { type: 'string' },
+              });
             else {
               const s = dtoSchema(paramTypes[a.index]);
-              for (const [name, ps] of Object.entries((s?.properties ?? {}) as Record<string, Schema>))
+              for (const [name, ps] of Object.entries(
+                (s?.properties ?? {}) as Record<string, Schema>,
+              ))
                 parameters.push({ name, in: 'query', required: false, schema: ps });
             }
           }
@@ -187,13 +201,22 @@ export function buildOpenApi(srcDir: string): OpenApiDoc {
               tags: [tag],
               operationId: `${cls.name}.${key}`,
               summary: `${cls.name}.${key}`,
-              description: access + (moduleKey ? ` · modul \`${[moduleKey].flat().join(', ')}\`` : ''),
+              description:
+                access + (moduleKey ? ` · modul \`${[moduleKey].flat().join(', ')}\`` : ''),
               ...(perm ? { 'x-permission': perm } : {}),
               ...(moduleKey ? { 'x-module': [moduleKey].flat() } : {}),
               ...(perm || allow ? { security: [{ bearer: [] }] } : {}),
-              parameters: [...pathParams, ...parameters.sort((a, b) => String(a.name).localeCompare(String(b.name)))],
+              parameters: [
+                ...pathParams,
+                ...parameters.sort((a, b) => String(a.name).localeCompare(String(b.name))),
+              ],
               ...(body && !['get', 'delete'].includes(HTTP[method] ?? '')
-                ? { requestBody: { required: true, content: { 'application/json': { schema: body } } } }
+                ? {
+                    requestBody: {
+                      required: true,
+                      content: { 'application/json': { schema: body } },
+                    },
+                  }
                 : {}),
               responses: { default: { description: 'Viz implementace controlleru' } },
               'x-source': rel,
@@ -230,9 +253,13 @@ export function renderMarkdown(doc: OpenApiDoc): string {
   for (const [path, ops] of Object.entries(doc.paths))
     for (const [method, op] of Object.entries(ops)) {
       const tag = (op.tags as string[])[0];
-      const perm = (op['x-permission'] as string | undefined) ?? (op.security ? 'přihlášený' : 'veřejné / vlastní');
+      const perm =
+        (op['x-permission'] as string | undefined) ??
+        (op.security ? 'přihlášený' : 'veřejné / vlastní');
       const mod = (op['x-module'] as string[] | undefined)?.join(', ') ?? '';
-      (rows[tag] ??= []).push(`| ${method.toUpperCase()} | \`${path}\` | ${perm} | ${mod} | ${op.operationId as string} |`);
+      (rows[tag] ??= []).push(
+        `| ${method.toUpperCase()} | \`${path}\` | ${perm} | ${mod} | ${op.operationId as string} |`,
+      );
       count++;
     }
   const out = [
@@ -250,7 +277,14 @@ export function renderMarkdown(doc: OpenApiDoc): string {
     '',
   ];
   for (const tag of Object.keys(rows).sort()) {
-    out.push(`## ${tag}`, '', '| Metoda | Cesta | Oprávnění | Modul | Handler |', '|---|---|---|---|---|', ...rows[tag], '');
+    out.push(
+      `## ${tag}`,
+      '',
+      '| Metoda | Cesta | Oprávnění | Modul | Handler |',
+      '|---|---|---|---|---|',
+      ...rows[tag],
+      '',
+    );
   }
   return out.join('\n');
 }

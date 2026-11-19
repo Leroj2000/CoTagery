@@ -23,7 +23,12 @@ describe('QA-04 dokumentace API', () => {
   it('obsahuje hlavní průchod MVP', () => {
     const paths = Object.keys(doc.paths);
     expect(paths.length).toBeGreaterThan(100);
-    for (const p of ['/api/v1/auth/login', '/api/v1/assets', '/api/v1/assets/{id}/movements', '/api/v1/assets/attention'])
+    for (const p of [
+      '/api/v1/auth/login',
+      '/api/v1/assets',
+      '/api/v1/assets/{id}/movements',
+      '/api/v1/assets/attention',
+    ])
       expect(paths).toContain(p);
     expect(doc.paths['/api/v1/assets']?.post?.['x-permission']).toBe('asset.item.create');
   });

@@ -49,7 +49,9 @@ export default async function ClaimProtocolPage({
     warranties.find((w) => (!w.startsOn || w.startsOn <= onDay) && onDay <= w.endsOn) ??
     warranties[0] ??
     null;
-  const inWarranty = Boolean(warranty && (!warranty.startsOn || warranty.startsOn <= onDay) && onDay <= warranty.endsOn);
+  const inWarranty = Boolean(
+    warranty && (!warranty.startsOn || warranty.startsOn <= onDay) && onDay <= warranty.endsOn,
+  );
   const purchase = purchaseView?.purchase ?? null;
   const invoice = purchaseView?.documents.find((d) => d.docType === 'invoice') ?? null;
 
@@ -63,7 +65,10 @@ export default async function ClaimProtocolPage({
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6 bg-white p-6 print:p-0">
       <div className="flex items-center justify-between print:hidden">
-        <Link href={`/admin/assets/${id}#servis`} className="text-sm text-brand-700 hover:underline">
+        <Link
+          href={`/admin/assets/${id}#servis`}
+          className="text-sm text-brand-700 hover:underline"
+        >
           ← zpět na položku
         </Link>
         <PrintButton />
@@ -79,12 +84,15 @@ export default async function ClaimProtocolPage({
 
       {!inWarranty && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 print:hidden">
-          V den závady ({fmtDay(onDay)}) podle evidence neplatila žádná záruka – zkontroluj data záruky.
+          V den závady ({fmtDay(onDay)}) podle evidence neplatila žádná záruka – zkontroluj data
+          záruky.
         </p>
       )}
 
       <section>
-        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-500">Předmět reklamace</h2>
+        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Předmět reklamace
+        </h2>
         <table className="w-full text-sm">
           <tbody>
             {row('Název', asset.name)}
@@ -96,7 +104,9 @@ export default async function ClaimProtocolPage({
       </section>
 
       <section>
-        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-500">Nákup a záruka</h2>
+        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Nákup a záruka
+        </h2>
         <table className="w-full text-sm">
           <tbody>
             {row('Prodejce', purchase?.supplier)}
@@ -105,7 +115,9 @@ export default async function ClaimProtocolPage({
             {row('Záruka', warranty ? warranty.title : null)}
             {row(
               'Záruční doba',
-              warranty ? `${warranty.startsOn ? `${fmtDay(warranty.startsOn)} – ` : 'do '}${fmtDay(warranty.endsOn)}` : null,
+              warranty
+                ? `${warranty.startsOn ? `${fmtDay(warranty.startsOn)} – ` : 'do '}${fmtDay(warranty.endsOn)}`
+                : null,
             )}
             {row('Reklamaci vyřizuje', warranty?.provider ?? record.provider)}
           </tbody>
@@ -113,7 +125,9 @@ export default async function ClaimProtocolPage({
       </section>
 
       <section>
-        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-500">Závada</h2>
+        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Závada
+        </h2>
         <table className="w-full text-sm">
           <tbody>
             {row('Datum zjištění / opravy', day(record.performedAt))}
@@ -125,7 +139,9 @@ export default async function ClaimProtocolPage({
 
       <section className="grid grid-cols-2 gap-8 pt-10 text-sm text-slate-600">
         <div className="border-t border-slate-400 pt-1">Reklamující (podpis, datum)</div>
-        <div className="border-t border-slate-400 pt-1">Převzal za prodejce/servis (podpis, datum)</div>
+        <div className="border-t border-slate-400 pt-1">
+          Převzal za prodejce/servis (podpis, datum)
+        </div>
       </section>
     </div>
   );

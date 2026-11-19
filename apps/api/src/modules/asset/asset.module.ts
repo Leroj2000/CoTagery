@@ -46,6 +46,8 @@ import { TireSlotsController } from './tire-slots.controller';
 import { TireSlotsService } from './tire-slots.service';
 import { SpecCallbackController } from './spec-callback.controller';
 import { PurchaseController } from './purchase.controller';
+import { UtilizationController } from './utilization.controller';
+import { UtilizationService } from './utilization.service';
 import { AssetIoController } from './asset-io.controller';
 import { AssetHandler } from './asset.handler';
 import { RegistrationController } from './registration.controller';
@@ -81,6 +83,7 @@ import { PersonalWorkflowsController } from './personal-workflows.controller';
     DomainModule,
   ],
   controllers: [
+    UtilizationController,
     RegistrationController,
     PersonalWorkflowsController,
     AssetIoController,
@@ -99,6 +102,7 @@ import { PersonalWorkflowsController } from './personal-workflows.controller';
     PurchaseController,
   ],
   providers: [
+    UtilizationService,
     AssetService,
     CategoriesService,
     MaintenanceService,

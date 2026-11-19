@@ -2,7 +2,10 @@ import 'reflect-metadata';
 import { readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { GUARDS_METADATA, METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
-import { ALLOW_AUTHENTICATED_ONLY_KEY, REQUIRE_PERMISSION_KEY } from './require-permission.decorator';
+import {
+  ALLOW_AUTHENTICATED_ONLY_KEY,
+  REQUIRE_PERMISSION_KEY,
+} from './require-permission.decorator';
 
 /**
  * SEC-07: jednotné vynucení oprávnění. Guardy se v API nastavují per controller
@@ -49,7 +52,9 @@ function walk(dir: string, out: string[] = []): string[] {
 
 function guardNames(target: object): string[] {
   const guards = (Reflect.getMetadata(GUARDS_METADATA, target) ?? []) as unknown[];
-  return guards.map((g) => (typeof g === 'function' ? g.name : String((g as object)?.constructor?.name)));
+  return guards.map((g) =>
+    typeof g === 'function' ? g.name : String((g as object)?.constructor?.name),
+  );
 }
 
 interface Finding {
@@ -65,13 +70,15 @@ function audit(): { controllers: string[]; findings: Finding[] } {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require(file) as Record<string, unknown>;
     for (const value of Object.values(mod)) {
-      if (typeof value !== 'function' || !Reflect.getMetadata(CONTROLLER_WATERMARK, value)) continue;
+      if (typeof value !== 'function' || !Reflect.getMetadata(CONTROLLER_WATERMARK, value))
+        continue;
       const cls = value as new (...args: never[]) => unknown;
       controllers.push(cls.name);
       const rel = relative(SRC, file);
       const classGuards = guardNames(cls);
       const classPerm = Reflect.getMetadata(REQUIRE_PERMISSION_KEY, cls) as string | undefined;
-      const classAllow = Reflect.getMetadata(ALLOW_AUTHENTICATED_ONLY_KEY, cls) as boolean | undefined;
+      const classAllow = Reflect.getMetadata(ALLOW_AUTHENTICATED_ONLY_KEY, cls) as
+        boolean | undefined;
       const allowlisted = cls.name in NON_MEMBER_CONTROLLERS;
       let anyPermGuard = classGuards.includes('PermissionsGuard');
       for (const key of Object.getOwnPropertyNames(cls.prototype)) {
@@ -86,15 +93,32 @@ function audit(): { controllers: string[]; findings: Finding[] } {
         if (guards.includes('PermissionsGuard')) {
           anyPermGuard = true;
           if (!perm && !allow)
-            findings.push({ controller: cls.name, file: rel, problem: `${key}: PermissionsGuard bez @RequirePermission/@AllowAuthenticatedOnly` });
+            findings.push({
+              controller: cls.name,
+              file: rel,
+              problem: `${key}: PermissionsGuard bez @RequirePermission/@AllowAuthenticatedOnly`,
+            });
         } else if (!allowlisted) {
-          findings.push({ controller: cls.name, file: rel, problem: `${key}: route bez PermissionsGuard` });
+          findings.push({
+            controller: cls.name,
+            file: rel,
+            problem: `${key}: route bez PermissionsGuard`,
+          });
         }
         if ((perm || allow) && !guards.includes('PermissionsGuard'))
-          findings.push({ controller: cls.name, file: rel, problem: `${key}: @RequirePermission bez PermissionsGuard (nevynucuje se)` });
+          findings.push({
+            controller: cls.name,
+            file: rel,
+            problem: `${key}: @RequirePermission bez PermissionsGuard (nevynucuje se)`,
+          });
       }
       if (allowlisted && anyPermGuard)
-        findings.push({ controller: cls.name, file: rel, problem: 'je v NON_MEMBER_CONTROLLERS, ale používá PermissionsGuard – odeber ho ze seznamu' });
+        findings.push({
+          controller: cls.name,
+          file: rel,
+          problem:
+            'je v NON_MEMBER_CONTROLLERS, ale používá PermissionsGuard – odeber ho ze seznamu',
+        });
     }
   }
   return { controllers, findings };

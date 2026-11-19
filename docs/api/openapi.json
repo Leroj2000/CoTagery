@@ -11464,6 +11464,38 @@
         "x-source": "modules/rental/rental.controller.ts"
       }
     },
+    "/api/v1/reports/utilization": {
+      "get": {
+        "tags": [
+          "asset"
+        ],
+        "operationId": "UtilizationController.report",
+        "summary": "UtilizationController.report",
+        "description": "Oprávnění `asset.item.view`",
+        "x-permission": "asset.item.view",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "Viz implementace controlleru"
+          }
+        },
+        "x-source": "modules/asset/utilization.controller.ts"
+      }
+    },
     "/api/v1/reservations": {
       "get": {
         "tags": [

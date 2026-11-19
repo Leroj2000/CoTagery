@@ -53,7 +53,7 @@
 |---|---|---|---|---|---|
 | ZAK-01 | Zakázky / stavby (entita nebo typ místa) | M | DEC-03, plán | vývoj | 🧭 plán ke schválení |
 | ZAK-02 | Vnitropodnikové sazby (den/týden/měsíc, strop) a report nákladů po zakázkách | M | ZAK-01 | vývoj | ⏸ |
-| ZAK-03 | Report vytíženosti (dokoupit / prodat ležáky) | S–M | – | vývoj | ⬜ |
+| ZAK-03 | Report vytíženosti (dokoupit / prodat ležáky) | S–M | – | vývoj | ✅ /admin/vytizenost + GET /reports/utilization (z knihy pohybů, bez DEC-03) |
 | INT-01 | Veřejné API s klíči (scopes) + dokumentace | S–M | QA-04 | vývoj | ⬜ |
 | INT-02 | Export do účetnictví (Pohoda XML / Money S3): majetek, náklady | M | DEC-04, ZAK-02 | vývoj | 🧭 |
 | MOB-01 | Offline fronta akcí a cache v Capacitoru | M–L | – | vývoj | ⬜ |
@@ -61,7 +61,7 @@
 | PPL-01 | Průkazy obsluhy u osob s platností a vazbou na výdej | S–M | REV-02 | vývoj | ⏸ |
 | ORG-01 | Více středisek: viditelnost a správa podle pobočky (scopes authz v2) | S–M | SEC-07 | vývoj | ⬜ |
 | VEH-01 | Kniha jízd (EPIC-23) | M | – | vývoj | ⬜ |
-| WAR-01 | Hlídání záruky při zápisu servisu + reklamační protokol | S | – | vývoj | ⬜ |
+| WAR-01 | Hlídání záruky při zápisu servisu + reklamační protokol | S | – | vývoj | ✅ Pozornost „Placené opravy v záruce“ + reklamační protokol (jen v aplikaci) |
 | CAL-01 | Kalibrace měřidel: kalibrační list, stav způsobilosti | S | REV-01 | vývoj | ⏸ |
 
 ## Později

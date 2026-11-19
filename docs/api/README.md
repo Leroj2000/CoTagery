@@ -8,7 +8,7 @@
 - Autorizace: sloupec *Oprávnění* = klíč z katalogu rolí (`Nastavení → Role`); *přihlášený* = stačí členství ve firmě.
 - Data se vždy vztahují k aktivní firmě z tokenu (Row Level Security).
 
-Celkem 339 endpointů.
+Celkem 340 endpointů.
 
 ## access
 
@@ -110,6 +110,7 @@ Celkem 339 endpointů.
 | POST | `/api/v1/personal-workflows/loans` | asset.selfloan.use |  | PersonalWorkflowsController.loan |
 | POST | `/api/v1/personal-workflows/loans/{id}/decide` | asset.reservation.approve |  | PersonalWorkflowsController.decide |
 | GET | `/api/v1/personal-workflows/me` | asset.handoff.use |  | PersonalWorkflowsController.me |
+| GET | `/api/v1/reports/utilization` | asset.item.view |  | UtilizationController.report |
 | GET | `/api/v1/reservations` | asset.reservation.view |  | ReservationsController.list |
 | POST | `/api/v1/reservations` | asset.reservation.view |  | ReservationsController.create |
 | POST | `/api/v1/reservations/{id}/approve` | asset.reservation.approve |  | ReservationsController.approve |

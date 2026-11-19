@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Bell,
+  Gauge,
   Package,
   MapPin,
   Contact,
@@ -56,6 +57,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: '/admin/attention',
         label: 'Vyžaduje pozornost',
         icon: Bell,
+        permission: 'asset.item.view',
+      },
+      {
+        href: '/admin/vytizenost',
+        label: 'Vytíženost',
+        icon: Gauge,
         permission: 'asset.item.view',
       },
     ],
