@@ -20,8 +20,9 @@ async function seed(): Promise<void> {
       console.log('Demo tenant už existuje:', tenantId);
     } else {
       const inserted = await dataSource.query(
-        `INSERT INTO tenants (name, type) VALUES ($1, $2) RETURNING id`,
-        ['Demo Tenant', 'mixed'],
+        // slug je od migrace RentalListing NOT NULL (smoke na čisté DB to odhalil).
+        `INSERT INTO tenants (name, type, slug) VALUES ($1, $2, $3) RETURNING id`,
+        ['Demo Tenant', 'mixed', 'demo-tenant'],
       );
       tenantId = inserted[0].id;
       console.log('Vytvořen demo tenant:', tenantId);
