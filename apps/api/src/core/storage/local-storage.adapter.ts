@@ -1,13 +1,25 @@
 import { mkdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, resolve, sep } from 'node:path';
 import type { StoragePort } from './storage.port';
 
 /** Lokální filesystem adaptér pro vývoj. Produkce používá R2/S3 adaptér (ADR-0008). */
 export class LocalStorageAdapter implements StoragePort {
   constructor(private readonly basePath: string) {}
 
+  /**
+   * Klíč musí zůstat uvnitř `basePath` (BACKLOG SEC-02). Klíče dnes skládá server
+   * z UUID, ale adaptér to vynucuje sám, aby budoucí chyba nevedla k path traversal.
+   */
   private resolveKey(key: string): string {
-    return resolve(join(this.basePath, key));
+    if (!key || key.includes('\0') || isAbsolute(key) || key.split(/[\\/]/).includes('..')) {
+      throw new Error(`Neplatný klíč úložiště: ${JSON.stringify(key)}`);
+    }
+    const root = resolve(this.basePath);
+    const path = resolve(root, key);
+    if (path !== root && !path.startsWith(root + sep)) {
+      throw new Error(`Klíč úložiště míří mimo úložiště: ${JSON.stringify(key)}`);
+    }
+    return path;
   }
 
   async put(key: string, data: Buffer): Promise<{ key: string }> {
