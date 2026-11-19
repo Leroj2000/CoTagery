@@ -1,4 +1,5 @@
 import {
+  isPaidRepairUnderWarranty,
   addMonths,
   computePrice,
   decodeFileName,
@@ -177,4 +178,33 @@ describe('purchase.logic', () => {
     expect(decodeFileName('faktura.pdf')).toBe('faktura.pdf');
     expect(decodeFileName('caf\u00e9.pdf')).toBe('café.pdf');
   });
+});
+
+describe('WAR-01 isPaidRepairUnderWarranty', () => {
+  const base = {
+    serviceId: 's1',
+    kind: 'repair',
+    cost: '1500',
+    performedOn: '2026-05-10',
+    startsOn: '2025-06-01',
+    endsOn: '2027-06-01',
+    claimedAfter: false,
+  };
+  it('placená oprava v záruce', () => expect(isPaidRepairUnderWarranty(base)).toBe(true));
+  it('poslední den záruky ještě platí', () =>
+    expect(isPaidRepairUnderWarranty({ ...base, performedOn: '2027-06-01' })).toBe(true));
+  it('po konci záruky ne', () =>
+    expect(isPaidRepairUnderWarranty({ ...base, performedOn: '2027-06-02' })).toBe(false));
+  it('před začátkem záruky ne', () =>
+    expect(isPaidRepairUnderWarranty({ ...base, performedOn: '2025-05-31' })).toBe(false));
+  it('bez ceny / nulová cena ne', () => {
+    expect(isPaidRepairUnderWarranty({ ...base, cost: null })).toBe(false);
+    expect(isPaidRepairUnderWarranty({ ...base, cost: '0' })).toBe(false);
+  });
+  it('pravidelný servis ne (záruka údržbu nekryje)', () =>
+    expect(isPaidRepairUnderWarranty({ ...base, kind: 'service' })).toBe(false));
+  it('už reklamováno ne', () =>
+    expect(isPaidRepairUnderWarranty({ ...base, claimedAfter: true })).toBe(false));
+  it('bez data provedení ne', () =>
+    expect(isPaidRepairUnderWarranty({ ...base, performedOn: null })).toBe(false));
 });

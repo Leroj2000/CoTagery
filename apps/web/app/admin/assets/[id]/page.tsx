@@ -821,7 +821,7 @@ export default async function AssetDetail({
             <EmptyState>Žádné servisní záznamy.</EmptyState>
           ) : (
             <Table
-              head={['Typ', 'Provedeno', 'Příští termín', 'Kdo', 'Cena']}
+              head={['Typ', 'Provedeno', 'Příští termín', 'Kdo', 'Cena', '']}
               rows={services
                 .filter((s) => !s.planCode)
                 .map((s) => [
@@ -839,6 +839,17 @@ export default async function AssetDetail({
                   ),
                   s.provider ?? '—',
                   s.kind === 'warranty_claim' ? 'záruka' : s.cost ? `${s.cost}` : '—',
+                  s.kind === 'warranty_claim' || s.kind === 'repair' ? (
+                    <Link
+                      key="p"
+                      href={`/admin/assets/${asset.id}/reklamace/${s.id}`}
+                      className="text-xs font-medium text-brand-700 hover:underline"
+                    >
+                      Reklamační protokol
+                    </Link>
+                  ) : (
+                    ''
+                  ),
                 ])}
             />
           )}

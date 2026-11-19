@@ -191,3 +191,30 @@ export function decodeFileName(name: string): string {
   const utf8 = Buffer.from(name, 'latin1').toString('utf8');
   return utf8.includes('\uFFFD') ? name : utf8;
 }
+
+/** WAR-01: jak daleko zpět hlídat placené opravy v záruce (dny). */
+export const PAID_REPAIR_LOOKBACK_DAYS = 180;
+
+export interface RepairCandidate {
+  serviceId: string;
+  kind: string;
+  cost: string | number | null;
+  /** Den provedení (YYYY-MM-DD, Praha), null = neuvedeno. */
+  performedOn: string | null;
+  startsOn: string | null;
+  endsOn: string;
+  /** Existuje po této opravě u položky záznam „Reklamace (záruka)“? */
+  claimedAfter: boolean;
+}
+
+/**
+ * WAR-01: placená oprava provedená v době platné záruky a dosud nereklamovaná.
+ * Pravidelný servis se nepočítá (údržbu záruka nekryje), jen `repair` s cenou > 0.
+ */
+export function isPaidRepairUnderWarranty(c: RepairCandidate): boolean {
+  if (c.kind !== 'repair' || c.claimedAfter || !c.performedOn) return false;
+  const cost = Number(c.cost ?? 0);
+  if (!Number.isFinite(cost) || cost <= 0) return false;
+  if (c.startsOn && c.performedOn < c.startsOn) return false;
+  return c.performedOn <= c.endsOn;
+}

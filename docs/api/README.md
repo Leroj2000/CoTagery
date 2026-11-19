@@ -8,7 +8,7 @@
 - Autorizace: sloupec *Oprávnění* = klíč z katalogu rolí (`Nastavení → Role`); *přihlášený* = stačí členství ve firmě.
 - Data se vždy vztahují k aktivní firmě z tokenu (Row Level Security).
 
-Celkem 338 endpointů.
+Celkem 339 endpointů.
 
 ## access
 
@@ -129,6 +129,7 @@ Celkem 338 endpointů.
 | PUT | `/api/v1/warranties/{warrantyId}` | asset.purchase.update | purchase | PurchaseController.updateWarranty |
 | DELETE | `/api/v1/warranties/{warrantyId}` | asset.purchase.update | purchase | PurchaseController.deleteWarranty |
 | GET | `/api/v1/warranties/expiring` | asset.item.view | purchase | PurchaseController.expiring |
+| GET | `/api/v1/warranties/paid-repairs` | asset.item.view | purchase | PurchaseController.paidRepairs |
 
 ## auth
 

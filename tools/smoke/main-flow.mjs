@@ -119,6 +119,10 @@ async function main() {
   await api('GET', '/assets/attention');
   check('přehled Pozornost odpovídá', true);
 
+  // WAR-01: placené opravy v záruce (Pozornost) – dotaz musí projít nad čistou DB.
+  const paid = await api('GET', '/warranties/paid-repairs');
+  check('Pozornost: placené opravy v záruce', Array.isArray(paid), paid);
+
   // SEC-01: webhook do vnitřní sítě musí API odmítnout.
   await api('POST', '/webhooks', { url: 'https://127.0.0.1/hook' }, { expect: [400] });
   await api('POST', '/webhooks', { url: 'http://169.254.169.254/latest' }, { expect: [400] });

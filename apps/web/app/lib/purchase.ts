@@ -62,6 +62,19 @@ export interface ExpiringWarranty extends Warranty {
   assetName: string;
 }
 
+/** WAR-01: placená oprava v době platné záruky, dosud bez reklamace. */
+export interface PaidRepairUnderWarranty {
+  serviceId: string;
+  assetId: string;
+  assetName: string;
+  performedOn: string;
+  provider: string | null;
+  note: string | null;
+  warrantyTitle: string;
+  warrantyEndsOn: string;
+  warrantyProvider: string | null;
+}
+
 export const DOCUMENT_LABELS: Record<DocumentType, string> = {
   invoice: 'Faktura / doklad',
   warranty: 'Záruční list',

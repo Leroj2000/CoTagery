@@ -13303,6 +13303,32 @@
         "x-source": "modules/asset/purchase.controller.ts"
       }
     },
+    "/api/v1/warranties/paid-repairs": {
+      "get": {
+        "tags": [
+          "asset"
+        ],
+        "operationId": "PurchaseController.paidRepairs",
+        "summary": "PurchaseController.paidRepairs",
+        "description": "Oprávnění `asset.item.view` · modul `purchase`",
+        "x-permission": "asset.item.view",
+        "x-module": [
+          "purchase"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "default": {
+            "description": "Viz implementace controlleru"
+          }
+        },
+        "x-source": "modules/asset/purchase.controller.ts"
+      }
+    },
     "/api/v1/webhooks": {
       "get": {
         "tags": [

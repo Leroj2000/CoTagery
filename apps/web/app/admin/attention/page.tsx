@@ -2,7 +2,12 @@ import Link from 'next/link';
 import { Bell, Clock, ShieldAlert, Wrench } from 'lucide-react';
 import { apiFetch } from '../../lib/server-api';
 import type { Attention, Person, Location, MaintenanceDue } from '../../lib/types';
-import { daysUntil, fmtDay, type ExpiringWarranty } from '../../lib/purchase';
+import {
+  daysUntil,
+  fmtDay,
+  type ExpiringWarranty,
+  type PaidRepairUnderWarranty,
+} from '../../lib/purchase';
 import { PageHeader, Section, Table, Badge, EmptyState } from '../ui';
 import { ActionButton } from '../action-button';
 import { confirmMovement, resolveIssue } from '../actions';
@@ -28,6 +33,9 @@ export default async function AttentionPage() {
     apiFetch<MaintenanceDue[]>('/maintenance/due').catch(() => [] as MaintenanceDue[]),
   ]);
   const warranties = await apiFetch<ExpiringWarranty[]>('/warranties/expiring').catch(() => []);
+  const paidRepairs = await apiFetch<PaidRepairUnderWarranty[]>('/warranties/paid-repairs').catch(
+    () => [] as PaidRepairUnderWarranty[],
+  );
   const personName = new Map(people.map((p) => [p.id, p.name]));
   const locName = new Map(locations.map((l) => [l.id, l.name]));
   const holderLabel = (t: string | null, id: string | null): string =>
@@ -39,7 +47,8 @@ export default async function AttentionPage() {
     att.openIssues.length +
     att.dueServices.length +
     maintenanceDue.length +
-    warranties.length;
+    warranties.length +
+    paidRepairs.length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -226,6 +235,41 @@ export default async function AttentionPage() {
                 days === 0 ? 'dnes' : `${days} dní`,
               ];
             })}
+          />
+        )}
+      </Section>
+
+      <Section
+        title="Placené opravy v záruce"
+        description="Oprava byla zaplacena, i když položka měla platnou záruku – zvaž reklamaci (posledních 180 dní)"
+        action={<Badge tone="amber">{paidRepairs.length}</Badge>}
+      >
+        {paidRepairs.length === 0 ? (
+          <EmptyState>Žádná placená oprava v záruce.</EmptyState>
+        ) : (
+          <Table
+            head={['Položka', 'Oprava', 'Záruka do', 'Reklamace u', '']}
+            rows={paidRepairs.map((r) => [
+              <Link
+                key="n"
+                href={`/admin/assets/${r.assetId}#servis`}
+                className="font-medium text-brand-700 hover:underline"
+              >
+                {r.assetName}
+              </Link>,
+              `${fmtDay(r.performedOn)}${r.provider ? ` · ${r.provider}` : ''}`,
+              <span key="w" className="inline-flex items-center gap-1 text-amber-700">
+                <ShieldAlert size={13} /> {fmtDay(r.warrantyEndsOn)} ({r.warrantyTitle})
+              </span>,
+              r.warrantyProvider ?? '—',
+              <Link
+                key="p"
+                href={`/admin/assets/${r.assetId}/reklamace/${r.serviceId}`}
+                className="text-sm font-medium text-brand-700 hover:underline"
+              >
+                Reklamační protokol
+              </Link>,
+            ])}
           />
         )}
       </Section>

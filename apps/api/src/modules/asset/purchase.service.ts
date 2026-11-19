@@ -12,7 +12,9 @@ import { AssetPurchase } from './entities/asset-purchase.entity';
 import { AssetDocument, type AssetDocumentType } from './entities/asset-document.entity';
 import { AssetWarranty } from './entities/asset-warranty.entity';
 import {
+  PAID_REPAIR_LOOKBACK_DAYS,
   WARRANTY_EXPIRING_DAYS,
+  isPaidRepairUnderWarranty,
   addDays,
   computePrice,
   decodeFileName,
@@ -50,6 +52,19 @@ export interface WarrantyView extends AssetWarranty {
 
 export interface ExpiringWarranty extends WarrantyView {
   assetName: string;
+}
+
+/** WAR-01: placená oprava v době platné záruky, dosud bez reklamace. */
+export interface PaidRepairUnderWarranty {
+  serviceId: string;
+  assetId: string;
+  assetName: string;
+  performedOn: string;
+  provider: string | null;
+  note: string | null;
+  warrantyTitle: string;
+  warrantyEndsOn: string;
+  warrantyProvider: string | null;
 }
 
 /** Vyřazené/ztracené položky už na konec záruky neupozorňují. */
@@ -277,6 +292,76 @@ export class PurchaseService {
       .getRawAndEntities();
     const views = await this.withStatus(rows.entities);
     return views.map((w, i) => ({ ...w, assetName: String(rows.raw[i]?.asset_name ?? '') }));
+  }
+
+  /**
+   * WAR-01: placené opravy z posledních `days` dní, provedené v době platné
+   * záruky a bez následné reklamace – do „Vyžaduje pozornost“ (jen v aplikaci).
+   */
+  async paidRepairsUnderWarranty(
+    days = PAID_REPAIR_LOOKBACK_DAYS,
+  ): Promise<PaidRepairUnderWarranty[]> {
+    const since = addDays(todayInPrague(), -Math.max(0, days));
+    const rows: {
+      service_id: string;
+      asset_id: string;
+      asset_name: string;
+      kind: string;
+      cost: string | null;
+      performed_on: string | null;
+      provider: string | null;
+      note: string | null;
+      title: string;
+      starts_on: string | null;
+      ends_on: string;
+      warranty_provider: string | null;
+      claimed_after: boolean;
+    }[] = await this.context.manager.query(
+      `SELECT s.id AS service_id, s.asset_id, a.name AS asset_name, s.kind, s.cost::text AS cost,
+              to_char(s.performed_at AT TIME ZONE 'Europe/Prague', 'YYYY-MM-DD') AS performed_on,
+              s.provider, s.note, w.title, w.starts_on::text AS starts_on, w.ends_on::text AS ends_on,
+              w.provider AS warranty_provider,
+              EXISTS (SELECT 1 FROM asset_services c
+                       WHERE c.asset_id = s.asset_id AND c.kind = 'warranty_claim'
+                         AND c.created_at >= s.created_at) AS claimed_after
+         FROM asset_services s
+         JOIN assets a ON a.id = s.asset_id
+         JOIN asset_warranties w ON w.asset_id = s.asset_id
+        WHERE s.kind = 'repair' AND s.cost > 0 AND s.performed_at IS NOT NULL
+          AND (s.performed_at AT TIME ZONE 'Europe/Prague')::date >= $1::date
+          AND a.status <> ALL($2::text[])
+        ORDER BY s.performed_at DESC, w.ends_on DESC
+        LIMIT 500`,
+      [since, INACTIVE_STATUSES],
+    );
+    const seen = new Set<string>();
+    const out: PaidRepairUnderWarranty[] = [];
+    for (const r of rows) {
+      if (seen.has(r.service_id)) continue;
+      const hit = isPaidRepairUnderWarranty({
+        serviceId: r.service_id,
+        kind: r.kind,
+        cost: r.cost,
+        performedOn: r.performed_on,
+        startsOn: r.starts_on,
+        endsOn: r.ends_on,
+        claimedAfter: r.claimed_after,
+      });
+      if (!hit || !r.performed_on) continue;
+      seen.add(r.service_id);
+      out.push({
+        serviceId: r.service_id,
+        assetId: r.asset_id,
+        assetName: r.asset_name,
+        performedOn: r.performed_on,
+        provider: r.provider,
+        note: r.note,
+        warrantyTitle: r.title,
+        warrantyEndsOn: r.ends_on,
+        warrantyProvider: r.warranty_provider,
+      });
+    }
+    return out;
   }
 
   async createWarranty(assetId: string, dto: WarrantyDto): Promise<WarrantyView> {

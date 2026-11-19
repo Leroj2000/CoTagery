@@ -24,6 +24,7 @@ import { isAllowedManualMime, MANUAL_MAX_BYTES } from './manuals.logic';
 import {
   PurchaseService,
   type ExpiringWarranty,
+  type PaidRepairUnderWarranty,
   type PurchaseView,
   type WarrantyView,
 } from './purchase.service';
@@ -57,6 +58,13 @@ export class PurchaseController {
   expiring(@Query('days') days?: string): Promise<ExpiringWarranty[]> {
     const n = Number(days);
     return this.purchases.expiring(Number.isFinite(n) && n >= 0 && n <= 365 ? n : undefined);
+  }
+
+  /** WAR-01: placené opravy v době platné záruky bez reklamace (Pozornost). */
+  @Get('warranties/paid-repairs')
+  @RequirePermission('asset.item.view')
+  paidRepairs(): Promise<PaidRepairUnderWarranty[]> {
+    return this.purchases.paidRepairsUnderWarranty();
   }
 
   // --- Pořízení ---
