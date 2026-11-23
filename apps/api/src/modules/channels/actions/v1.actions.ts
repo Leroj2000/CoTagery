@@ -8,6 +8,9 @@ import { TenantContextService } from '../../../core/tenancy/tenant-context.servi
 import { AssetService } from '../../asset/asset.service';
 import { TiresService } from '../../asset/tires.service';
 import { TireSlotsService } from '../../asset/tire-slots.service';
+import { PurchaseService } from '../../asset/purchase.service';
+import { UtilizationService } from '../../asset/utilization.service';
+import { AuthzService } from '../../../core/rbac/authz.service';
 import type { RequestUser } from '../../../core/auth/jwt-auth.guard';
 import { buildTireSets } from './tire-list';
 import type { TireBookingView, TireSlotView } from '@tagery/shared';
@@ -41,6 +44,9 @@ export class V1ActionsProvider {
     private readonly assets: AssetService,
     private readonly tires: TiresService,
     private readonly tireSlots: TireSlotsService,
+    private readonly purchases?: PurchaseService,
+    private readonly utilization?: UtilizationService,
+    private readonly authz?: AuthzService,
   ) {}
 
   /**
@@ -130,11 +136,35 @@ export class V1ActionsProvider {
     }));
   }
 
-
   /** RequestUser pro TireSlotsService (role bere AuthzService z členství). */
   private requestUser(ctx: ActionExecutionContext): RequestUser {
     if (!ctx.tenantId) throw new NotFoundException('Chybí kontext firmy');
     return { userId: ctx.userId, tenantId: ctx.tenantId, tenantRole: '' };
+  }
+
+  /**
+   * WAR-01 v attention.list: placené opravy v záruce – stejná data jako
+   * GET /warranties/paid-repairs. Jen když je ve firmě zapnutý modul `purchase`
+   * (stejně jako @RequireModule na webu); oprávnění `asset.item.view` hlídá executor.
+   */
+  private async paidRepairsSection(
+    ctx: ActionExecutionContext,
+  ): Promise<{ paidRepairsUnderWarranty?: unknown[]; paidRepairsUnderWarrantyCount?: number }> {
+    if (!this.purchases || !this.authz || !ctx.tenantId) return {};
+    if (!(await this.authz.isModuleActive(this.requestUser(ctx), 'purchase'))) return {};
+    const rows = await this.purchases.paidRepairsUnderWarranty();
+    return {
+      paidRepairsUnderWarranty: rows.slice(0, 10).map((r) => ({
+        asset: r.assetName,
+        performedOn: r.performedOn,
+        provider: r.provider,
+        warranty: r.warrantyTitle,
+        warrantyEndsOn: r.warrantyEndsOn,
+        claimWith: r.warrantyProvider,
+        protocolUrl: ctx.webUrl(`/admin/assets/${r.assetId}/reklamace/${r.serviceId}`),
+      })),
+      paidRepairsUnderWarrantyCount: rows.length,
+    };
   }
 
   actions(): AnyChannelAction[] {
@@ -271,7 +301,8 @@ export class V1ActionsProvider {
         key: 'attention.list',
         title: 'Vyžaduje pozornost',
         description:
-          'What needs attention: overdue loans, unconfirmed handovers, open issues and services due in 30 days.',
+          'What needs attention: overdue loans, unconfirmed handovers, open issues, services due in 30 days ' +
+          'and paid repairs made while under warranty without a claim (Pozornost on web).',
         input: z.object({}),
         permission: 'asset.item.view',
         kind: 'read',
@@ -310,6 +341,55 @@ export class V1ActionsProvider {
               nextDueAt: s.nextDueAt ? s.nextDueAt.toISOString() : null,
             })),
             dueServicesCount: a.dueServices.length,
+            ...(await this.paidRepairsSection(ctx)),
+          };
+        },
+      }),
+      defineAction({
+        key: 'report.utilization',
+        title: 'Vytíženost majetku',
+        description:
+          'Vytíženost majetku za posledních N dní — co je přetížené (dokoupit) a co leží (prodat/přesunout). ' +
+          'Asset utilization over the last N days (in use = held by a person or away from home location); ' +
+          'verdict overused (≥80 %, consider buying more), idle (<5 % and 60+ days without movement, consider selling/moving), ok, new.',
+        input: z.object({
+          days: z.number().int().min(7).max(365).default(90),
+          category: z.string().min(1).max(100).optional(),
+          verdict: z.enum(['overused', 'idle', 'ok', 'new']).optional(),
+        }),
+        permission: 'asset.item.view',
+        kind: 'read',
+        requiresConfirmation: false,
+        scope: 'tenant',
+        execute: async (ctx, input) => {
+          if (!this.utilization) throw new NotFoundException('Report vytíženosti není dostupný');
+          const r = await this.utilization.report(input.days ?? 90);
+          const cat = input.category?.toLocaleLowerCase('cs');
+          const assets = r.assets.filter(
+            (a) =>
+              (!input.verdict || a.verdict === input.verdict) &&
+              (!cat || (a.category ?? 'Bez kategorie').toLocaleLowerCase('cs').includes(cat)),
+          );
+          return {
+            days: r.days,
+            from: r.from,
+            to: r.to,
+            totals: r.totals,
+            categories: cat
+              ? r.categories.filter((c) => c.category.toLocaleLowerCase('cs').includes(cat))
+              : r.categories,
+            assets: assets.slice(0, 50).map((a) => ({
+              asset: a.assetName,
+              category: a.category,
+              utilizationPct: a.utilizationPct,
+              daysInUse: a.daysInUse,
+              daysTracked: a.daysTracked,
+              daysSinceMovement: a.daysSinceMovement,
+              verdict: a.verdict,
+              url: ctx.webUrl(`/admin/assets/${a.assetId}`),
+            })),
+            assetsCount: assets.length,
+            reportUrl: ctx.webUrl(`/admin/vytizenost?days=${r.days}`),
           };
         },
       }),
@@ -540,14 +620,11 @@ export class V1ActionsProvider {
         kind: 'write',
         requiresConfirmation: true,
         scope: 'tenant',
-        summarize: (i) => `Rezervovat termín přezutí (${i.slotId.slice(0, 8)}…) pro vozidlo ${i.asset}`,
+        summarize: (i) =>
+          `Rezervovat termín přezutí (${i.slotId.slice(0, 8)}…) pro vozidlo ${i.asset}`,
         execute: async (ctx, input) => {
           const asset = await this.resolveAsset(input.asset);
-          const booking = await this.tireSlots.book(
-            this.requestUser(ctx),
-            input.slotId,
-            asset.id,
-          );
+          const booking = await this.tireSlots.book(this.requestUser(ctx), input.slotId, asset.id);
           return {
             ...booking,
             url: ctx.webUrl(`/admin/assets/${booking.assetId}`),

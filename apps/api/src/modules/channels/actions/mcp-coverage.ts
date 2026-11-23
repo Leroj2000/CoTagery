@@ -21,7 +21,14 @@ const internal = (why: string): McpDecision => ({ excluded: why });
 export const MCP_PERMISSION_COVERAGE: Record<string, McpDecision> = {
   // --- pokryté akcemi v1 ---
   'asset.item.view': {
-    actions: ['asset.search', 'asset.get', 'asset.held_by', 'attention.list', 'tire.list'],
+    actions: [
+      'asset.search',
+      'asset.get',
+      'asset.held_by',
+      'attention.list',
+      'tire.list',
+      'report.utilization',
+    ],
   },
   'asset.item.create': { actions: ['asset.create'] },
   'asset.movement.perform': { actions: ['asset.move'] },
@@ -39,7 +46,13 @@ export const MCP_PERMISSION_COVERAGE: Record<string, McpDecision> = {
   'asset.selfloan.use': later('vlastní výpůjčka'),
   'asset.handoff.use': internal('předávka s potvrzením druhou stranou – web'),
   'asset.tireslot.book': {
-    actions: ['tireslot.list', 'tireslot.mine', 'tireslot.book', 'tireslot.cancel', 'tireslot.move'],
+    actions: [
+      'tireslot.list',
+      'tireslot.mine',
+      'tireslot.book',
+      'tireslot.cancel',
+      'tireslot.move',
+    ],
   },
   'asset.tireslot.manage': internal(
     'vypisování/mazání termínů přezutí a Hotovo (přezutí sady) – jen web',
@@ -117,8 +130,9 @@ export const MCP_CONTROLLER_COVERAGE: Record<string, McpDecision> = {
   ManualsController: internal('návody k položkám – web'),
   MediaController: internal('fotky a soubory – kanály zatím bez příloh'),
   PersonalWorkflowsController: internal('předávky a výpůjčky s potvrzením – web/mobil'),
-  PurchaseController: internal('nákupní údaje – web'),
-  UtilizationController: later('report vytíženosti'),
+  // GET /warranties/paid-repairs je pokryté sekcí v attention.list; zbytek (ceny, doklady) jen web.
+  PurchaseController: { actions: ['attention.list'] },
+  UtilizationController: { actions: ['report.utilization'] },
   RegistrationController: internal('veřejná registrace položky přes QR – web'),
   ReservationsController: later('rezervace'),
   ScanController: internal('skenování – web/mobil'),
@@ -128,7 +142,13 @@ export const MCP_CONTROLLER_COVERAGE: Record<string, McpDecision> = {
   TiresController: { actions: ['tire.list'] },
   // list/mine/book/cancel/move → tireslot.*; create/delete slot + Hotovo zůstávají na webu (manage).
   TireSlotsController: {
-    actions: ['tireslot.list', 'tireslot.mine', 'tireslot.book', 'tireslot.cancel', 'tireslot.move'],
+    actions: [
+      'tireslot.list',
+      'tireslot.mine',
+      'tireslot.book',
+      'tireslot.cancel',
+      'tireslot.move',
+    ],
   },
   AccessPointsController: internal('modul Vstupy – web'),
   AnalyticsController: internal('statistiky – web'),
